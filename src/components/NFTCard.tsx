@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { NFTCard as NFTCardType, CardRarity, convertIpfsUrl } from "@/lib/objkt";
+import React, { useState, useMemo } from "react";
+import { NFTCard as NFTCardType, CardRarity, convertIpfsUrl, IPFS_GATEWAYS } from "@/lib/objkt";
 import { motion } from "framer-motion";
 
 interface NFTCardProps {
@@ -76,7 +76,16 @@ export default function NFTCard({
   onToggleWishlist,
   className = "",
 }: NFTCardProps) {
+  // Ordered fallback sources
+  const sources = useMemo(() => {
+    return [card.display_uri, card.thumbnail_uri, card.artifact_uri].filter(
+      (uri): uri is string => Boolean(uri && uri.trim().length > 0)
+    );
+  }, [card.display_uri, card.thumbnail_uri, card.artifact_uri]);
+
+  const [sourceIdx, setSourceIdx] = useState(0);
   const [gatewayIdx, setGatewayIdx] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
   const [isHovered, setIsHovered] = useState(false);
@@ -84,13 +93,15 @@ export default function NFTCard({
   const rarity = card.rarity || "common";
   const config = RARITY_CONFIG[rarity];
 
-  // Try display_uri, fallback to thumbnail_uri, then artifact_uri
-  const rawUri = card.display_uri || card.thumbnail_uri || card.artifact_uri || "";
-  const currentImageUrl = convertIpfsUrl(rawUri, gatewayIdx);
+  const currentRawUri = sources[sourceIdx] || "";
+  const currentImageUrl = convertIpfsUrl(currentRawUri, gatewayIdx);
 
   const handleImageError = () => {
-    if (gatewayIdx < 3) {
+    if (gatewayIdx < IPFS_GATEWAYS.length - 1) {
       setGatewayIdx((prev) => prev + 1);
+    } else if (sourceIdx < sources.length - 1) {
+      setSourceIdx((prev) => prev + 1);
+      setGatewayIdx(0);
     } else {
       setImageError(true);
     }
@@ -211,13 +222,23 @@ export default function NFTCard({
       {/* Card Artwork Display */}
       <div className="relative z-10 aspect-square w-full overflow-hidden rounded-xl bg-gray-950 shadow-inner border border-gray-800">
         {!imageError && currentImageUrl ? (
-          <img
-            src={currentImageUrl}
-            alt={card.name}
-            onError={handleImageError}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          <>
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 animate-pulse">
+                <span className="text-xl opacity-30">🖼️</span>
+              </div>
+            )}
+            <img
+              src={currentImageUrl}
+              alt={card.name}
+              onLoad={() => setImageLoaded(true)}
+              onError={handleImageError}
+              loading="lazy"
+              className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
+              }`}
+            />
+          </>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-gray-500 bg-gray-900">
             <span className="text-2xl mb-1">🖼️</span>

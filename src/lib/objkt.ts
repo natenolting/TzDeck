@@ -25,32 +25,32 @@ export interface NFTCard {
   quantity_owned?: number;
 }
 
-const IPFS_GATEWAYS = [
-  "https://ipfs.io/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/",
+export const IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs/",
+  "https://ipfs.io/ipfs/",
   "https://dweb.link/ipfs/",
+  "https://w3s.link/ipfs/",
+  "https://cloudflare-ipfs.com/ipfs/",
 ];
+
+export function extractIpfsHash(uri?: string): string | null {
+  if (!uri) return null;
+  const clean = uri.trim();
+  if (clean.startsWith("ipfs://ipfs/")) return clean.slice(12);
+  if (clean.startsWith("ipfs://")) return clean.slice(7);
+  const match = clean.match(/\/ipfs\/([a-zA-Z0-9_\-\.\?&=]+)/);
+  if (match) return match[1];
+  return null;
+}
 
 export function convertIpfsUrl(uri?: string, gatewayIndex = 0): string {
   if (!uri) return "";
-  const cleanUri = uri.trim();
-  
-  if (cleanUri.startsWith("ipfs://ipfs/")) {
-    const hash = cleanUri.replace("ipfs://ipfs/", "");
-    return `${IPFS_GATEWAYS[gatewayIndex % IPFS_GATEWAYS.length]}${hash}`;
+  const hash = extractIpfsHash(uri);
+  if (hash) {
+    const gateway = IPFS_GATEWAYS[gatewayIndex % IPFS_GATEWAYS.length];
+    return `${gateway}${hash}`;
   }
-  
-  if (cleanUri.startsWith("ipfs://")) {
-    const hash = cleanUri.replace("ipfs://", "");
-    return `${IPFS_GATEWAYS[gatewayIndex % IPFS_GATEWAYS.length]}${hash}`;
-  }
-  
-  if (cleanUri.startsWith("http://") || cleanUri.startsWith("https://")) {
-    return cleanUri;
-  }
-  
-  return cleanUri;
+  return uri;
 }
 
 export function calculateRarity(editions?: number, priceXtz?: number): CardRarity {
