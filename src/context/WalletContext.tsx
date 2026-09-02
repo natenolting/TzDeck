@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { BeaconWallet } from "@taquito/beacon-wallet";
+import { NetworkType } from "@ecadlabs/beacon-types";
 import { TezosToolkit } from "@taquito/taquito";
-import { NetworkType } from "@airgap/beacon-sdk";
 
 interface WalletContextType {
   address: string | null;
@@ -30,7 +30,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const initializeWallet = async () => {
-      const rpcUrl = process.env.NEXT_PUBLIC_TEZOS_RPC_URL!;
+      const rpcUrl = process.env.NEXT_PUBLIC_TEZOS_RPC_URL || "https://mainnet.api.tez.ie";
       const tezosInstance = new TezosToolkit(rpcUrl);
 
       // Pass network when creating the wallet instance
