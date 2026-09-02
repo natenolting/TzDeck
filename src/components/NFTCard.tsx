@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import {
   NFTCard as NFTCardType,
   CardRarity,
@@ -10,6 +10,7 @@ import {
   IPFS_GATEWAYS,
 } from "@/lib/objkt";
 import { motion } from "framer-motion";
+import NFTDetailsModal from "./NFTDetailsModal";
 
 interface NFTCardProps {
   card: NFTCardType;
@@ -98,12 +99,14 @@ export default function NFTCard({
   const [imageError, setImageError] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
   const [isHovered, setIsHovered] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const rarity = card.rarity || "common";
   const config = RARITY_CONFIG[rarity];
 
   const currentRawUri = sources[sourceIdx] || "";
   const currentImageUrl = convertIpfsUrl(currentRawUri, gatewayIdx);
+  const closeDetails = useCallback(() => setIsDetailsOpen(false), []);
 
   const handleImageError = () => {
     setImageLoaded(false);
@@ -161,7 +164,8 @@ export default function NFTCard({
   }
 
   return (
-    <motion.div
+    <>
+      <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ y: -6, transition: { duration: 0.2 } }}
@@ -233,7 +237,13 @@ export default function NFTCard({
       {/* Card Artwork Display */}
       <div className="relative z-10 aspect-square w-full overflow-hidden rounded-xl bg-gray-950 shadow-inner border border-gray-800">
         {!imageError && currentImageUrl ? (
-          <>
+          <button
+            type="button"
+            aria-label={`View details for ${card.name}`}
+            disabled={!imageLoaded}
+            onClick={() => setIsDetailsOpen(true)}
+            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 disabled:cursor-default"
+          >
             {!imageLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 animate-pulse">
                 <span className="text-xl opacity-30">🖼️</span>
@@ -250,7 +260,20 @@ export default function NFTCard({
                 imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
               }`}
             />
-          </>
+
+            {card.editions !== undefined && (
+              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-gray-950/80 px-2 py-0.5 text-[10px] font-medium text-gray-300 backdrop-blur-md border border-gray-800">
+                {card.editions === 1 ? "1 of 1" : `Editions: ${card.editions}`}
+              </div>
+            )}
+
+            {card.price_xtz !== undefined && (
+              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-[11px] font-bold text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
+                <span>ꜩ</span>
+                <span>{card.price_xtz}</span>
+              </div>
+            )}
+          </button>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-gray-500 bg-gray-900">
             <span className="text-2xl mb-1">🖼️</span>
@@ -259,20 +282,6 @@ export default function NFTCard({
           </div>
         )}
 
-        {/* Edition indicator badge on image */}
-        {card.editions !== undefined && (
-          <div className="absolute bottom-2 left-2 rounded-md bg-gray-950/80 px-2 py-0.5 text-[10px] font-medium text-gray-300 backdrop-blur-md border border-gray-800">
-            {card.editions === 1 ? "1 of 1" : `Editions: ${card.editions}`}
-          </div>
-        )}
-
-        {/* Price tag on image if listed */}
-        {card.price_xtz !== undefined && (
-          <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-[11px] font-bold text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
-            <span>ꜩ</span>
-            <span>{card.price_xtz}</span>
-          </div>
-        )}
       </div>
 
       {/* Card Info Details */}
@@ -321,6 +330,17 @@ export default function NFTCard({
           </a>
         </div>
       )}
-    </motion.div>
+      </motion.div>
+
+      {isDetailsOpen && (
+        <NFTDetailsModal
+          card={card}
+          imageUrl={currentImageUrl}
+          isWishlisted={isWishlisted}
+          onClose={closeDetails}
+          onToggleWishlist={onToggleWishlist}
+        />
+      )}
+    </>
   );
 }
