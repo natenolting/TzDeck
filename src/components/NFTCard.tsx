@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { NFTCard as NFTCardType, CardRarity, convertIpfsUrl, IPFS_GATEWAYS } from "@/lib/objkt";
+import {
+  NFTCard as NFTCardType,
+  CardRarity,
+  convertIpfsUrl,
+  extractIpfsHash,
+  getCardImageSources,
+  IPFS_GATEWAYS,
+} from "@/lib/objkt";
 import { motion } from "framer-motion";
 
 interface NFTCardProps {
@@ -78,8 +85,10 @@ export default function NFTCard({
 }: NFTCardProps) {
   // Ordered fallback sources
   const sources = useMemo(() => {
-    return [card.display_uri, card.thumbnail_uri, card.artifact_uri].filter(
-      (uri): uri is string => Boolean(uri && uri.trim().length > 0)
+    return getCardImageSources(
+      card.display_uri,
+      card.thumbnail_uri,
+      card.artifact_uri,
     );
   }, [card.display_uri, card.thumbnail_uri, card.artifact_uri]);
 
@@ -97,7 +106,9 @@ export default function NFTCard({
   const currentImageUrl = convertIpfsUrl(currentRawUri, gatewayIdx);
 
   const handleImageError = () => {
-    if (gatewayIdx < IPFS_GATEWAYS.length - 1) {
+    setImageLoaded(false);
+
+    if (extractIpfsHash(currentRawUri) && gatewayIdx < IPFS_GATEWAYS.length - 1) {
       setGatewayIdx((prev) => prev + 1);
     } else if (sourceIdx < sources.length - 1) {
       setSourceIdx((prev) => prev + 1);
@@ -234,6 +245,7 @@ export default function NFTCard({
               onLoad={() => setImageLoaded(true)}
               onError={handleImageError}
               loading="lazy"
+              decoding="async"
               className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
                 imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
               }`}

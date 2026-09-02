@@ -30,27 +30,59 @@ export const IPFS_GATEWAYS = [
   "https://ipfs.io/ipfs/",
   "https://dweb.link/ipfs/",
   "https://w3s.link/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/",
 ];
 
 export function extractIpfsHash(uri?: string): string | null {
   if (!uri) return null;
   const clean = uri.trim();
+  if (clean.startsWith("/api/media?")) {
+    const params = new URLSearchParams(clean.slice(clean.indexOf("?") + 1));
+    const proxiedIpfs = params.get("ipfs");
+    if (proxiedIpfs) return extractIpfsHash(proxiedIpfs);
+  }
   if (clean.startsWith("ipfs://ipfs/")) return clean.slice(12);
   if (clean.startsWith("ipfs://")) return clean.slice(7);
-  const match = clean.match(/\/ipfs\/([a-zA-Z0-9_\-\.\?&=]+)/);
+  const match = clean.match(/\/ipfs\/([^#]+)/);
   if (match) return match[1];
+  if (/^(Qm[a-zA-Z0-9]{44}|bafy[a-zA-Z0-9]+)/.test(clean)) return clean;
   return null;
 }
 
 export function convertIpfsUrl(uri?: string, gatewayIndex = 0): string {
   if (!uri) return "";
+  const clean = uri.trim();
+
+  if (clean.startsWith("/api/media?")) {
+    const params = new URLSearchParams(clean.slice(clean.indexOf("?") + 1));
+    const proxiedUrl = params.get("url");
+    if (proxiedUrl) return convertIpfsUrl(proxiedUrl, gatewayIndex);
+  }
+
   const hash = extractIpfsHash(uri);
   if (hash) {
     const gateway = IPFS_GATEWAYS[gatewayIndex % IPFS_GATEWAYS.length];
     return `${gateway}${hash}`;
   }
   return uri;
+}
+
+export function getCardImageSources(...uris: Array<string | undefined>): string[] {
+  const sources: string[] = [];
+  const seen = new Set<string>();
+
+  for (const uri of uris) {
+    const clean = uri?.trim();
+    if (!clean) continue;
+
+    const hash = extractIpfsHash(clean);
+    const identity = hash ? `ipfs:${hash}` : `url:${clean}`;
+    if (seen.has(identity)) continue;
+
+    seen.add(identity);
+    sources.push(clean);
+  }
+
+  return sources;
 }
 
 export function calculateRarity(editions?: number, priceXtz?: number): CardRarity {
@@ -113,6 +145,38 @@ interface ObjktListingResponse {
   }>;
 }
 
+interface TzktTokenBalance {
+  balance?: number | string;
+  token?: {
+    tokenId?: number | string;
+    token_id?: number | string;
+    totalSupply?: number | string;
+    contract?: {
+      address?: string;
+      alias?: string;
+    };
+    metadata?: {
+      name?: string;
+      description?: string;
+      artifactUri?: string;
+      displayUri?: string;
+      thumbnailUri?: string;
+      editions?: number | string;
+      creators?: string[];
+      artist?: string;
+      collectionName?: string;
+    };
+  };
+}
+
+function isTzktTokenBalance(value: unknown): value is TzktTokenBalance {
+  if (!value || typeof value !== "object") return false;
+  const token = (value as { token?: unknown }).token;
+  if (!token || typeof token !== "object") return false;
+  const metadata = (token as { metadata?: unknown }).metadata;
+  return Boolean(metadata && typeof metadata === "object");
+}
+
 export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
   const query = `
     query UserHoldings($address: String!) {
@@ -122,7 +186,7 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
           quantity: { _gt: "0" }
         },
         limit: 250,
-        order_by: { last_transfer_timestamp: desc_nulls_last }
+        order_by: { last_incremented_at: desc_nulls_last }
       ) {
         quantity
         token {
@@ -186,14 +250,14 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
   try {
     const url = `https://api.tzkt.io/v1/tokens/balances?account=${address}&token.metadata.artifactUri.ne=null&limit=200`;
     const response = await fetch(url);
-    const tzktData = await response.json();
+    const tzktData: unknown = await response.json();
 
     if (Array.isArray(tzktData)) {
       return tzktData
-        .filter((item: any) => item.token && item.token.metadata)
-        .map((item: any) => {
-          const token = item.token;
-          const metadata = token.metadata || {};
+        .filter(isTzktTokenBalance)
+        .map((item) => {
+          const token = item.token!;
+          const metadata = token.metadata!;
           const contractAddress = token.contract?.address || "";
           const tokenId = String(token.tokenId || token.token_id || "0");
           const editions = Number(token.totalSupply || metadata.editions || 1);

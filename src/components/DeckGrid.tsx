@@ -10,45 +10,70 @@ interface DeckGridProps {
   wishlistIds?: Set<string>;
 }
 
+type SortBy = "latest" | "name" | "editions";
+
+interface DeckApiResponse {
+  tokens?: NFTCardType[];
+  error?: string;
+}
+
+async function requestDeck(address: string, signal: AbortSignal): Promise<NFTCardType[]> {
+  const response = await fetch(`/api/deck?address=${encodeURIComponent(address)}`, { signal });
+  const data = (await response.json()) as DeckApiResponse;
+
+  if (!response.ok || data.error) {
+    throw new Error(data.error || "Failed to load deck from Tezos network.");
+  }
+
+  return data.tokens || [];
+}
+
 export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: DeckGridProps) {
   const { address } = useWallet();
   const [tokens, setTokens] = useState<NFTCardType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestVersion, setRequestVersion] = useState(0);
 
   // Filters and Sorting
   const [searchQuery, setSearchQuery] = useState("");
   const [rarityFilter, setRarityFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"latest" | "name" | "editions">("latest");
-
-  const loadDeck = async () => {
-    if (!address) {
-      setTokens([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/deck?address=${address}`);
-      const data = await res.json();
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setTokens(data.tokens || []);
-      }
-    } catch (err) {
-      setError("Failed to load deck from Tezos network.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [sortBy, setSortBy] = useState<SortBy>("latest");
 
   useEffect(() => {
-    loadDeck();
-  }, [address]);
+    if (!address) return;
+
+    const controller = new AbortController();
+
+    requestDeck(address, controller.signal)
+      .then((nextTokens) => {
+        setTokens(nextTokens);
+        setError(null);
+      })
+      .catch((requestError: unknown) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") {
+          return;
+        }
+
+        console.error(requestError);
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Failed to load deck from Tezos network.",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [address, requestVersion]);
+
+  const reloadDeck = () => {
+    setLoading(true);
+    setError(null);
+    setRequestVersion((version) => version + 1);
+  };
 
   // Derived filtered & sorted tokens
   const filteredTokens = useMemo(() => {
@@ -102,7 +127,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
       <div className="rounded-2xl border border-red-500/40 bg-red-950/40 p-8 text-center max-w-lg mx-auto my-12">
         <p className="text-red-300 font-medium mb-4">{error}</p>
         <button
-          onClick={loadDeck}
+          onClick={reloadDeck}
           className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-500 transition-colors"
         >
           Try Again
@@ -191,7 +216,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           {/* Sort By */}
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
             className="rounded-xl border border-gray-700/80 bg-gray-950 px-3 py-2 text-xs text-gray-300 focus:border-indigo-500 focus:outline-none"
           >
             <option value="latest">Latest Acquired</option>
@@ -201,7 +226,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
 
           {/* Refresh button */}
           <button
-            onClick={loadDeck}
+            onClick={reloadDeck}
             title="Refresh Deck"
             className="rounded-xl border border-gray-700/80 bg-gray-800/80 p-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
           >

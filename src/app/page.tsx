@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ConnectButton from "@/components/ConnectButton";
 import DeckGrid from "@/components/DeckGrid";
 import PackOpening from "@/components/PackOpening";
@@ -8,6 +8,7 @@ import WishlistGrid from "@/components/WishlistGrid";
 import SoundToggle from "@/components/SoundToggle";
 import { useWallet } from "@/context/WalletContext";
 import { NFTCard as NFTCardType } from "@/lib/objkt";
+import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { motion } from "framer-motion";
 
 type ActiveTab = "packs" | "deck" | "wishlist" | "about";
@@ -15,29 +16,7 @@ type ActiveTab = "packs" | "deck" | "wishlist" | "about";
 export default function Home() {
   const { address } = useWallet();
   const [activeTab, setActiveTab] = useState<ActiveTab>("packs");
-  const [wishlist, setWishlist] = useState<NFTCardType[]>([]);
-
-  // Load wishlist from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("tzdeck_wishlist");
-      if (saved) {
-        setWishlist(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error("Failed to load wishlist:", e);
-    }
-  }, []);
-
-  // Save wishlist to localStorage
-  const saveWishlist = (newList: NFTCardType[]) => {
-    setWishlist(newList);
-    try {
-      localStorage.setItem("tzdeck_wishlist", JSON.stringify(newList));
-    } catch (e) {
-      console.error("Failed to save wishlist:", e);
-    }
-  };
+  const wishlist = useWishlist();
 
   const handleWishlistToggle = (card: NFTCardType) => {
     const key = `${card.contract_address}-${card.token_id}`;
@@ -172,6 +151,7 @@ export default function Home() {
             <div>
               {address ? (
                 <DeckGrid
+                  key={address}
                   onWishlistToggle={handleWishlistToggle}
                   wishlistIds={wishlistIds}
                 />

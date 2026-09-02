@@ -45,9 +45,13 @@ export default function PackOpening({
         setPackState("revealing");
         setIsLoading(false);
       }, 700);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Failed to generate pack. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to generate pack. Please try again.",
+      );
       setPackState("idle");
       setIsLoading(false);
     }
