@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TzDeck
 
-## Getting Started
+**Pull. Collect. Discover.**
 
-First, run the development server:
+TzDeck is a gamified discovery and collection viewer for Tezos NFTs. It turns artwork from [OBJKT](https://objkt.com/) into a trading-card experience where collectors can open virtual booster packs, inspect new finds, and browse the NFTs already held in their wallet as a personal deck.
+
+## How it works
+
+- **Open booster packs:** Pull five random active OBJKT listings and reveal each NFT through animated cards.
+- **Discover Tezos art:** See the artist, collection, edition size, listed price, and a simulated rarity based on the token's supply and market listing.
+- **Inspect every card:** Open a larger artwork view with token metadata and a direct link to its OBJKT page.
+- **Browse your deck:** Connect a Beacon-compatible Tezos wallet to load, search, filter, and sort the NFTs it owns.
+- **Build a wishlist:** Save interesting pulls in your browser and return to them later.
+
+TzDeck is a discovery layer, not a marketplace. It does not mint, sell, or transfer NFTs. Collection activity happens through OBJKT and its Tezos marketplace contracts.
+
+## Run locally
+
+Install the dependencies and start the development server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The app includes public defaults for its OBJKT GraphQL endpoint and Tezos mainnet RPC. You can override them in `.env.local` when needed:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+NEXT_PUBLIC_OBJKT_API_URL=https://data.objkt.com/v3/graphql
+NEXT_PUBLIC_TEZOS_RPC_URL=https://mainnet.api.tez.ie
+```
 
-## Learn More
+## Development commands
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm test                 # Run the automated test suite
+npm run lint             # Check the code with ESLint
+npx tsc --noEmit         # Type-check without emitting files
+npm run build -- --webpack
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Built with
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js](https://nextjs.org/) and React
+- [Tailwind CSS](https://tailwindcss.com/) and Motion
+- [Taquito](https://taquito.io/) and Beacon for Tezos wallet connectivity
+- [OBJKT](https://objkt.com/) and [TzKT](https://tzkt.io/) for NFT and wallet data
+- IPFS gateway fallbacks for decentralized media
