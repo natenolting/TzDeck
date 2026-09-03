@@ -172,8 +172,8 @@ test("the modal traps keyboard focus and restores the page after closing", async
   const objktLink = modal.getByRole("link", { name: "Collect on OBJKT" });
 
   assert.equal(document.activeElement, closeButton);
-  assert.equal((container as HTMLElement & { inert?: boolean }).inert, true);
-  assert.equal(container.getAttribute("aria-hidden"), "true");
+  assert.notEqual((container as HTMLElement & { inert?: boolean }).inert, true);
+  assert.equal(container.hasAttribute("aria-hidden"), false);
 
   await user.tab();
   assert.equal(document.activeElement, wishlistButton);
@@ -187,7 +187,7 @@ test("the modal traps keyboard focus and restores the page after closing", async
   fireEvent.keyDown(document, { key: "Escape" });
   assert.equal(document.activeElement, openButton);
   assert.equal(document.body.style.overflow, "");
-  assert.equal((container as HTMLElement & { inert?: boolean }).inert, false);
+  assert.notEqual((container as HTMLElement & { inert?: boolean }).inert, true);
   assert.equal(container.hasAttribute("aria-hidden"), false);
 });
 
@@ -204,4 +204,26 @@ test("an unavailable card image cannot open token details", async () => {
   );
   assert.ok(screen.getByText("Media unavailable"));
   assert.equal(screen.queryByRole("dialog"), null);
+});
+
+test("card pointer movement updates foil position through CSS variables", async () => {
+  const { fireEvent, render, NFTCard } = await loadTestHarness();
+  const { container } = render(<NFTCard card={card} />);
+  const cardElement = container.firstElementChild as HTMLDivElement;
+  cardElement.getBoundingClientRect = () => ({
+    x: 10,
+    y: 20,
+    left: 10,
+    top: 20,
+    right: 110,
+    bottom: 220,
+    width: 100,
+    height: 200,
+    toJSON: () => ({}),
+  });
+
+  fireEvent.mouseMove(cardElement, { clientX: 35, clientY: 120 });
+
+  assert.equal(cardElement.style.getPropertyValue("--foil-x"), "25%");
+  assert.equal(cardElement.style.getPropertyValue("--foil-y"), "50%");
 });

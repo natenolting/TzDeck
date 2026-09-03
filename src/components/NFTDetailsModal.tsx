@@ -25,22 +25,12 @@ export default function NFTDetailsModal({
   onToggleWishlist,
 }: NFTDetailsModalProps) {
   const titleId = useId();
-  const backdropRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
-    const backgroundElements = Array.from(document.body.children)
-      .filter((element): element is HTMLElement => (
-        element instanceof HTMLElement && element !== backdropRef.current
-      ))
-      .map((element) => ({
-        element,
-        inert: element.inert === true,
-        ariaHidden: element.getAttribute("aria-hidden"),
-      }));
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
@@ -71,31 +61,18 @@ export default function NFTDetailsModal({
     };
 
     document.body.style.overflow = "hidden";
-    for (const { element } of backgroundElements) {
-      element.inert = true;
-      element.setAttribute("aria-hidden", "true");
-    }
     document.addEventListener("keydown", handleKeyDown);
     closeButtonRef.current?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
-      for (const { element, inert, ariaHidden } of backgroundElements) {
-        element.inert = inert;
-        if (ariaHidden === null) {
-          element.removeAttribute("aria-hidden");
-        } else {
-          element.setAttribute("aria-hidden", ariaHidden);
-        }
-      }
       previouslyFocused?.focus();
     };
   }, [onClose]);
 
   return createPortal(
     <div
-      ref={backdropRef}
       data-testid="nft-details-backdrop"
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm sm:p-8"
       onClick={(event) => {
