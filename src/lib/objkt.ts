@@ -340,14 +340,22 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
   `;
 
   try {
-    const data = await objktClient.request<ObjktListingResponse>(query, {
+    let data = await objktClient.request<ObjktListingResponse>(query, {
       limit: fetchLimit,
       offset: randomOffset,
     });
 
-    const listings = data?.listing || [];
+    let listings = data?.listing || [];
+    if (listings.length === 0 && randomOffset > 0) {
+      data = await objktClient.request<ObjktListingResponse>(query, {
+        limit: fetchLimit,
+        offset: 0,
+      });
+      listings = data?.listing || [];
+    }
+
     if (listings.length === 0) {
-      throw new Error("No listings found in random offset range");
+      throw new Error("No active listings found");
     }
 
     const shuffled = shuffleArray(listings);

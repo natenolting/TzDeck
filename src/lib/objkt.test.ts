@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   convertIpfsUrl,
   extractIpfsHash,
+  fetchRandomPack,
   fetchUserHoldings,
   getCardImageSources,
   objktClient,
@@ -161,5 +162,58 @@ test("fetchUserHoldings orders OBJKT holdings by the schema-supported timestamp"
     assert.equal(cards[0]?.name, "Clarence Duplex");
   } finally {
     client.request = originalRequest;
+  }
+});
+
+test("fetchRandomPack retries an empty random window from offset zero", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  const originalRandom = Math.random;
+  const originalConsoleError = console.error;
+  const requestedOffsets: number[] = [];
+
+  client.request = async (_document, variables) => {
+    requestedOffsets.push(Number(variables?.offset));
+
+    if (requestedOffsets.length === 1) {
+      return { listing: [] };
+    }
+
+    return {
+      listing: [
+        {
+          id: 101,
+          price: 2_000_000,
+          token: {
+            name: "Fallback Find",
+            token_id: "7",
+            fa_contract: "KT1Fallback",
+            display_uri: "https://example.com/fallback.jpg",
+            artifact_uri: null,
+            thumbnail_uri: null,
+            supply: 50,
+            description: null,
+            creators: [],
+            fa: { name: "Fallback Collection" },
+          },
+        },
+      ],
+    };
+  };
+  Math.random = () => 0.5;
+  console.error = () => undefined;
+
+  try {
+    const cards = await fetchRandomPack(1);
+
+    assert.deepEqual(requestedOffsets, [400, 0]);
+    assert.equal(cards.length, 1);
+    assert.equal(cards[0]?.name, "Fallback Find");
+  } finally {
+    client.request = originalRequest;
+    Math.random = originalRandom;
+    console.error = originalConsoleError;
   }
 });
