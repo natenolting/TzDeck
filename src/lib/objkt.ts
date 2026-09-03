@@ -85,6 +85,17 @@ export function getCardImageSources(...uris: Array<string | undefined>): string[
   return sources;
 }
 
+export function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items];
+
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+
+  return result;
+}
+
 export function calculateRarity(editions?: number, priceXtz?: number): CardRarity {
   if (editions === 1) return "legendary";
   if (priceXtz && priceXtz >= 50) return "legendary";
@@ -339,7 +350,7 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
       throw new Error("No listings found in random offset range");
     }
 
-    const shuffled = [...listings].sort(() => 0.5 - Math.random());
+    const shuffled = shuffleArray(listings);
     const selected = shuffled.slice(0, count);
 
     return selected.map((item) => {

@@ -7,7 +7,61 @@ import {
   fetchUserHoldings,
   getCardImageSources,
   objktClient,
+  shuffleArray,
 } from "./objkt";
+
+test("shuffleArray applies Fisher-Yates without mutating its input", () => {
+  const originalRandom = Math.random;
+  const randomValues = [0.5, 0, 0.9];
+  const input = ["a", "b", "c", "d"];
+
+  Math.random = () => randomValues.shift() ?? 0;
+
+  try {
+    assert.deepEqual(shuffleArray(input), ["d", "b", "a", "c"]);
+    assert.deepEqual(input, ["a", "b", "c", "d"]);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test("shuffleArray distributes each item uniformly across positions", () => {
+  const originalRandom = Math.random;
+  const itemCount = 4;
+  const iterations = 12_000;
+  const expectedPerCell = iterations / itemCount;
+  const counts = Array.from(
+    { length: itemCount },
+    () => Array<number>(itemCount).fill(0),
+  );
+  let seed = 0x12345678;
+
+  Math.random = () => {
+    seed = (Math.imul(1_664_525, seed) + 1_013_904_223) >>> 0;
+    return seed / 0x1_0000_0000;
+  };
+
+  try {
+    for (let iteration = 0; iteration < iterations; iteration += 1) {
+      const shuffled = shuffleArray([0, 1, 2, 3]);
+      shuffled.forEach((item, position) => {
+        counts[item][position] += 1;
+      });
+    }
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  const chiSquared = counts.flat().reduce((total, observed) => {
+    const difference = observed - expectedPerCell;
+    return total + (difference * difference) / expectedPerCell;
+  }, 0);
+
+  assert.ok(
+    chiSquared < 40,
+    `Expected a uniform distribution; chi-square was ${chiSquared.toFixed(2)}`,
+  );
+});
 
 test("convertIpfsUrl sends an IPFS asset directly to the selected gateway", () => {
   assert.equal(
