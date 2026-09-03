@@ -284,5 +284,5 @@ export function shuffleArray<T>(array: T[]): T[] {
 - [ ] **Phase 4: Hygiene & Maintenance**
   - [x] Remove `deepseek-convo.md`.
   - [x] Remove empty directory `src/app/api/media/`.
-  - [ ] Prune unused packages from `package.json` (`npm uninstall @tanstack/react-query @upstash/redis`).
+  - [x] Prune unused packages from `package.json` (`npm uninstall @tanstack/react-query @upstash/redis`).
   - [ ] Verify test suite and production build.
