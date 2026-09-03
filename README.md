@@ -14,6 +14,22 @@ TzDeck is a gamified discovery and collection viewer for Tezos NFTs. It turns ar
 
 TzDeck is a discovery layer, not a marketplace. It does not mint, sell, or transfer NFTs. Collection activity happens through OBJKT and its Tezos marketplace contracts.
 
+## Rarity system
+
+TzDeck rarity is a deterministic display classification, not an on-chain NFT trait or a weighted pull probability. After a card is selected, TzDeck assigns the first matching tier from highest to lowest using the token's total edition supply or its current OBJKT listing price:
+
+| Rarity | Edition supply | Listing price |
+| --- | ---: | ---: |
+| Legendary | Exactly 1 | At least 50 ꜩ |
+| Epic | 5 or fewer | At least 20 ꜩ |
+| Rare | 25 or fewer | At least 5 ꜩ |
+| Uncommon | 100 or fewer | At least 1 ꜩ |
+| Common | More than 100 | Less than 1 ꜩ |
+
+Supply and price are joined by an **OR** condition. For example, an edition of 200 listed for 25 ꜩ is Epic, and an edition of 3 listed for 0.5 ꜩ is also Epic.
+
+Booster-pack contents are randomized from active OBJKT listings, but the rarity assigned to each selected card is deterministic. Cards in **My Deck** are classified by edition supply alone because wallet holdings do not include a listing price. As a result, the same NFT can have a different displayed rarity in a booster pack if its listing price raises it into a higher tier.
+
 ## Run locally
 
 Install the dependencies and start the development server:
