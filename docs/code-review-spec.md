@@ -279,7 +279,7 @@ export function shuffleArray<T>(array: T[]): T[] {
   - [x] Update card keys across `DeckGrid.tsx`, `PackOpening.tsx`, and `WishlistGrid.tsx`.
 - [ ] **Phase 3: Performance & Rendering**
   - [x] Replace `NFTCard` mouseMove React state with CSS custom properties.
-  - [ ] Combine `DeckGrid` stats into single-pass memoized loop.
+  - [x] Combine `DeckGrid` stats into single-pass memoized loop.
   - [ ] Clean up modal focus trap without mutating `document.body.children`.
 - [ ] **Phase 4: Hygiene & Maintenance**
   - [ ] Remove `deepseek-convo.md`.
