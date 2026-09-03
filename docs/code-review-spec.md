@@ -278,7 +278,7 @@ export function shuffleArray<T>(array: T[]): T[] {
   - [x] Unify GET & POST handlers in `src/app/api/random-pack/route.ts`.
   - [x] Update card keys across `DeckGrid.tsx`, `PackOpening.tsx`, and `WishlistGrid.tsx`.
 - [ ] **Phase 3: Performance & Rendering**
-  - [ ] Replace `NFTCard` mouseMove React state with CSS custom properties.
+  - [x] Replace `NFTCard` mouseMove React state with CSS custom properties.
   - [ ] Combine `DeckGrid` stats into single-pass memoized loop.
   - [ ] Clean up modal focus trap without mutating `document.body.children`.
 - [ ] **Phase 4: Hygiene & Maintenance**
