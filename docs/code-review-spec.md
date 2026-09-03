@@ -281,8 +281,8 @@ export function shuffleArray<T>(array: T[]): T[] {
   - [x] Replace `NFTCard` mouseMove React state with CSS custom properties.
   - [x] Combine `DeckGrid` stats into single-pass memoized loop.
   - [x] Clean up modal focus trap without mutating `document.body.children`.
-- [ ] **Phase 4: Hygiene & Maintenance**
+- [x] **Phase 4: Hygiene & Maintenance**
   - [x] Remove `deepseek-convo.md`.
   - [x] Remove empty directory `src/app/api/media/`.
   - [x] Prune unused packages from `package.json` (`npm uninstall @tanstack/react-query @upstash/redis`).
-  - [ ] Verify test suite and production build.
+  - [x] Verify test suite and production build.

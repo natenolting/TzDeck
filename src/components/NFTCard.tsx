@@ -249,6 +249,8 @@ export default function NFTCard({
                 <span className="text-xl opacity-30">🖼️</span>
               </div>
             )}
+            {/* NFT hosts are unbounded, and native error events drive gateway failover. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentImageUrl}
               alt={card.name}
