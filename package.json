@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/*.test.ts src/context/*.test.ts src/components/*.test.tsx"
+    "test": "tsx --test src/lib/*.test.ts src/context/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts"
   },
   "dependencies": {
     "@airgap/beacon-sdk": "^4.8.1",
