@@ -115,28 +115,70 @@ export function calculateRarity(editions?: number, priceXtz?: number): CardRarit
   return "common";
 }
 
+export interface ObjktRawToken {
+  name: string | null;
+  token_id: string;
+  fa_contract: string;
+  display_uri: string | null;
+  artifact_uri: string | null;
+  thumbnail_uri: string | null;
+  supply: number | null;
+  description?: string | null;
+  creators?: Array<{
+    holder: {
+      alias: string | null;
+      address: string;
+    };
+  }>;
+  fa?: {
+    name: string | null;
+  };
+}
+
+interface NormalizeTokenOptions {
+  listingId?: number;
+  priceMutez?: number;
+  quantityOwned?: number;
+}
+
+export function normalizeObjktToken(
+  token: ObjktRawToken,
+  options: NormalizeTokenOptions = {},
+): NFTCard {
+  const editions = token.supply ?? 1;
+  const priceXtz = options.priceMutez !== undefined
+    ? options.priceMutez / 1_000_000
+    : undefined;
+  const artist = token.creators?.[0]?.holder;
+  const displayUri = token.display_uri || token.thumbnail_uri || token.artifact_uri || "";
+
+  return {
+    listing_id: options.listingId,
+    token_id: token.token_id,
+    contract_address: token.fa_contract,
+    name: token.name || `OBJKT #${token.token_id}`,
+    description: token.description || undefined,
+    display_uri: convertIpfsUrl(displayUri),
+    artifact_uri: convertIpfsUrl(token.artifact_uri || undefined),
+    thumbnail_uri: convertIpfsUrl(token.thumbnail_uri || displayUri),
+    artist_alias: artist?.alias || (artist?.address
+      ? formatShortAddress(artist.address)
+      : "Unknown Artist"),
+    artist_address: artist?.address,
+    collection_name: token.fa?.name || "Tezos Art",
+    editions,
+    price_mutez: options.priceMutez,
+    price_xtz: priceXtz !== undefined ? Number(priceXtz.toFixed(3)) : undefined,
+    objkt_url: `https://objkt.com/asset/${token.fa_contract}/${token.token_id}`,
+    rarity: calculateRarity(editions, priceXtz),
+    quantity_owned: options.quantityOwned,
+  };
+}
+
 interface ObjktTokenHolderResponse {
   token_holder: Array<{
     quantity: number;
-    token: {
-      name: string | null;
-      token_id: string;
-      fa_contract: string;
-      display_uri: string | null;
-      artifact_uri: string | null;
-      thumbnail_uri: string | null;
-      supply: number | null;
-      description?: string | null;
-      creators?: Array<{
-        holder: {
-          alias: string | null;
-          address: string;
-        };
-      }>;
-      fa?: {
-        name: string | null;
-      };
-    };
+    token: ObjktRawToken;
   }>;
 }
 
@@ -144,25 +186,7 @@ interface ObjktListingResponse {
   listing: Array<{
     id: number;
     price: number;
-    token: {
-      name: string | null;
-      token_id: string;
-      fa_contract: string;
-      display_uri: string | null;
-      artifact_uri: string | null;
-      thumbnail_uri: string | null;
-      supply: number | null;
-      description?: string | null;
-      creators?: Array<{
-        holder: {
-          alias: string | null;
-          address: string;
-        };
-      }>;
-      fa?: {
-        name: string | null;
-      };
-    };
+    token: ObjktRawToken;
   }>;
 }
 
@@ -239,29 +263,9 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
     if (data?.token_holder?.length > 0) {
       return data.token_holder
         .filter((h) => h.token && (h.token.display_uri || h.token.artifact_uri || h.token.name))
-        .map((h) => {
-          const t = h.token;
-          const artist = t.creators?.[0]?.holder;
-          const editions = t.supply ?? 1;
-          const displayUri = t.display_uri || t.thumbnail_uri || t.artifact_uri || "";
-          
-          return {
-            token_id: t.token_id,
-            contract_address: t.fa_contract,
-            name: t.name || `OBJKT #${t.token_id}`,
-            description: t.description || undefined,
-            display_uri: convertIpfsUrl(displayUri),
-            artifact_uri: convertIpfsUrl(t.artifact_uri || undefined),
-            thumbnail_uri: convertIpfsUrl(t.thumbnail_uri || displayUri),
-            artist_alias: artist?.alias || (artist?.address ? formatShortAddress(artist.address) : "Unknown Artist"),
-            artist_address: artist?.address,
-            collection_name: t.fa?.name || "Tezos Art",
-            editions,
-            objkt_url: `https://objkt.com/asset/${t.fa_contract}/${t.token_id}`,
-            rarity: calculateRarity(editions),
-            quantity_owned: h.quantity,
-          };
-        });
+        .map((holding) => normalizeObjktToken(holding.token, {
+          quantityOwned: holding.quantity,
+        }));
     }
   } catch (err) {
     console.warn("OBJKT token_holder query failed, attempting TzKT fallback:", err);
@@ -371,32 +375,10 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
     const shuffled = shuffleArray(listings);
     const selected = shuffled.slice(0, count);
 
-    return selected.map((item) => {
-      const t = item.token;
-      const artist = t.creators?.[0]?.holder;
-      const editions = t.supply ?? 1;
-      const priceXtz = item.price / 1_000_000;
-      const displayUri = t.display_uri || t.thumbnail_uri || t.artifact_uri || "";
-
-      return {
-        listing_id: item.id,
-        token_id: t.token_id,
-        contract_address: t.fa_contract,
-        name: t.name || `OBJKT #${t.token_id}`,
-        description: t.description || undefined,
-        display_uri: convertIpfsUrl(displayUri),
-        artifact_uri: convertIpfsUrl(t.artifact_uri || undefined),
-        thumbnail_uri: convertIpfsUrl(t.thumbnail_uri || displayUri),
-        artist_alias: artist?.alias || (artist?.address ? formatShortAddress(artist.address) : "Tezos Artist"),
-        artist_address: artist?.address,
-        collection_name: t.fa?.name || "OBJKT Collection",
-        editions,
-        price_mutez: item.price,
-        price_xtz: Number(priceXtz.toFixed(3)),
-        objkt_url: `https://objkt.com/asset/${t.fa_contract}/${t.token_id}`,
-        rarity: calculateRarity(editions, priceXtz),
-      };
-    });
+    return selected.map((item) => normalizeObjktToken(item.token, {
+      listingId: item.id,
+      priceMutez: item.price,
+    }));
   } catch (err) {
     console.error("Failed to fetch random listings from OBJKT:", err);
     return [];
