@@ -282,7 +282,7 @@ export function shuffleArray<T>(array: T[]): T[] {
   - [x] Combine `DeckGrid` stats into single-pass memoized loop.
   - [x] Clean up modal focus trap without mutating `document.body.children`.
 - [ ] **Phase 4: Hygiene & Maintenance**
-  - [ ] Remove `deepseek-convo.md`.
+  - [x] Remove `deepseek-convo.md`.
   - [ ] Remove empty directory `src/app/api/media/`.
   - [ ] Prune unused packages from `package.json` (`npm uninstall @tanstack/react-query @upstash/redis`).
   - [ ] Verify test suite and production build.
