@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { BeaconWallet } from "@taquito/beacon-wallet";
 import { NetworkType } from "@ecadlabs/beacon-types";
 import { TezosToolkit } from "@taquito/taquito";
+import { runWalletInitialization } from "./walletInitialization";
 
 interface WalletContextType {
   address: string | null;
@@ -29,31 +30,35 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
   const [tezos, setTezos] = useState<TezosToolkit | null>(null);
 
   useEffect(() => {
-    const initializeWallet = async () => {
-      const rpcUrl = process.env.NEXT_PUBLIC_TEZOS_RPC_URL || "https://mainnet.api.tez.ie";
-      const tezosInstance = new TezosToolkit(rpcUrl);
+    let mounted = true;
 
-      // Pass network when creating the wallet instance
-      const walletInstance = new BeaconWallet({
-        name: "TzDeck",
-        network: { type: NetworkType.MAINNET },
-      });
+    void runWalletInitialization({
+      initialize: async () => {
+        const rpcUrl = process.env.NEXT_PUBLIC_TEZOS_RPC_URL || "https://mainnet.api.tez.ie";
+        const tezosInstance = new TezosToolkit(rpcUrl);
+        const walletInstance = new BeaconWallet({
+          name: "TzDeck",
+          network: { type: NetworkType.MAINNET },
+        });
 
-      tezosInstance.setWalletProvider(walletInstance);
-      setWallet(walletInstance);
-      setTezos(tezosInstance);
+        tezosInstance.setWalletProvider(walletInstance);
+        const activeAccount = await walletInstance.client.getActiveAccount();
 
-      // Check for existing active account
-      const activeAccount = await walletInstance.client.getActiveAccount();
-      if (activeAccount) {
-        setAddress(activeAccount.address);
-      }
-    };
-
-    initializeWallet();
+        return { activeAccount, tezosInstance, walletInstance };
+      },
+      isMounted: () => mounted,
+      onReady: ({ activeAccount, tezosInstance, walletInstance }) => {
+        setWallet(walletInstance);
+        setTezos(tezosInstance);
+        if (activeAccount) setAddress(activeAccount.address);
+      },
+      onError: (error) => {
+        console.error("Failed to initialize wallet:", error);
+      },
+    });
 
     return () => {
-      // Cleanup if needed
+      mounted = false;
     };
   }, []);
 

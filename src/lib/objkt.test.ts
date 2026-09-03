@@ -4,10 +4,73 @@ import test from "node:test";
 import {
   convertIpfsUrl,
   extractIpfsHash,
+  fetchRandomPack,
   fetchUserHoldings,
+  getCardKey,
   getCardImageSources,
   objktClient,
+  shuffleArray,
 } from "./objkt";
+
+test("getCardKey creates a stable contract and token identity", () => {
+  assert.equal(
+    getCardKey({ contract_address: "KT1Example", token_id: "42" }),
+    "KT1Example:42",
+  );
+});
+
+test("shuffleArray applies Fisher-Yates without mutating its input", () => {
+  const originalRandom = Math.random;
+  const randomValues = [0.5, 0, 0.9];
+  const input = ["a", "b", "c", "d"];
+
+  Math.random = () => randomValues.shift() ?? 0;
+
+  try {
+    assert.deepEqual(shuffleArray(input), ["d", "b", "a", "c"]);
+    assert.deepEqual(input, ["a", "b", "c", "d"]);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test("shuffleArray distributes each item uniformly across positions", () => {
+  const originalRandom = Math.random;
+  const itemCount = 4;
+  const iterations = 12_000;
+  const expectedPerCell = iterations / itemCount;
+  const counts = Array.from(
+    { length: itemCount },
+    () => Array<number>(itemCount).fill(0),
+  );
+  let seed = 0x12345678;
+
+  Math.random = () => {
+    seed = (Math.imul(1_664_525, seed) + 1_013_904_223) >>> 0;
+    return seed / 0x1_0000_0000;
+  };
+
+  try {
+    for (let iteration = 0; iteration < iterations; iteration += 1) {
+      const shuffled = shuffleArray([0, 1, 2, 3]);
+      shuffled.forEach((item, position) => {
+        counts[item][position] += 1;
+      });
+    }
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  const chiSquared = counts.flat().reduce((total, observed) => {
+    const difference = observed - expectedPerCell;
+    return total + (difference * difference) / expectedPerCell;
+  }, 0);
+
+  assert.ok(
+    chiSquared < 40,
+    `Expected a uniform distribution; chi-square was ${chiSquared.toFixed(2)}`,
+  );
+});
 
 test("convertIpfsUrl sends an IPFS asset directly to the selected gateway", () => {
   assert.equal(
@@ -107,5 +170,58 @@ test("fetchUserHoldings orders OBJKT holdings by the schema-supported timestamp"
     assert.equal(cards[0]?.name, "Clarence Duplex");
   } finally {
     client.request = originalRequest;
+  }
+});
+
+test("fetchRandomPack retries an empty random window from offset zero", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  const originalRandom = Math.random;
+  const originalConsoleError = console.error;
+  const requestedOffsets: number[] = [];
+
+  client.request = async (_document, variables) => {
+    requestedOffsets.push(Number(variables?.offset));
+
+    if (requestedOffsets.length === 1) {
+      return { listing: [] };
+    }
+
+    return {
+      listing: [
+        {
+          id: 101,
+          price: 2_000_000,
+          token: {
+            name: "Fallback Find",
+            token_id: "7",
+            fa_contract: "KT1Fallback",
+            display_uri: "https://example.com/fallback.jpg",
+            artifact_uri: null,
+            thumbnail_uri: null,
+            supply: 50,
+            description: null,
+            creators: [],
+            fa: { name: "Fallback Collection" },
+          },
+        },
+      ],
+    };
+  };
+  Math.random = () => 0.5;
+  console.error = () => undefined;
+
+  try {
+    const cards = await fetchRandomPack(1);
+
+    assert.deepEqual(requestedOffsets, [400, 0]);
+    assert.equal(cards.length, 1);
+    assert.equal(cards[0]?.name, "Fallback Find");
+  } finally {
+    client.request = originalRequest;
+    Math.random = originalRandom;
+    console.error = originalConsoleError;
   }
 });

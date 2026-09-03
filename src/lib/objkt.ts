@@ -25,6 +25,12 @@ export interface NFTCard {
   quantity_owned?: number;
 }
 
+export function getCardKey(
+  card: Pick<NFTCard, "contract_address" | "token_id">,
+): string {
+  return `${card.contract_address}:${card.token_id}`;
+}
+
 export const IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs/",
   "https://ipfs.io/ipfs/",
@@ -83,6 +89,17 @@ export function getCardImageSources(...uris: Array<string | undefined>): string[
   }
 
   return sources;
+}
+
+export function shuffleArray<T>(items: T[]): T[] {
+  const result = [...items];
+
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+
+  return result;
 }
 
 export function calculateRarity(editions?: number, priceXtz?: number): CardRarity {
@@ -329,17 +346,25 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
   `;
 
   try {
-    const data = await objktClient.request<ObjktListingResponse>(query, {
+    let data = await objktClient.request<ObjktListingResponse>(query, {
       limit: fetchLimit,
       offset: randomOffset,
     });
 
-    const listings = data?.listing || [];
-    if (listings.length === 0) {
-      throw new Error("No listings found in random offset range");
+    let listings = data?.listing || [];
+    if (listings.length === 0 && randomOffset > 0) {
+      data = await objktClient.request<ObjktListingResponse>(query, {
+        limit: fetchLimit,
+        offset: 0,
+      });
+      listings = data?.listing || [];
     }
 
-    const shuffled = [...listings].sort(() => 0.5 - Math.random());
+    if (listings.length === 0) {
+      throw new Error("No active listings found");
+    }
+
+    const shuffled = shuffleArray(listings);
     const selected = shuffled.slice(0, count);
 
     return selected.map((item) => {
