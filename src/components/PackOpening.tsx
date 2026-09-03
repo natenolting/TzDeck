@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
 import { soundManager } from "@/lib/sound";
@@ -22,8 +22,38 @@ export default function PackOpening({
   const [flippedIndices, setFlippedIndices] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const timersRef = useRef<Set<number>>(new Set());
+  const openingRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  const clearTimers = useCallback(() => {
+    for (const timerId of timersRef.current) {
+      window.clearTimeout(timerId);
+    }
+    timersRef.current.clear();
+  }, []);
+
+  const registerTimer = useCallback((callback: () => void, delay: number) => {
+    const timerId = window.setTimeout(() => {
+      timersRef.current.delete(timerId);
+      callback();
+    }, delay);
+    timersRef.current.add(timerId);
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      clearTimers();
+    };
+  }, [clearTimers]);
 
   const openPack = async () => {
+    if (openingRef.current || isLoading || packState !== "idle") return;
+
+    openingRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
@@ -37,15 +67,20 @@ export default function PackOpening({
         throw new Error(data.error || "Failed to fetch booster pack");
       }
 
+      if (!mountedRef.current) return;
+
       setCards(data.cards);
       setFlippedIndices(new Set());
 
       // Small delay for the tear animation before showing cards
-      setTimeout(() => {
+      registerTimer(() => {
         setPackState("revealing");
         setIsLoading(false);
+        openingRef.current = false;
       }, 700);
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
+
       console.error(err);
       setError(
         err instanceof Error
@@ -54,6 +89,7 @@ export default function PackOpening({
       );
       setPackState("idle");
       setIsLoading(false);
+      openingRef.current = false;
     }
   };
 
@@ -68,7 +104,7 @@ export default function PackOpening({
     soundManager.playCardFlip(card?.rarity);
 
     if (newFlipped.size === cards.length) {
-      setTimeout(() => {
+      registerTimer(() => {
         setPackState("complete");
         soundManager.playPackComplete();
       }, 600);
@@ -76,6 +112,7 @@ export default function PackOpening({
   };
 
   const handleRevealAll = () => {
+    clearTimers();
     const all = new Set(cards.map((_, i) => i));
     setFlippedIndices(all);
     setPackState("complete");
@@ -83,6 +120,8 @@ export default function PackOpening({
   };
 
   const handleReset = () => {
+    clearTimers();
+    openingRef.current = false;
     setPackState("idle");
     setCards([]);
     setFlippedIndices(new Set());
