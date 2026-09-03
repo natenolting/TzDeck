@@ -25,6 +25,12 @@ export interface NFTCard {
   quantity_owned?: number;
 }
 
+export function getCardKey(
+  card: Pick<NFTCard, "contract_address" | "token_id">,
+): string {
+  return `${card.contract_address}:${card.token_id}`;
+}
+
 export const IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs/",
   "https://ipfs.io/ipfs/",

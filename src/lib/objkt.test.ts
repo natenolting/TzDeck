@@ -6,10 +6,18 @@ import {
   extractIpfsHash,
   fetchRandomPack,
   fetchUserHoldings,
+  getCardKey,
   getCardImageSources,
   objktClient,
   shuffleArray,
 } from "./objkt";
+
+test("getCardKey creates a stable contract and token identity", () => {
+  assert.equal(
+    getCardKey({ contract_address: "KT1Example", token_id: "42" }),
+    "KT1Example:42",
+  );
+});
 
 test("shuffleArray applies Fisher-Yates without mutating its input", () => {
   const originalRandom = Math.random;

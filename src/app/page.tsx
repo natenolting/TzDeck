@@ -7,7 +7,7 @@ import PackOpening from "@/components/PackOpening";
 import WishlistGrid from "@/components/WishlistGrid";
 import SoundToggle from "@/components/SoundToggle";
 import { useWallet } from "@/context/WalletContext";
-import { NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { motion } from "framer-motion";
 
@@ -19,15 +19,11 @@ export default function Home() {
   const wishlist = useWishlist();
 
   const handleWishlistToggle = (card: NFTCardType) => {
-    const key = `${card.contract_address}-${card.token_id}`;
-    const exists = wishlist.some(
-      (c) => `${c.contract_address}-${c.token_id}` === key
-    );
+    const key = getCardKey(card);
+    const exists = wishlist.some((wishlistCard) => getCardKey(wishlistCard) === key);
 
     if (exists) {
-      saveWishlist(
-        wishlist.filter((c) => `${c.contract_address}-${c.token_id}` !== key)
-      );
+      saveWishlist(wishlist.filter((wishlistCard) => getCardKey(wishlistCard) !== key));
     } else {
       saveWishlist([card, ...wishlist]);
     }
@@ -37,9 +33,7 @@ export default function Home() {
     saveWishlist([]);
   };
 
-  const wishlistIds = new Set(
-    wishlist.map((c) => `${c.contract_address}-${c.token_id}`)
-  );
+  const wishlistIds = new Set(wishlist.map(getCardKey));
 
   return (
     <main className="min-h-screen bg-gray-950 text-white selection:bg-indigo-500 selection:text-white">

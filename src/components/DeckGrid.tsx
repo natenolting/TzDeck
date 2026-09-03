@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@/context/WalletContext";
-import { NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
 
 interface DeckGridProps {
@@ -255,11 +255,12 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filteredTokens.map((token, index) => {
-            const isWish = wishlistIds.has(`${token.contract_address}-${token.token_id}`);
+          {filteredTokens.map((token) => {
+            const cardKey = getCardKey(token);
+            const isWish = wishlistIds.has(cardKey);
             return (
               <NFTCard
-                key={`${token.token_id}-${token.contract_address}-${index}`}
+                key={cardKey}
                 card={token}
                 showCollectButton={true}
                 isWishlisted={isWish}

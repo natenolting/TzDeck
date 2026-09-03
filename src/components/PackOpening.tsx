@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
 import { soundManager } from "@/lib/sound";
 import { motion, AnimatePresence } from "framer-motion";
@@ -270,10 +270,11 @@ export default function PackOpening({
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
               {cards.map((card, idx) => {
                 const isFlipped = flippedIndices.has(idx);
-                const isWish = wishlistIds.has(`${card.contract_address}-${card.token_id}`);
+                const cardKey = getCardKey(card);
+                const isWish = wishlistIds.has(cardKey);
 
                 return (
-                  <div key={`${card.token_id}-${idx}`} className="w-full">
+                  <div key={cardKey} className="w-full">
                     <NFTCard
                       card={card}
                       isFacedown={!isFlipped}

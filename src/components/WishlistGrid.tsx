@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
 
 interface WishlistGridProps {
@@ -48,9 +48,9 @@ export default function WishlistGrid({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {wishlist.map((card, index) => (
+        {wishlist.map((card) => (
           <NFTCard
-            key={`wishlist-${card.contract_address}-${card.token_id}-${index}`}
+            key={getCardKey(card)}
             card={card}
             showCollectButton={true}
             isWishlisted={true}
