@@ -6,17 +6,60 @@ import {
   extractIpfsHash,
   fetchRandomPack,
   fetchUserHoldings,
+  formatShortAddress,
   getCardKey,
   getCardImageSources,
+  normalizeObjktToken,
   objktClient,
   shuffleArray,
 } from "./objkt";
+
+test("formatShortAddress creates the shared compact wallet label", () => {
+  assert.equal(
+    formatShortAddress("tz1abcdefghijklmnopqrstuvwxy123456"),
+    "tz1abc...3456",
+  );
+});
 
 test("getCardKey creates a stable contract and token identity", () => {
   assert.equal(
     getCardKey({ contract_address: "KT1Example", token_id: "42" }),
     "KT1Example:42",
   );
+});
+
+test("normalizeObjktToken maps shared OBJKT metadata and listing options", () => {
+  const card = normalizeObjktToken(
+    {
+      name: null,
+      token_id: "42",
+      fa_contract: "KT1Example",
+      display_uri: null,
+      artifact_uri: "ipfs://QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU",
+      thumbnail_uri: null,
+      supply: 3,
+      description: "A normalized token",
+      creators: [
+        {
+          holder: {
+            alias: null,
+            address: "tz1abcdefghijklmnopqrstuvwxy123456",
+          },
+        },
+      ],
+      fa: { name: "Example Collection" },
+    },
+    { listingId: 99, priceMutez: 25_000_000, quantityOwned: 2 },
+  );
+
+  assert.equal(card.listing_id, 99);
+  assert.equal(card.name, "OBJKT #42");
+  assert.equal(card.display_uri, "https://gateway.pinata.cloud/ipfs/QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU");
+  assert.equal(card.artist_alias, "tz1abc...3456");
+  assert.equal(card.collection_name, "Example Collection");
+  assert.equal(card.price_xtz, 25);
+  assert.equal(card.rarity, "epic");
+  assert.equal(card.quantity_owned, 2);
 });
 
 test("shuffleArray applies Fisher-Yates without mutating its input", () => {

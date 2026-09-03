@@ -97,7 +97,6 @@ export default function NFTCard({
   const [gatewayIdx, setGatewayIdx] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
   const [isHovered, setIsHovered] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -125,7 +124,8 @@ export default function NFTCard({
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePos({ x, y });
+    e.currentTarget.style.setProperty("--foil-x", `${x}%`);
+    e.currentTarget.style.setProperty("--foil-y", `${y}%`);
   };
 
   if (isFacedown) {
@@ -179,7 +179,7 @@ export default function NFTCard({
         <div
           className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay transition-opacity"
           style={{
-            background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.8) 0%, transparent 60%)`,
+            background: "radial-gradient(circle at var(--foil-x, 50%) var(--foil-y, 50%), rgba(255,255,255,0.8) 0%, transparent 60%)",
           }}
         />
       )}
