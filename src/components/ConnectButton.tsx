@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
+import { formatShortAddress } from "@/lib/objkt";
 
 export default function ConnectButton() {
   const { address, connect, disconnect } = useWallet();
@@ -34,9 +35,7 @@ export default function ConnectButton() {
           className="flex items-center gap-1.5 rounded-xl border border-gray-700/80 bg-gray-900/80 px-3 py-2 text-xs font-mono text-gray-200 hover:border-gray-600 transition-colors backdrop-blur-md"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>
-            {address.slice(0, 6)}...{address.slice(-4)}
-          </span>
+          <span>{formatShortAddress(address)}</span>
           {copied ? (
             <span className="text-[10px] text-emerald-400 font-sans">✓ Copied</span>
           ) : (

@@ -6,11 +6,19 @@ import {
   extractIpfsHash,
   fetchRandomPack,
   fetchUserHoldings,
+  formatShortAddress,
   getCardKey,
   getCardImageSources,
   objktClient,
   shuffleArray,
 } from "./objkt";
+
+test("formatShortAddress creates the shared compact wallet label", () => {
+  assert.equal(
+    formatShortAddress("tz1abcdefghijklmnopqrstuvwxy123456"),
+    "tz1abc...3456",
+  );
+});
 
 test("getCardKey creates a stable contract and token identity", () => {
   assert.equal(

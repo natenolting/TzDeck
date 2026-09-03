@@ -25,6 +25,10 @@ export interface NFTCard {
   quantity_owned?: number;
 }
 
+export function formatShortAddress(address: string): string {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 export function getCardKey(
   card: Pick<NFTCard, "contract_address" | "token_id">,
 ): string {
@@ -249,7 +253,7 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
             display_uri: convertIpfsUrl(displayUri),
             artifact_uri: convertIpfsUrl(t.artifact_uri || undefined),
             thumbnail_uri: convertIpfsUrl(t.thumbnail_uri || displayUri),
-            artist_alias: artist?.alias || (artist?.address ? `${artist.address.slice(0, 6)}...${artist.address.slice(-4)}` : "Unknown Artist"),
+            artist_alias: artist?.alias || (artist?.address ? formatShortAddress(artist.address) : "Unknown Artist"),
             artist_address: artist?.address,
             collection_name: t.fa?.name || "Tezos Art",
             editions,
@@ -383,7 +387,7 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
         display_uri: convertIpfsUrl(displayUri),
         artifact_uri: convertIpfsUrl(t.artifact_uri || undefined),
         thumbnail_uri: convertIpfsUrl(t.thumbnail_uri || displayUri),
-        artist_alias: artist?.alias || (artist?.address ? `${artist.address.slice(0, 6)}...${artist.address.slice(-4)}` : "Tezos Artist"),
+        artist_alias: artist?.alias || (artist?.address ? formatShortAddress(artist.address) : "Tezos Artist"),
         artist_address: artist?.address,
         collection_name: t.fa?.name || "OBJKT Collection",
         editions,
