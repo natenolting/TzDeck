@@ -97,6 +97,8 @@ export default function NFTDetailsModal({
         </button>
 
         <div className="flex min-h-[320px] items-center justify-center bg-black/50 p-4 sm:p-6">
+          {/* Reuse the card's resolved gateway URL without adding an unbounded image allowlist. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
             alt={card.name}
