@@ -64,6 +64,8 @@
     outline: 2px solid var(--accent-hover);
     outline-offset: 2px;
     border-radius: inherit;
+    /* Tailwind's transition-colors includes outline-color; keep the ring immediate. */
+    transition-property: color, background-color, border-color, fill, stroke !important;
   }
 }
 

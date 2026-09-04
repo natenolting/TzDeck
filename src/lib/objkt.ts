@@ -15,6 +15,11 @@ export const RARITY_THRESHOLDS = {
   uncommonPrice: 5,
 } as const;
 
+/** Renders an edition ceiling the way a collector reads it: a lone edition is "1 of 1". */
+function formatEditionRule(maximumEditions: number): string {
+  return maximumEditions === 1 ? "1 of 1" : `≤${maximumEditions} editions`;
+}
+
 export const RARITY_LEGEND: ReadonlyArray<{
   tier: CardRarity;
   label: string;
@@ -23,22 +28,22 @@ export const RARITY_LEGEND: ReadonlyArray<{
   {
     tier: "legendary",
     label: "Legendary",
-    rule: `1 of 1 and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
+    rule: `${formatEditionRule(1)} and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
   },
   {
     tier: "epic",
     label: "Epic",
-    rule: `≤${RARITY_THRESHOLDS.epicEditions} editions and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
+    rule: `${formatEditionRule(RARITY_THRESHOLDS.epicEditions)} and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
   },
   {
     tier: "rare",
     label: "Rare",
-    rule: `≤${RARITY_THRESHOLDS.rareEditions} editions or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`,
+    rule: `${formatEditionRule(RARITY_THRESHOLDS.rareEditions)} or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`,
   },
   {
     tier: "uncommon",
     label: "Uncommon",
-    rule: `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`,
+    rule: `${formatEditionRule(RARITY_THRESHOLDS.uncommonEditions)} or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`,
   },
   {
     tier: "common",

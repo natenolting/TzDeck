@@ -201,6 +201,7 @@ export default function NFTCard({
                 onToggleWishlist(card);
               }}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
                 isWishlisted
                   ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
@@ -224,7 +225,7 @@ export default function NFTCard({
             aria-label={`View details for ${card.name}`}
             disabled={!imageLoaded}
             onClick={() => setIsDetailsOpen(true)}
-            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
+            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
           >
             {!imageLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80 animate-pulse">

@@ -267,10 +267,10 @@ export default function PackOpening({
             {/* Header Control Bar */}
             <div className="w-full mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-surface-1/80 p-4 border border-border-default backdrop-blur-md">
               <div>
-                <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                <h2 className="text-xl font-bold text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>Booster Pack Pulls</span>
                   {packState === "complete" && (
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/50">
+                    <span className="whitespace-nowrap text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/50">
                       Pack Complete!
                     </span>
                   )}

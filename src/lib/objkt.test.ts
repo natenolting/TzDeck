@@ -24,7 +24,7 @@ test("rarity legend matches calculateRarity boundaries", () => {
     [
       ["legendary", `1 of 1 and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
       ["epic", `≤${RARITY_THRESHOLDS.epicEditions} editions and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
-      ["rare", `≤${RARITY_THRESHOLDS.rareEditions} editions or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`],
+      ["rare", `1 of 1 or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`],
       ["uncommon", `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`],
       ["common", `>${RARITY_THRESHOLDS.uncommonEditions} editions and under ${RARITY_THRESHOLDS.uncommonPrice}ꜩ`],
     ],

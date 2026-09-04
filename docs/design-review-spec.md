@@ -523,7 +523,7 @@ flowchart TD
 | **TEST-07** | Pack uniqueness | Unit test on `fetchRandomPack` with a fixture containing duplicate-token listings | Returned cards have unique `getCardKey`; cheapest listing retained. |
 | **TEST-08** | Token discipline | `grep -rn "text-gray-\|border-gray-\|bg-gray-" src/` | Zero hits — all color flows through DR-02 tokens. |
 | **TEST-09** | No emoji in chrome | `grep -rnP "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]" src/` | Zero hits. ꜩ (U+A729) is not in range and is permitted. |
-| **TEST-10** | Hit areas | Playwright: measure every `button` / `a[href]` bounding box | All ≥ 40px on the shorter axis. |
+| **TEST-10** | Hit areas | Playwright: measure every `button` / `a[href]` bounding box, **excluding links inline in a sentence** (`el.closest('p')`) | All ≥ 40px on the shorter axis. Inline prose links are exempt per WCAG 2.5.8; forcing a 40px line box mid-paragraph breaks leading. |
 | **TEST-11** | Focus visibility | Playwright: Tab through each tab stop, assert computed `outline-style !== "none"` and outline color is `--accent-hover` | No element falls back to the UA default ring. |
 | **TEST-12** | Mobile tab bar | Screenshot at 390×844 | No visible scrollbar; no wrapped pill labels; equal pill heights; row aligned to content gutter. |
 | **TEST-13** | Artwork purity | Screenshot a Legendary and a Common card side by side | No color overlay intersects the image bounds; the two are visually distinct beyond tint. |
@@ -553,9 +553,9 @@ flowchart TD
   - [x] DR-14 — Deduplicate pack cards by token, cheapest listing wins.
   - [x] DR-15 — Constrain About prose to 68ch; retitle the callout.
   - [x] DR-16 — Remove card-back double branding and the reveal-chip pulse.
-- [ ] **Sign-off**
-  - [ ] Full verification matrix green.
-  - [ ] Re-run the design review against the approval bar in `interface-design:design-review`.
+- [x] **Sign-off**
+  - [x] Full verification matrix green — see §7.
+  - [x] Re-run the design review against the approval bar in `interface-design:design-review`.
 
 ---
 
@@ -567,3 +567,41 @@ flowchart TD
 | Layout restructure beyond the tab bar | The desktop composition holds; the failures are in typography, color, and content, not in the grid. |
 | Reveal animation redesign | DR-08 changes where emphasis lands; a full motion pass should follow it, not precede it. |
 | `NFTDetailsModal` accessibility | Already correct — portal, focus trap, Escape, focus restore, `aria-modal` + `aria-labelledby`, real focus ring. Use it as the reference implementation for DR-03. |
+
+---
+
+## 7. Verification Results
+
+Run on September 3, 2026, against `localhost:3000` at 1440×900 and 390×844.
+
+| Test | Result | Evidence |
+| :--- | :--- | :--- |
+| TEST-01 | **Pass** | 32/32, 0 fail. Includes legend parity and pack-uniqueness cases. |
+| TEST-02 | **Pass** | `tsc --noEmit` clean. |
+| TEST-03 | **Pass** | ESLint clean. |
+| TEST-04 | **Pass** | Webpack build succeeds; 4 routes emitted. |
+| TEST-05 | **Pass** | Live 500-listing sample: Legendary **1.6%** (≤3), Epic **4.8%** (≤10), Rare **24%** (≤25). |
+| TEST-06 | **Pass** | Legend strings generated from `RARITY_THRESHOLDS`; asserted against boundary values. |
+| TEST-07 | **Pass** | Unique `getCardKey` per pack; cheapest listing retained. |
+| TEST-08 | **Pass** | 0 raw `text-gray-` / `border-gray-` / `bg-gray-` literals in `src/`. |
+| TEST-09 | **Pass** | 0 emoji in `src/`. (NFT *titles* may contain emoji — that is artist content, not chrome.) |
+| TEST-10 | **Pass** | 0 controls under 40px on the shorter axis, desktop and mobile. Inline prose links exempt. |
+| TEST-11 | **Pass** | Every control resolves `outline: 2px solid rgb(129,140,248)`; no UA fallback ring. |
+| TEST-12 | **Pass** | 390px: no scrollbar, icon-only tabs, equal pill heights, gutter-aligned. |
+| TEST-13 | **Pass** | `elementsFromPoint` at each artwork centre returns zero painted elements above the image. |
+
+### Calibrated thresholds (TEST-05)
+
+`topTierPrice: 500` · `scarceTierPrice: 180` · `rarePrice: 110` · `uncommonPrice: 5` · `epicEditions: 5` · `rareEditions: 1` · `uncommonEditions: 25`
+
+Re-run `npx tsx scripts/calibrate-rarity.ts` after any threshold change; it exits non-zero when a tier breaches its ceiling.
+
+### Defects found during sign-off and fixed
+
+1. **Legend copy** — the Rare rule rendered as "≤1 editions or 110ꜩ+". Added `formatEditionRule` so a ceiling of 1 reads "1 of 1"; parity test updated.
+2. **"Pack Complete!" chip wrapped its own text** at 390px (107×42, two lines) inside the heading flex. Added `whitespace-nowrap` and let the heading row wrap the chip beneath.
+3. **Inline prose link forced to `min-h-10`** in About to satisfy TEST-10, which broke the paragraph's line box. Reverted, and TEST-10 narrowed to exempt links inline in a sentence per WCAG 2.5.8 — the gate was over-broad as originally written.
+
+### Open item (not a blocker)
+
+Listing prices are seller-declared and unbounded — the calibration sample contained a listing at ~10¹² ꜩ. A 1/1 priced absurdly therefore self-promotes to Legendary. Tiers hold statistically, but consider clamping the top tier to a percentile of the live price distribution rather than an absolute constant if the badge is ever given weight beyond display.
