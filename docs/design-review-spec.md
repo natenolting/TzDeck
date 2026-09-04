@@ -542,7 +542,7 @@ flowchart TD
   - [x] DR-06 — Heart everywhere; retire the star.
 - [ ] **Phase 3: Card Craft & Hierarchy**
   - [x] DR-07 — Delete `foilGradient` and the `inset-0` overlay; rebuild `RARITY_CONFIG` as ring / glow / badge; keep the hover sheen.
-  - [ ] DR-08 — Delete the Outstanding Pull banner; move emphasis onto the card.
+  - [x] DR-08 — Delete the Outstanding Pull banner; move emphasis onto the card.
   - [ ] DR-09 — Define Primary / Secondary / Quiet; retire the gradient; re-role every button; demote header Connect in the Deck empty state.
 - [ ] **Phase 4: Icon System & Controls**
   - [ ] DR-10 — Build `src/components/icons.tsx`; replace every emoji and every inlined SVG.

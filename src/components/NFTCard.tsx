@@ -91,6 +91,11 @@ export default function NFTCard({
 
   const rarity = card.rarity || "common";
   const config = RARITY_CONFIG[rarity];
+  const revealDuration = rarity === "legendary"
+    ? 0.65
+    : rarity === "epic"
+      ? 0.5
+      : 0.3;
 
   const currentRawUri = sources[sourceIdx] || "";
   const currentImageUrl = convertIpfsUrl(currentRawUri, gatewayIdx);
@@ -159,6 +164,7 @@ export default function NFTCard({
       <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: revealDuration }}
       whileHover={{ y: -6, transition: { duration: 0.2 } }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}

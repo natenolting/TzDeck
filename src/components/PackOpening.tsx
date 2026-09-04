@@ -141,8 +141,6 @@ export default function PackOpening({
   };
 
   const totalValue = cards.reduce((sum, c) => sum + (c.price_xtz || 0), 0);
-  const legendaryCount = cards.filter((c) => c.rarity === "legendary").length;
-  const epicCount = cards.filter((c) => c.rarity === "epic").length;
 
   return (
     <div className="relative w-full max-w-6xl mx-auto py-6">
@@ -299,23 +297,6 @@ export default function PackOpening({
                 </button>
               </div>
             </div>
-
-            {/* Special Pull Alert Banner */}
-            {packState === "complete" && (legendaryCount > 0 || epicCount > 0) && (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="w-full mb-6 rounded-2xl border border-amber-500/50 bg-gradient-to-r from-amber-950/80 via-purple-950/80 to-amber-950/80 p-4 text-center shadow-lg shadow-amber-500/10"
-              >
-                <span className="text-sm font-bold text-amber-200">
-                  🎉 Outstanding Pull! You got{" "}
-                  {legendaryCount > 0 && `${legendaryCount} Legendary `}
-                  {legendaryCount > 0 && epicCount > 0 && "& "}
-                  {epicCount > 0 && `${epicCount} Epic `}
-                  NFTs in this booster pack!
-                </span>
-              </motion.div>
-            )}
 
             {/* The 5 Cards Display Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
