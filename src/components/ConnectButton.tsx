@@ -37,7 +37,7 @@ export default function ConnectButton() {
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <span>{formatShortAddress(address)}</span>
           {copied ? (
-            <span className="text-[10px] text-emerald-400 font-sans">✓ Copied</span>
+            <span className="text-2xs text-emerald-400 font-sans">✓ Copied</span>
           ) : (
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -64,7 +64,7 @@ export default function Home() {
                 <h1 className="text-2xl font-black tracking-tight text-white">
                   TzDeck
                 </h1>
-                <span className="rounded-full bg-indigo-950 px-2 py-0.5 text-[10px] font-bold text-indigo-300 border border-indigo-700/50">
+                <span className="rounded-full bg-indigo-950 px-2 py-0.5 text-2xs font-bold text-indigo-300 border border-indigo-700/50">
                   OBJKT Gacha
                 </span>
               </div>
@@ -119,7 +119,7 @@ export default function Home() {
             <span>⭐</span>
             <span>Wishlist</span>
             {wishlist.length > 0 && (
-              <span className="rounded-full bg-indigo-500/40 px-1.5 py-0.2 text-[10px] font-bold text-indigo-200">
+              <span className="rounded-full bg-indigo-500/40 px-1.5 py-0.2 text-2xs font-bold tabular-nums text-indigo-200">
                 {wishlist.length}
               </span>
             )}

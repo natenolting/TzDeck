@@ -171,19 +171,19 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
           <span className="text-xs font-medium text-gray-400">Total Cards</span>
-          <p className="mt-1 text-2xl font-black text-white">{stats.total}</p>
+          <p className="mt-1 text-2xl font-black tabular-nums text-white">{stats.total}</p>
         </div>
         <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
           <span className="text-xs font-medium text-gray-400">Unique Artists</span>
-          <p className="mt-1 text-2xl font-black text-indigo-300">{stats.artists}</p>
+          <p className="mt-1 text-2xl font-black tabular-nums text-indigo-300">{stats.artists}</p>
         </div>
         <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
           <span className="text-xs font-medium text-gray-400">Collections</span>
-          <p className="mt-1 text-2xl font-black text-purple-300">{stats.collections}</p>
+          <p className="mt-1 text-2xl font-black tabular-nums text-purple-300">{stats.collections}</p>
         </div>
         <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
           <span className="text-xs font-medium text-gray-400">Rares & Epics</span>
-          <p className="mt-1 text-2xl font-black text-amber-300">
+          <p className="mt-1 text-2xl font-black tabular-nums text-amber-300">
             {stats.highRarityCount}
           </p>
         </div>

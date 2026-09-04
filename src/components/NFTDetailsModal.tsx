@@ -133,19 +133,19 @@ export default function NFTDetailsModal({
             {card.editions !== undefined && (
               <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-3">
                 <dt className="text-xs text-gray-500">Editions</dt>
-                <dd className="mt-1 font-bold text-white">{card.editions}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-white">{card.editions}</dd>
               </div>
             )}
             {card.price_xtz !== undefined && (
               <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-3">
                 <dt className="text-xs text-gray-500">Listed Price</dt>
-                <dd className="mt-1 font-bold text-indigo-200">ꜩ {card.price_xtz}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-indigo-200">ꜩ {card.price_xtz}</dd>
               </div>
             )}
             {card.quantity_owned !== undefined && (
               <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-3">
                 <dt className="text-xs text-gray-500">Owned</dt>
-                <dd className="mt-1 font-bold text-white">{card.quantity_owned}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-white">{card.quantity_owned}</dd>
               </div>
             )}
           </dl>

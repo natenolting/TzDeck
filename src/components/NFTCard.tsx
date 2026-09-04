@@ -157,7 +157,7 @@ export default function NFTCard({
 
           {/* Card Back Prompt */}
           <div className="text-center">
-            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-[11px] font-medium text-indigo-200 border border-indigo-400/30 animate-pulse">
+            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-2xs font-medium text-indigo-200 border border-indigo-400/30 animate-pulse">
               Click to Reveal
             </span>
           </div>
@@ -193,14 +193,14 @@ export default function NFTCard({
       {/* Top Header Row */}
       <div className="relative z-10 flex items-center justify-between gap-2 pb-2.5">
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border ${config.badgeBg} ${config.badgeText}`}
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-2xs font-semibold uppercase tracking-wider border ${config.badgeBg} ${config.badgeText}`}
         >
           {config.label}
         </span>
 
         <div className="flex items-center gap-1.5">
           {card.quantity_owned && card.quantity_owned > 1 && (
-            <span className="rounded-md bg-blue-900/60 px-1.5 py-0.5 text-[10px] font-medium text-blue-200 border border-blue-700/50">
+            <span className="rounded-md bg-blue-900/60 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-blue-200 border border-blue-700/50">
               x{card.quantity_owned}
             </span>
           )}
@@ -267,13 +267,13 @@ export default function NFTCard({
             />
 
             {card.editions !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-gray-950/80 px-2 py-0.5 text-[10px] font-medium text-gray-300 backdrop-blur-md border border-gray-800">
+              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-gray-950/80 px-2 py-0.5 text-2xs font-medium tabular-nums text-gray-300 backdrop-blur-md border border-gray-800">
                 {card.editions === 1 ? "1 of 1" : `Editions: ${card.editions}`}
               </div>
             )}
 
             {card.price_xtz !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-[11px] font-bold text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
+              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-2xs font-bold tabular-nums text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
                 <span>ꜩ</span>
                 <span>{card.price_xtz}</span>
               </div>
@@ -283,7 +283,7 @@ export default function NFTCard({
           <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-gray-500 bg-gray-900">
             <span className="text-2xl mb-1">🖼️</span>
             <span className="text-xs font-medium text-gray-400 line-clamp-1">{card.name}</span>
-            <span className="text-[10px] text-gray-600 mt-0.5">Media unavailable</span>
+            <span className="text-2xs text-gray-600 mt-0.5">Media unavailable</span>
           </div>
         )}
 
@@ -300,7 +300,7 @@ export default function NFTCard({
             {card.artist_alias || "Unknown Artist"}
           </span>
           {card.collection_name && (
-            <span className="truncate max-w-[100px] text-[11px] text-gray-500">
+            <span className="truncate max-w-[100px] text-2xs text-gray-500">
               {card.collection_name}
             </span>
           )}

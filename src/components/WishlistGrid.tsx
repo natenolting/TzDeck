@@ -33,8 +33,8 @@ export default function WishlistGrid({
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
         <div>
-          <h2 className="text-xl font-bold text-white">Saved Wishlist ({wishlist.length})</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <h2 className="text-xl font-bold tabular-nums text-white">Saved Wishlist ({wishlist.length})</h2>
+          <p className="text-xs text-gray-400 mt-0.5 tabular-nums">
             Total listed value: {totalValue.toFixed(2)} XTZ
           </p>
         </div>

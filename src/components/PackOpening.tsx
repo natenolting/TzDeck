@@ -160,7 +160,7 @@ export default function PackOpening({
                 <span className="text-xs font-black tracking-widest text-indigo-300">
                   TZDECK • BOOSTER
                 </span>
-                <span className="rounded-full bg-indigo-500/30 px-2 py-0.5 text-[10px] font-bold text-indigo-200">
+                <span className="rounded-full bg-indigo-500/30 px-2 py-0.5 text-2xs font-bold tabular-nums text-indigo-200">
                   5 CARDS
                 </span>
               </div>
@@ -262,7 +262,7 @@ export default function PackOpening({
                     </span>
                   )}
                 </h2>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-400 mt-0.5 tabular-nums">
                   {packState === "revealing"
                     ? "Click on each card to reveal your pull"
                     : `Revealed 5 cards • Total listed value: ${totalValue.toFixed(2)} XTZ`}
