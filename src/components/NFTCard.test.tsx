@@ -145,6 +145,7 @@ test("facedown cards do not expose the token-details interaction", async () => {
   const { render, screen, NFTCard } = await loadTestHarness();
   render(<NFTCard card={card} isFacedown />);
 
+  assert.ok(screen.getByRole("img", { name: "TzDeck shield" }));
   assert.equal(
     screen.queryByRole("button", { name: `View details for ${card.name}` }),
     null,

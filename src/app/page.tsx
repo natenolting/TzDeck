@@ -10,6 +10,7 @@ import { useWallet } from "@/context/WalletContext";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 type ActiveTab = "packs" | "deck" | "wishlist" | "about";
 
@@ -49,9 +50,14 @@ export default function Home() {
         <header className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-gray-800/80 pb-6">
           <div className="flex items-center gap-3">
             {/* Logo Emblem */}
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 shadow-lg shadow-indigo-500/20 border border-indigo-400/40">
-              <span className="text-2xl font-black text-white">ꜩ</span>
-            </div>
+            <Image
+              src="/tzdeck-icon-gradient-on-dark.svg"
+              alt=""
+              width={44}
+              height={44}
+              priority
+              className="h-11 w-11 rounded-xl shadow-lg shadow-indigo-500/20"
+            />
 
             <div>
               <div className="flex items-center gap-2">
