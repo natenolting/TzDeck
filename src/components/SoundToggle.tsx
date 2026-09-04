@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { soundManager } from "@/lib/sound";
+import { SoundOffIcon, SoundOnIcon } from "./icons";
 
 export default function SoundToggle() {
   const [isMuted, setIsMuted] = useState(soundManager.getMuted());
@@ -18,9 +19,9 @@ export default function SoundToggle() {
       className="flex items-center justify-center rounded-xl border border-border-default bg-surface-2 p-2 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary transition-colors"
     >
       {isMuted ? (
-        <span className="text-sm">🔇</span>
+        <SoundOffIcon />
       ) : (
-        <span className="text-sm">🔊</span>
+        <SoundOnIcon />
       )}
     </button>
   );
