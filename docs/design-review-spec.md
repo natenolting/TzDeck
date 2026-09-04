@@ -526,6 +526,8 @@ flowchart TD
 | **TEST-10** | Hit areas | Playwright: measure every `button` / `a[href]` bounding box, **excluding links inline in a sentence** (`el.closest('p')`) | All ≥ 40px on the shorter axis. Inline prose links are exempt per WCAG 2.5.8; forcing a 40px line box mid-paragraph breaks leading. |
 | **TEST-11** | Focus visibility | Playwright: Tab through each tab stop, assert computed `outline-style !== "none"` and outline color is `--accent-hover` | No element falls back to the UA default ring. |
 | **TEST-12** | Mobile tab bar | Screenshot at 390×844 | No visible scrollbar; no wrapped pill labels; equal pill heights; row aligned to content gutter. |
+| **TEST-14** | Real controls | Playwright: every element with a click handler or `cursor-pointer` resolves to `BUTTON`/`A` with an accessible name | No `div onClick`. Covered in code by the PackOpening regression test. |
+| **TEST-15** | Rarity parity | Assert the modal badge colour equals `--rarity-<tier>` for the rendered card | One tier never renders two colours across surfaces. |
 | **TEST-13** | Artwork purity | Screenshot a Legendary and a Common card side by side | No color overlay intersects the image bounds; the two are visually distinct beyond tint. |
 
 ---
@@ -605,3 +607,42 @@ Re-run `npx tsx scripts/calibrate-rarity.ts` after any threshold change; it exit
 ### Open item (not a blocker)
 
 Listing prices are seller-declared and unbounded — the calibration sample contained a listing at ~10¹² ꜩ. A 1/1 priced absurdly therefore self-promotes to Legendary. Tiers hold statistically, but consider clamping the top tier to a percentile of the live price distribution rather than an absolute constant if the badge is ever given weight beyond display.
+
+---
+
+## 8. Second Review (September 3, 2026)
+
+Re-run cold against the current build after sign-off. The five original blockers were all closed and the visual craft bar was met, but the pass surfaced one blocker the first review and this spec both missed, plus a modal cluster that never received the Phase 3 treatment.
+
+### DR-17: The pack and card backs must be real buttons
+
+* **Severity:** Blocker
+* **Problem:** `PackOpening.tsx` rendered the booster pack as `<motion.div onClick={openPack}>` -- no role, no `tabIndex`, no accessible name. Measured: the idle screen exposed six tabbable controls and the pack was not among them, so a keyboard or screen-reader user could not open a pack at all. That is the product's primary action.
+
+  The card backs looked reachable only because Framer Motion injects `tabindex` on elements carrying `whileTap`; the pack had no `whileTap`, so it got nothing. Neither element was a control, and neither had an accessible name.
+* **Remediation:** `motion.button type="button"` for both. The pack takes `aria-label="Open booster pack"` and `disabled={isLoading}`; each back takes a positional `facedownLabel` (`Reveal card 2 of 5`) so the name never spoils the pull it is about to reveal.
+* **Verified:** the pack now sits in the tab order, takes the focus ring, and opens a pack on Enter alone; the five backs are buttons with distinct labels that leak no token name. Locked in by TEST-14.
+
+### DR-18: Modal inherits the rarity and layout system
+
+* **Severity:** Should-fix
+* **Problem:** three defects, one cause -- `NFTDetailsModal` never received the Phase 3 pass.
+  1. The rarity badge hardcoded `border-indigo-500/50 bg-indigo-950 text-indigo-200` for every tier, so Uncommon read emerald on the card and indigo in the modal.
+  2. `Collect on OBJKT` wrapped to three lines (measured 120x70 at 1440px).
+  3. The description used a raw `overflow-y-auto` scrollbar and truncated mid-sentence, while the mobile tab bar had already solved that with a mask.
+* **Remediation:** `RARITY_CONFIG` moved out of `NFTCard.tsx` into `src/components/rarityStyles.ts` so both surfaces read one source; the modal badge now renders `rarity.badge` and `rarity.label`. Footer buttons stack full width -- the metadata column is only ~320-390px, so a side-by-side row cannot hold these labels. A `.scroll-fade` utility fades the bottom edge and hides the scrollbar.
+* **Verified:** badge colour equals `--rarity-epic` exactly; no horizontal overflow at 1440px or 390px; scrollbar hidden.
+
+### Still open after this pass
+
+| Item | Severity | Note |
+| :--- | :--- | :--- |
+| 82 raw palette literals across 6 files | Should-fix | `text-indigo-*` doing text-ramp work, `text-red-*`/`bg-red-*` for errors, `text-emerald-*` for success. There are no semantic status tokens. **TEST-08 only greps `gray-`, so this passes a gate written too narrowly.** |
+| Edition/price chips over high-chroma art | Should-fix | A translucent dark fill cannot hold against unpredictable artwork; needs a solid chip or a real scrim. |
+| Emerald does double duty | Should-fix | The "Pack Complete!" success chip and the Uncommon rarity frame share a hue in one view. |
+| About says "simulated rarities" | Note | After DR-04/DR-05 the grading is disclosed and deterministic; "simulated" undercuts that. |
+| Legend wraps 3+2 | Note | Orphan second row. |
+
+### Process lessons
+
+Two gates were missing rather than failing. TEST-08 checked only `gray-` literals, so an entire palette family slipped through; no gate at all asserted that interactive elements are real controls, which is why a `div onClick` on the primary action survived sixteen completed items and a full green matrix. TEST-14 and TEST-15 close both.

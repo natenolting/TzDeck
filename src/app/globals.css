@@ -166,6 +166,29 @@ h4,
   );
 }
 
+/* A vertical scroll area that fades its bottom edge instead of showing a raw
+   scrollbar, so truncated text reads as continuing rather than as cut off. */
+.scroll-fade {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - 20px),
+    transparent 100%
+  );
+}
+
+.scroll-fade::-webkit-scrollbar {
+  display: none;
+}
+
 .tab-scroller {
   scrollbar-width: none;
   -ms-overflow-style: none;

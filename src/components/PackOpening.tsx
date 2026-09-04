@@ -156,11 +156,15 @@ export default function PackOpening({
             className="flex flex-col items-center justify-center text-center"
           >
             {/* Booster Foil Pack Graphic */}
-            <motion.div
+            <motion.button
+              type="button"
               whileHover={{ scale: 1.05, rotateY: 5, y: -8 }}
+              whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
               onClick={openPack}
-              className="group relative h-[420px] w-[290px] cursor-pointer rounded-3xl border-4 border-indigo-400/40 bg-gradient-to-b from-indigo-950 via-surface-1 to-purple-950 p-6 shadow-2xl shadow-indigo-900/60 transition-all hover:border-indigo-300 hover:shadow-indigo-500/50 select-none overflow-hidden"
+              disabled={isLoading}
+              aria-label={isLoading ? "Opening booster pack" : "Open booster pack"}
+              className="group relative h-[420px] w-[290px] cursor-pointer rounded-3xl border-4 border-indigo-400/40 bg-gradient-to-b from-indigo-950 via-surface-1 to-purple-950 p-6 text-left shadow-2xl shadow-indigo-900/60 transition-all hover:border-indigo-300 hover:shadow-indigo-500/50 select-none overflow-hidden disabled:cursor-wait"
             >
               {/* Metallic Foil Sheen */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-fuchsia-500/20 to-amber-500/20 opacity-70 group-hover:opacity-100 transition-opacity" />
@@ -199,11 +203,11 @@ export default function PackOpening({
 
               {/* Pack Bottom Footer */}
               <div className="relative z-10 border-t border-indigo-400/30 pt-3">
-                <div className="rounded-xl bg-indigo-600/40 py-2 text-xs font-bold text-text-primary border border-indigo-400/50 shadow-md group-hover:bg-indigo-500 transition-colors">
+                <div className="rounded-xl bg-indigo-600/40 py-2 text-center text-xs font-bold text-text-primary border border-indigo-400/50 shadow-md group-hover:bg-indigo-500 transition-colors">
                   {isLoading ? "Opening..." : "Click to Rip Open"}
                 </div>
               </div>
-            </motion.div>
+            </motion.button>
 
             {/* Error prompt */}
             {error && (
@@ -313,6 +317,7 @@ export default function PackOpening({
                     <NFTCard
                       card={card}
                       isFacedown={!isFlipped}
+                      facedownLabel={`Reveal card ${idx + 1} of ${cards.length}`}
                       onFlip={() => handleFlipCard(idx)}
                       showCollectButton={isFlipped}
                       isWishlisted={isWish}

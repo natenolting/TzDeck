@@ -180,3 +180,33 @@ test("pack completion keeps rare-pull emphasis on the cards", async () => {
   assert.ok(screen.getByText("Legendary"));
   assert.equal(screen.queryByText(/Outstanding Pull/), null);
 });
+
+test("the pack and every card back are real buttons a keyboard can reach", async () => {
+  const { render, screen, PackOpening } = await loadTestHarness();
+  mockSuccessfulPackRequest();
+  mutePackSounds();
+  render(<PackOpening />);
+
+  // The pack is the product's primary action, so it has to be a control --
+  // a div with onClick leaves keyboard and screen-reader users unable to
+  // open a pack at all.
+  const pack = screen.getByRole("button", { name: "Open booster pack" });
+  assert.equal(pack.tagName, "BUTTON");
+
+  pack.click();
+  await screen.findByText(
+    "Click on each card to reveal your pull",
+    undefined,
+    { timeout: 2_500 },
+  );
+
+  // Each back is named by position rather than by the token, so the label
+  // does not spoil the pull it is about to reveal.
+  for (const [index, card] of cards.entries()) {
+    const back = screen.getByRole("button", {
+      name: `Reveal card ${index + 1} of ${cards.length}`,
+    });
+    assert.equal(back.tagName, "BUTTON");
+    assert.ok(!back.textContent?.includes(card.name));
+  }
+});
