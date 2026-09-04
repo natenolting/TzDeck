@@ -6,13 +6,13 @@ export const objktClient = new GraphQLClient(OBJKT_API_URL);
 export type CardRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 
 export const RARITY_THRESHOLDS = {
-  legendaryPrice: 50,
+  topTierPrice: 500,
   epicEditions: 5,
-  epicPrice: 20,
-  rareEditions: 25,
-  rarePrice: 5,
-  uncommonEditions: 100,
-  uncommonPrice: 1,
+  scarceTierPrice: 180,
+  rareEditions: 1,
+  rarePrice: 110,
+  uncommonEditions: 25,
+  uncommonPrice: 5,
 } as const;
 
 export const RARITY_LEGEND: ReadonlyArray<{
@@ -23,12 +23,12 @@ export const RARITY_LEGEND: ReadonlyArray<{
   {
     tier: "legendary",
     label: "Legendary",
-    rule: `1 of 1 or ${RARITY_THRESHOLDS.legendaryPrice}ꜩ+`,
+    rule: `1 of 1 and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
   },
   {
     tier: "epic",
     label: "Epic",
-    rule: `≤${RARITY_THRESHOLDS.epicEditions} editions or ${RARITY_THRESHOLDS.epicPrice}ꜩ+`,
+    rule: `≤${RARITY_THRESHOLDS.epicEditions} editions and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
   },
   {
     tier: "rare",
@@ -40,7 +40,11 @@ export const RARITY_LEGEND: ReadonlyArray<{
     label: "Uncommon",
     rule: `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`,
   },
-  { tier: "common", label: "Common", rule: "Open edition · under 1ꜩ" },
+  {
+    tier: "common",
+    label: "Common",
+    rule: `>${RARITY_THRESHOLDS.uncommonEditions} editions and under ${RARITY_THRESHOLDS.uncommonPrice}ꜩ`,
+  },
 ];
 
 export interface NFTCard {
@@ -145,14 +149,26 @@ export function shuffleArray<T>(items: T[]): T[] {
 }
 
 export function calculateRarity(editions?: number, priceXtz?: number): CardRarity {
-  if (editions === 1) return "legendary";
-  if (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.legendaryPrice) return "legendary";
-  if ((editions !== undefined && editions <= RARITY_THRESHOLDS.epicEditions)
-    || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.epicPrice)) return "epic";
+  if (editions === 1
+    && priceXtz !== undefined
+    && priceXtz >= RARITY_THRESHOLDS.topTierPrice) return "legendary";
+  if ((editions !== undefined
+      && editions <= RARITY_THRESHOLDS.epicEditions
+      && priceXtz !== undefined
+      && priceXtz >= RARITY_THRESHOLDS.scarceTierPrice)
+    || (priceXtz !== undefined
+      && priceXtz >= RARITY_THRESHOLDS.topTierPrice)) return "epic";
   if ((editions !== undefined && editions <= RARITY_THRESHOLDS.rareEditions)
     || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.rarePrice)) return "rare";
   if ((editions !== undefined && editions <= RARITY_THRESHOLDS.uncommonEditions)
     || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.uncommonPrice)) return "uncommon";
+  return "common";
+}
+
+export function calculateSupplyRarity(editions?: number): CardRarity {
+  if (editions === 1) return "rare";
+  if (editions !== undefined
+    && editions <= RARITY_THRESHOLDS.uncommonEditions) return "uncommon";
   return "common";
 }
 
@@ -211,7 +227,9 @@ export function normalizeObjktToken(
     price_mutez: options.priceMutez,
     price_xtz: priceXtz !== undefined ? Number(priceXtz.toFixed(3)) : undefined,
     objkt_url: `https://objkt.com/asset/${token.fa_contract}/${token.token_id}`,
-    rarity: calculateRarity(editions, priceXtz),
+    rarity: priceXtz === undefined
+      ? calculateSupplyRarity(editions)
+      : calculateRarity(editions, priceXtz),
     quantity_owned: options.quantityOwned,
   };
 }
@@ -341,7 +359,7 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
             collection_name: token.contract?.alias || metadata.collectionName || "Tezos NFT",
             editions,
             objkt_url: `https://objkt.com/asset/${contractAddress}/${tokenId}`,
-            rarity: calculateRarity(editions),
+            rarity: calculateSupplyRarity(editions),
             quantity_owned: Number(item.balance || 1),
           };
         });

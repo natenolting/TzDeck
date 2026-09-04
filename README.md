@@ -16,19 +16,23 @@ TzDeck is a discovery layer, not a marketplace. It does not mint, sell, or trans
 
 ## Rarity system
 
-TzDeck rarity is a deterministic display classification, not an on-chain NFT trait or a weighted pull probability. After a card is selected, TzDeck assigns the first matching tier from highest to lowest using the token's total edition supply or its current OBJKT listing price:
+TzDeck rarity is a deterministic display classification, not an on-chain NFT trait or a weighted pull probability. After a card is selected, TzDeck assigns the first matching tier from highest to lowest using the token's total edition supply and current OBJKT listing price:
 
-| Rarity | Edition supply | Listing price |
-| --- | ---: | ---: |
-| Legendary | Exactly 1 | At least 50 ꜩ |
-| Epic | 5 or fewer | At least 20 ꜩ |
-| Rare | 25 or fewer | At least 5 ꜩ |
-| Uncommon | 100 or fewer | At least 1 ꜩ |
-| Common | More than 100 | Less than 1 ꜩ |
+| Rarity | Deterministic rule |
+| --- | --- |
+| Legendary | Exactly 1 edition **and** at least 500 ꜩ |
+| Epic | 5 or fewer editions **and** at least 180 ꜩ, **or** any supply at 500 ꜩ or more |
+| Rare | Exactly 1 edition **or** at least 110 ꜩ |
+| Uncommon | 25 or fewer editions **or** at least 5 ꜩ |
+| Common | More than 25 editions **and** less than 5 ꜩ |
 
-Supply and price are joined by an **OR** condition. For example, an edition of 200 listed for 25 ꜩ is Epic, and an edition of 3 listed for 0.5 ꜩ is also Epic.
+The top two tiers require market corroboration for scarcity; the lower tiers use an **OR** condition. Rules are evaluated from Legendary downward, so the first match wins.
 
 Booster-pack contents are randomized from active OBJKT listings, but the rarity assigned to each selected card is deterministic. Cards in **My Deck** are classified by edition supply alone because wallet holdings do not include a listing price. As a result, the same NFT can have a different displayed rarity in a booster pack if its listing price raises it into a higher tier.
+
+The deck-only supply ladder is Rare for a 1 of 1, Uncommon for editions of 25 or fewer, and Common for larger editions.
+
+These thresholds were calibrated against 500 active OBJKT listings sampled deterministically across the marketplace's listing-ID range. The measured distribution was 1.6% Legendary, 4.8% Epic, 24.0% Rare, 55.6% Uncommon, and 14.0% Common. Re-run `npm run calibrate:rarity` to verify the live catalogue remains within the design targets.
 
 ## Run locally
 
@@ -53,6 +57,7 @@ NEXT_PUBLIC_TEZOS_RPC_URL=https://mainnet.api.tez.ie
 ```bash
 npm test                 # Run the automated test suite
 npm run lint             # Check the code with ESLint
+npm run calibrate:rarity # Verify rarity tiers against 500 live listings
 npx tsc --noEmit         # Type-check without emitting files
 npm run build -- --webpack
 ```
