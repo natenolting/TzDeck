@@ -10,6 +10,7 @@ import {
   IPFS_GATEWAYS,
 } from "@/lib/objkt";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import NFTDetailsModal from "./NFTDetailsModal";
 
 interface NFTCardProps {
@@ -143,13 +144,15 @@ export default function NFTCard({
           </div>
 
           {/* Card Back Center Emblem */}
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-indigo-400/30 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 shadow-inner">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 16, ease: "linear" }}
-              className="absolute inset-0 rounded-full border border-dashed border-indigo-400/40"
+          <div className="relative flex h-28 w-24 items-center justify-center">
+            <div className="absolute h-20 w-20 rounded-full bg-purple-500/20 blur-xl" />
+            <Image
+              src="/tzdeck-shield-gradient-on-dark.svg"
+              alt="TzDeck shield"
+              width={88}
+              height={113}
+              className="relative h-24 w-auto drop-shadow-[0_10px_18px_rgba(79,70,229,0.28)]"
             />
-            <span className="text-3xl font-extrabold text-white">ꜩ</span>
           </div>
 
           {/* Card Back Prompt */}
