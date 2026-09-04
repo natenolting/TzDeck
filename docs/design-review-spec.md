@@ -347,7 +347,7 @@ flowchart TD
 
 * **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L88) (and 100, 115, 132), [`src/components/ConnectButton.tsx`](file:///Users/natenolting/TzDeck/src/components/ConnectButton.tsx#L70-L82), [`src/components/PackOpening.tsx`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L284), [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L318)
 * **Severity:** Blocker
-* **Problem:** `bg-gradient-to-r from-blue-600 to-indigo-600` is applied to the active tab, Connect Wallet, Open Another Pack, and "Collect on OBJKT" on every card. In the revealed-pack view that is seven gradient buttons at once; in the Deck empty state, two identical Connect Wallet buttons render simultaneously (header at `page.tsx:78` and empty state at `page.tsx:170`). Promotion without demotion is not hierarchy — nothing wins because everything won.
+* **Problem:** `bg-gradient-to-r from-blue-600 to-indigo-600` is applied to the active tab, Connect Wallet, Open Another Pack, and "Collect on OBJKT" on every card. In the revealed-pack view that is seven gradient buttons at once; in the Deck empty state, two identical Connect Wallet buttons appear at once (header at `page.tsx:78` and empty state at `page.tsx:170`). Promotion without demotion is not hierarchy — nothing wins because everything won.
 
   It also kills DR-07's work at the last step: the CTA on a Legendary card is pixel-identical to the CTA on a Common.
 * **Remediation:** Three button roles, one primary per view.
@@ -414,7 +414,7 @@ flowchart TD
 
 * **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L83)
 * **Severity:** Blocker
-* **Problem:** At 390×844 the tab row fails four ways at once. A bright native scrollbar renders full-width beneath the tabs. Labels wrap inside the pills ("Booster / Packs", "My / Deck") so pill heights go ragged, 32px against 48px. The row clips mid-"About" at the right edge with no fade or affordance signalling more content. And the row sits at an 8px inset while the content below sits at 16px, breaking the gutter.
+* **Problem:** At 390×844 the tab row fails four ways at once. A bright native scrollbar renders full-width beneath the tabs. Labels wrap inside the pills ("Booster / Packs", "My / Deck") so pill heights go ragged, 32px against 48px. The row clips mid-"About" at the right edge with no fade or affordance signalling more content. And the row sits 8px from the edge while the content below sits at 16px, breaking the gutter.
 * **Remediation:**
 
   1. Hide the scrollbar, keep the scroll:
@@ -598,7 +598,7 @@ Re-run `npx tsx scripts/calibrate-rarity.ts` after any threshold change; it exit
 
 ### Defects found during sign-off and fixed
 
-1. **Legend copy** — the Rare rule rendered as "≤1 editions or 110ꜩ+". Added `formatEditionRule` so a ceiling of 1 reads "1 of 1"; parity test updated.
+1. **Legend copy** — the Rare rule rendered as `≤1 editions or 110ꜩ+`. Added `formatEditionRule` so a ceiling of 1 reads "1 of 1"; parity test updated.
 2. **"Pack Complete!" chip wrapped its own text** at 390px (107×42, two lines) inside the heading flex. Added `whitespace-nowrap` and let the heading row wrap the chip beneath.
 3. **Inline prose link forced to `min-h-10`** in About to satisfy TEST-10, which broke the paragraph's line box. Reverted, and TEST-10 narrowed to exempt links inline in a sentence per WCAG 2.5.8 — the gate was over-broad as originally written.
 
