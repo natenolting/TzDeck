@@ -532,7 +532,7 @@ flowchart TD
 
 - [ ] **Phase 1: Design Foundation**
   - [x] DR-01 — Choose display face; wire `next/font`; delete Arial and dangling Geist vars; apply type scale; `tabular-nums` on all numerals.
-  - [ ] DR-02 — Add surface / border / text-ramp / accent / rarity tokens; migrate components off raw Tailwind grays; collapse the double rule; resolve the ambient glows.
+  - [x] DR-02 — Add surface / border / text-ramp / accent / rarity tokens; migrate components off raw Tailwind grays; collapse the double rule; resolve the ambient glows.
   - [ ] DR-03 — Single `:focus-visible` ring; audit and remove orphan `focus:outline-none`.
 - [ ] **Phase 2: Content Integrity**
   - [ ] DR-04 — Replace odds table with rarity legend; add parity test (TEST-06).

@@ -32,7 +32,7 @@ export default function ConnectButton() {
         <button
           onClick={handleCopy}
           title="Click to copy full address"
-          className="flex items-center gap-1.5 rounded-xl border border-gray-700/80 bg-gray-900/80 px-3 py-2 text-xs font-mono text-gray-200 hover:border-gray-600 transition-colors backdrop-blur-md"
+          className="flex items-center gap-1.5 rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs font-mono text-text-primary hover:border-border-strong transition-colors backdrop-blur-md"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <span>{formatShortAddress(address)}</span>
@@ -45,7 +45,7 @@ export default function ConnectButton() {
               viewBox="0 0 24 24"
               strokeWidth="1.8"
               stroke="currentColor"
-              className="h-3.5 w-3.5 text-gray-400"
+              className="h-3.5 w-3.5 text-text-tertiary"
             >
               <path
                 strokeLinecap="round"
@@ -58,7 +58,7 @@ export default function ConnectButton() {
 
         <button
           onClick={disconnect}
-          className="rounded-xl border border-red-800/40 bg-red-950/40 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-900/60 hover:text-white transition-colors"
+          className="rounded-xl border border-red-800/40 bg-red-950/40 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-900/60 hover:text-text-primary transition-colors"
         >
           Disconnect
         </button>
@@ -70,7 +70,7 @@ export default function ConnectButton() {
     <button
       onClick={handleConnect}
       disabled={isConnecting}
-      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-indigo-900/40 transition-all hover:from-blue-500 hover:to-purple-500 active:scale-98 disabled:opacity-50"
+      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-2 text-xs font-bold text-text-primary shadow-lg shadow-indigo-900/40 transition-all hover:from-blue-500 hover:to-purple-500 active:scale-98 disabled:opacity-50"
     >
       <span>ꜩ</span>
       <span>{isConnecting ? "Connecting..." : "Connect Tezos Wallet"}</span>

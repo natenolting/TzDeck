@@ -15,7 +15,7 @@ export default function SoundToggle() {
     <button
       onClick={handleToggle}
       title={isMuted ? "Unmute sound effects" : "Mute sound effects"}
-      className="flex items-center justify-center rounded-xl border border-gray-800 bg-gray-900/80 p-2 text-xs text-gray-400 hover:border-gray-700 hover:text-white transition-colors"
+      className="flex items-center justify-center rounded-xl border border-border-default bg-surface-2 p-2 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary transition-colors"
     >
       {isMuted ? (
         <span className="text-sm">🔇</span>

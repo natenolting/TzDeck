@@ -37,17 +37,12 @@ export default function Home() {
   const wishlistIds = new Set(wishlist.map(getCardKey));
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white selection:bg-indigo-500 selection:text-white">
-      {/* Background Ambient Glows */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 left-1/4 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
-        <div className="absolute top-1/3 -right-40 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl" />
-        <div className="absolute -bottom-40 left-1/3 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
-      </div>
+    <main className="min-h-screen bg-surface-0 text-text-primary selection:bg-accent selection:text-text-primary">
+      <div className="page-vignette pointer-events-none fixed inset-0" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* ================= HEADER NAVBAR ================= */}
-        <header className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-gray-800/80 pb-6">
+        <header className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-border-subtle pb-6">
           <div className="flex items-center gap-3">
             {/* Logo Emblem */}
             <Image
@@ -61,14 +56,14 @@ export default function Home() {
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight text-white">
+                <h1 className="text-2xl font-black tracking-tight text-text-primary">
                   TzDeck
                 </h1>
-                <span className="rounded-full bg-indigo-950 px-2 py-0.5 text-2xs font-bold text-indigo-300 border border-indigo-700/50">
+                <span className="rounded-full bg-accent-quiet px-2 py-0.5 text-2xs font-bold text-accent-hover border border-accent/30">
                   OBJKT Gacha
                 </span>
               </div>
-              <p className="text-xs text-gray-400">Pull. Collect. Discover.</p>
+              <p className="text-xs text-text-secondary">Pull. Collect. Discover.</p>
             </div>
           </div>
 
@@ -80,13 +75,13 @@ export default function Home() {
         </header>
 
         {/* ================= TABS NAVIGATION ================= */}
-        <nav className="my-6 flex items-center justify-center gap-2 border-b border-gray-900 pb-4 overflow-x-auto">
+        <nav className="my-6 flex items-center justify-center gap-2 pb-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab("packs")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
               activeTab === "packs"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-950"
-                : "text-gray-400 hover:bg-gray-900 hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
             <span>🎴</span>
@@ -97,8 +92,8 @@ export default function Home() {
             onClick={() => setActiveTab("deck")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
               activeTab === "deck"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-950"
-                : "text-gray-400 hover:bg-gray-900 hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
             <span>🃏</span>
@@ -112,14 +107,14 @@ export default function Home() {
             onClick={() => setActiveTab("wishlist")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
               activeTab === "wishlist"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-950"
-                : "text-gray-400 hover:bg-gray-900 hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
             <span>⭐</span>
             <span>Wishlist</span>
             {wishlist.length > 0 && (
-              <span className="rounded-full bg-indigo-500/40 px-1.5 py-0.2 text-2xs font-bold tabular-nums text-indigo-200">
+              <span className="rounded-full bg-accent/40 px-1.5 py-0.2 text-2xs font-bold tabular-nums text-accent-hover">
                 {wishlist.length}
               </span>
             )}
@@ -129,8 +124,8 @@ export default function Home() {
             onClick={() => setActiveTab("about")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
               activeTab === "about"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-950"
-                : "text-gray-400 hover:bg-gray-900 hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
             <span>ℹ️</span>
@@ -156,14 +151,14 @@ export default function Home() {
                   wishlistIds={wishlistIds}
                 />
               ) : (
-                <div className="rounded-3xl border border-gray-800/80 bg-gray-900/40 p-12 text-center max-w-lg mx-auto my-12 backdrop-blur-md">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-500/10 border border-indigo-500/30 text-3xl mx-auto mb-4">
+                <div className="rounded-3xl border border-border-default bg-surface-1/80 p-12 text-center max-w-lg mx-auto my-12 backdrop-blur-md">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-quiet border border-accent/30 text-3xl mx-auto mb-4">
                     ꜩ
                   </div>
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-xl font-bold text-text-primary">
                     Connect Your Tezos Wallet
                   </h3>
-                  <p className="mt-2 text-sm text-gray-400 mb-6">
+                  <p className="mt-2 text-sm text-text-secondary mb-6">
                     Connect Temple, Kukai, or Beacon to view your owned OBJKT NFTs as your personal playable deck.
                   </p>
                   <div className="flex justify-center">
@@ -186,53 +181,53 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-3xl mx-auto rounded-3xl border border-gray-800 bg-gray-900/50 p-8 sm:p-10 backdrop-blur-md space-y-6"
+              className="max-w-3xl mx-auto rounded-3xl border border-border-default bg-surface-1/80 p-8 sm:p-10 backdrop-blur-md space-y-6"
             >
               <div>
-                <h2 className="text-2xl font-black text-white">
+                <h2 className="text-2xl font-black text-text-primary">
                   About TzDeck
                 </h2>
-                <p className="text-sm text-indigo-300 font-medium mt-1">
+                <p className="text-sm text-accent-hover font-medium mt-1">
                   A Gamified NFT Discovery Layer for Tezos & OBJKT.com
                 </p>
               </div>
 
-              <div className="space-y-4 text-sm text-gray-300 leading-relaxed border-t border-gray-800 pt-6">
+              <div className="space-y-4 text-sm text-text-secondary leading-relaxed border-t border-border-subtle pt-6">
                 <p>
-                  <strong className="text-white">TzDeck</strong> is inspired by gacha card simulators like <a href="https://wikigacha.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline hover:text-indigo-300">wikigacha.com</a>. It transforms the vast Tezos art ecosystem on OBJKT into collectible virtual booster packs.
+                  <strong className="text-text-primary">TzDeck</strong> is inspired by gacha card simulators like <a href="https://wikigacha.com" target="_blank" rel="noopener noreferrer" className="text-accent-hover underline hover:text-text-primary">wikigacha.com</a>. It transforms the vast Tezos art ecosystem on OBJKT into collectible virtual booster packs.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  <div className="rounded-2xl border border-gray-800 bg-gray-950/60 p-4">
+                  <div className="rounded-2xl border border-border-subtle bg-surface-0/60 p-4">
                     <span className="text-2xl">🎁</span>
-                    <h4 className="font-bold text-white mt-2">1. Open Packs</h4>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <h4 className="font-bold text-text-primary mt-2">1. Open Packs</h4>
+                    <p className="text-xs text-text-tertiary mt-1">
                       Pull 5 random active marketplace listings currently for sale on OBJKT with simulated rarities and card animations.
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-gray-800 bg-gray-950/60 p-4">
+                  <div className="rounded-2xl border border-border-subtle bg-surface-0/60 p-4">
                     <span className="text-2xl">✨</span>
-                    <h4 className="font-bold text-white mt-2">2. Discover Art</h4>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <h4 className="font-bold text-text-primary mt-2">2. Discover Art</h4>
+                    <p className="text-xs text-text-tertiary mt-1">
                       Discover new artists and collections. Like a piece? Click through to collect it directly on OBJKT.com.
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-gray-800 bg-gray-950/60 p-4">
+                  <div className="rounded-2xl border border-border-subtle bg-surface-0/60 p-4">
                     <span className="text-2xl">🃏</span>
-                    <h4 className="font-bold text-white mt-2">3. Build Your Deck</h4>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <h4 className="font-bold text-text-primary mt-2">3. Build Your Deck</h4>
+                    <p className="text-xs text-text-tertiary mt-1">
                       Connect your Tezos wallet to view all your owned OBJKTs dynamically as your playable, filterable digital card deck.
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-indigo-500/20 bg-indigo-950/30 p-4 mt-4">
-                  <h4 className="font-bold text-indigo-200 text-xs uppercase tracking-wider">
+                <div className="rounded-2xl border border-accent/20 bg-accent-quiet p-4 mt-4">
+                  <h4 className="font-bold text-accent-hover text-xs uppercase tracking-wider">
                     How Purchases Work
                   </h4>
-                  <p className="text-xs text-indigo-100/80 mt-1">
+                  <p className="text-xs text-text-secondary mt-1">
                     TzDeck is purely a discovery layer. All NFT acquisitions happen safely and directly on official Tezos marketplace contracts via OBJKT.com.
                   </p>
                 </div>

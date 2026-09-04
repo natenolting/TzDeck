@@ -134,7 +134,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent mb-4" />
-        <p className="text-sm font-medium text-gray-400">Loading your Tezos collection & deck...</p>
+        <p className="text-sm font-medium text-text-secondary">Loading your Tezos collection & deck...</p>
       </div>
     );
   }
@@ -145,7 +145,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
         <p className="text-red-300 font-medium mb-4">{error}</p>
         <button
           onClick={reloadDeck}
-          className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-500 transition-colors"
+          className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-text-primary hover:bg-red-500 transition-colors"
         >
           Try Again
         </button>
@@ -155,10 +155,10 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
 
   if (tokens.length === 0) {
     return (
-      <div className="rounded-3xl border border-gray-800 bg-gray-900/40 p-12 text-center max-w-xl mx-auto my-12 backdrop-blur-md">
+      <div className="rounded-3xl border border-border-default bg-surface-1/80 p-12 text-center max-w-xl mx-auto my-12 backdrop-blur-md">
         <span className="text-4xl">🎴</span>
-        <h3 className="mt-3 text-lg font-bold text-white">No OBJKTs Found in Connected Wallet</h3>
-        <p className="mt-2 text-sm text-gray-400">
+        <h3 className="mt-3 text-lg font-bold text-text-primary">No OBJKTs Found in Connected Wallet</h3>
+        <p className="mt-2 text-sm text-text-secondary">
           Your wallet doesn’t have any OBJKT NFTs yet. Open booster packs in TzDeck to discover and collect new art pieces!
         </p>
       </div>
@@ -169,20 +169,20 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
     <div className="w-full space-y-6">
       {/* Stats Header Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-gray-400">Total Cards</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-white">{stats.total}</p>
+        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
+          <span className="text-xs font-medium text-text-secondary">Total Cards</span>
+          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">{stats.total}</p>
         </div>
-        <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-gray-400">Unique Artists</span>
+        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
+          <span className="text-xs font-medium text-text-secondary">Unique Artists</span>
           <p className="mt-1 text-2xl font-black tabular-nums text-indigo-300">{stats.artists}</p>
         </div>
-        <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-gray-400">Collections</span>
+        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
+          <span className="text-xs font-medium text-text-secondary">Collections</span>
           <p className="mt-1 text-2xl font-black tabular-nums text-purple-300">{stats.collections}</p>
         </div>
-        <div className="rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-gray-400">Rares & Epics</span>
+        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
+          <span className="text-xs font-medium text-text-secondary">Rares & Epics</span>
           <p className="mt-1 text-2xl font-black tabular-nums text-amber-300">
             {stats.highRarityCount}
           </p>
@@ -190,7 +190,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
       </div>
 
       {/* Filter and Search Controls */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
         {/* Search Input */}
         <div className="relative w-full sm:w-72">
           <input
@@ -198,13 +198,13 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
             placeholder="Search deck by title, artist..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-gray-700/80 bg-gray-950 px-3.5 py-2 pl-9 text-xs text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-xl border border-border-default bg-surface-2 px-3.5 py-2 pl-9 text-xs text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
           />
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
             fill="currentColor"
-            className="absolute left-3 top-2.5 h-4 w-4 text-gray-500"
+            className="absolute left-3 top-2.5 h-4 w-4 text-text-muted"
           >
             <path
               fillRule="evenodd"
@@ -220,7 +220,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <select
             value={rarityFilter}
             onChange={(e) => setRarityFilter(e.target.value)}
-            className="rounded-xl border border-gray-700/80 bg-gray-950 px-3 py-2 text-xs text-gray-300 focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
           >
             <option value="all">All Rarities</option>
             <option value="legendary">Legendary</option>
@@ -234,7 +234,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="rounded-xl border border-gray-700/80 bg-gray-950 px-3 py-2 text-xs text-gray-300 focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
           >
             <option value="latest">Latest Acquired</option>
             <option value="name">Name (A-Z)</option>
@@ -245,7 +245,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <button
             onClick={reloadDeck}
             title="Refresh Deck"
-            className="rounded-xl border border-gray-700/80 bg-gray-800/80 p-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            className="rounded-xl border border-border-default bg-surface-2 p-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -267,7 +267,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
 
       {/* Deck Grid */}
       {filteredTokens.length === 0 ? (
-        <div className="py-12 text-center text-gray-500 text-sm">
+        <div className="py-12 text-center text-text-tertiary text-sm">
           No cards match your filter criteria.
         </div>
       ) : (
