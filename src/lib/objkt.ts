@@ -431,8 +431,15 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
       throw new Error("No active listings found");
     }
 
-    const shuffled = shuffleArray(listings);
-    const selected = shuffled.slice(0, count);
+    const byToken = new Map<string, (typeof listings)[number]>();
+    for (const item of shuffleArray(listings)) {
+      const key = `${item.token.fa_contract}:${item.token.token_id}`;
+      const existing = byToken.get(key);
+      if (!existing || item.price < existing.price) {
+        byToken.set(key, item);
+      }
+    }
+    const selected = [...byToken.values()].slice(0, count);
 
     return selected.map((item) => normalizeObjktToken(item.token, {
       listingId: item.id,
