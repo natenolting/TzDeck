@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchRandomPack } from "@/lib/objkt";
 
+// The pack is drawn server-side, so a shared CDN cache would hand every visitor
+// the same "random" pack for the life of the entry. Stays uncached on purpose.
 export const dynamic = "force-dynamic";
+
+// One GraphQL call, plus a fallback query when the windows come back empty.
+export const maxDuration = 20;
 
 function getRequestCount(body: unknown): unknown {
   if (!body || typeof body !== "object" || !("count" in body)) return undefined;
