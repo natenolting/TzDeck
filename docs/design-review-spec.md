@@ -637,7 +637,6 @@ Re-run cold against the current build after sign-off. The five original blockers
 
 | Item | Severity | Note |
 | :--- | :--- | :--- |
-| About says "simulated rarities" | Note | After DR-04/DR-05 the grading is disclosed and deterministic; "simulated" undercuts that. |
 | Legend wraps 3+2 | Note | Orphan second row. |
 
 ### Process lessons
@@ -667,3 +666,14 @@ Two gates were missing rather than failing. TEST-08 checked only `gray-` literal
   One of the two always registers. Fill goes to 92%, so the chip reads as chrome rather than a translucent artifact, and the editions chip moves off `--text-secondary` to `--text-primary` -- muting is right on a calm dark panel, wrong for a label sitting on someone else's artwork. `.art-chip-accent` swaps the inset ring to the accent, so price stays identifiable.
 * **No backdrop blur.** The previous chips had one. At 92% opacity it is imperceptible, and a handwritten `backdrop-filter` in `globals.css` is dropped by the CSS pipeline regardless (Tailwind's own `backdrop-blur-*` utilities still work). Removed rather than left in as a dead declaration.
 * **Verified:** rendered against five forced backdrops -- white, saturated green, hot pink, yellow and near-black -- and then against a real pack of high-chroma glitch art plus a light greyscale photo, which was the original failure case. TEST-13 still passes: nothing paints over the artwork's centre.
+
+### DR-21: Retire the "simulated rarities" claim
+
+* **Severity:** Note
+* **Problem:** the About tab said packs come "with simulated rarities". After DR-04 and DR-05 the grading is disclosed and deterministic -- derived from edition supply and listing price -- so "simulated" implied exactly the fabrication those items removed. The README carried the same word, and worse, contradicted its own later section, which already states that rarity is "a deterministic display classification, not an on-chain NFT trait or a weighted pull probability".
+* **Remediation:** the About card now reads "Pull 5 random active OBJKT listings. Cards are graded by edition size and listed price -- the pull is random, the rarity is not." That draws the distinction the system actually makes and echoes the Packs tab legend. The README line becomes "a rarity graded from the token's supply and its market listing", agreeing with its own rarity section.
+* **Verified:** no occurrence of "simulated" remains in `src/` or `README.md`.
+
+### Remaining open item
+
+Packs can return several pieces by one artist. `fetchRandomPack` picks a random offset and then takes a *contiguous* window of listings ordered by `id`, so an artist who bulk-lists can fill most of a pack; observed 3 of 5 and 5 of 5 from one collection. Deduplication is per-token and does not catch it. This undercuts the discovery premise and wants a per-artist cap in the selection step.

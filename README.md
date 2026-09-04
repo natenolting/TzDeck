@@ -7,7 +7,7 @@ TzDeck is a gamified discovery and collection viewer for Tezos NFTs. It turns ar
 ## How it works
 
 - **Open booster packs:** Pull five random active OBJKT listings and reveal each NFT through animated cards.
-- **Discover Tezos art:** See the artist, collection, edition size, listed price, and a simulated rarity based on the token's supply and market listing.
+- **Discover Tezos art:** See the artist, collection, edition size, listed price, and a rarity graded from the token's supply and its market listing.
 - **Inspect every card:** Open a larger artwork view with token metadata and a direct link to its OBJKT page.
 - **Browse your deck:** Connect a Beacon-compatible Tezos wallet to load, search, filter, and sort the NFTs it owns.
 - **Build a wishlist:** Save interesting pulls in your browser and return to them later.

@@ -219,7 +219,7 @@ export default function Home() {
                     <CardsIcon className="h-6 w-6 text-accent-hover" />
                     <h4 className="font-bold text-text-primary mt-2">1. Open Packs</h4>
                     <p className="text-xs text-text-tertiary mt-1">
-                      Pull 5 random active marketplace listings currently for sale on OBJKT with simulated rarities and card animations.
+                      Pull 5 random active OBJKT listings. Cards are graded by edition size and listed price — the pull is random, the rarity is not.
                     </p>
                   </div>
 
