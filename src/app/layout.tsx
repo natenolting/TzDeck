@@ -1,18 +1,19 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Oxanium } from "next/font/google";
 import { WalletProvider } from "@/context/WalletContext";
 
-const displayFont = Space_Grotesk({
+// Oxanium is the brand face and carries the titles. Both are variable fonts,
+// so the weight axis loads whole rather than pinned -- pinning one weight left
+// the browser synthesising the semibold and bold the UI actually uses.
+const displayFont = Oxanium({
   subsets: ["latin"],
-  variable: "--font-space-grotesk",
-  weight: ["500", "700"],
+  variable: "--font-oxanium",
 });
 
 const textFont = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  weight: "400",
 });
 
 export const metadata: Metadata = {

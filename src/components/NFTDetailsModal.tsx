@@ -112,7 +112,7 @@ export default function NFTDetailsModal({
             >
               {rarity.label}
             </span>
-            <h2 id={titleId} className="mt-3 text-2xl font-black text-text-primary sm:text-3xl">
+            <h2 id={titleId} className="mt-3 text-2xl font-extrabold text-text-primary sm:text-3xl">
               {card.name}
             </h2>
             <p className="mt-2 text-sm font-medium text-accent-hover">

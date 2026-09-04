@@ -63,7 +63,7 @@ export default function Home() {
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight text-text-primary">
+                <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
                   TzDeck
                 </h1>
                 <span className="rounded-full bg-accent-quiet px-2 py-0.5 text-2xs font-bold text-accent-hover border border-accent/30">
@@ -201,7 +201,7 @@ export default function Home() {
               className="max-w-3xl mx-auto rounded-3xl border border-border-default bg-surface-1/80 p-8 sm:p-10 backdrop-blur-md space-y-6"
             >
               <div>
-                <h2 className="text-2xl font-black text-text-primary">
+                <h2 className="text-2xl font-extrabold text-text-primary">
                   About TzDeck
                 </h2>
                 <p className="text-sm text-accent-hover font-medium mt-1">

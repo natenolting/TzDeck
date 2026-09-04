@@ -133,7 +133,7 @@ flowchart TD
 
   4. All updating numerals — prices, edition counts, deck stats, wishlist count — get `font-variant-numeric: tabular-nums`.
 
-* **Alternative considered:** Archivo + Chivo if Space Grotesk reads too playful for the art-collector audience. Pick one before Phase 2 starts; every later phase assumes a display face exists.
+* **Resolved:** the display face is **Oxanium**, the brand face already used in the TzDeck logo, so the titles and the mark now share a voice. Inter stays for body and UI text. Both are loaded as variable fonts with the weight axis unpinned -- pinning a single weight left the browser synthesising the semibold and bold the UI actually uses. Oxanium's axis tops out at 800, so display headings use `font-extrabold` rather than `font-black`, which would request a weight the face does not have.
 
 ---
 

@@ -193,7 +193,7 @@ export default function PackOpening({
                     ꜩ
                   </span>
                 </div>
-                <h2 className="mt-4 text-2xl font-black tracking-wider text-text-primary">
+                <h2 className="mt-4 text-2xl font-extrabold tracking-wider text-text-primary">
                   OBJKT PACK
                 </h2>
                 <p className="text-xs text-indigo-200/80 font-medium">
