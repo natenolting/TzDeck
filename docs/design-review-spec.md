@@ -674,6 +674,24 @@ Two gates were missing rather than failing. TEST-08 checked only `gray-` literal
 * **Remediation:** the About card now reads "Pull 5 random active OBJKT listings. Cards are graded by edition size and listed price -- the pull is random, the rarity is not." That draws the distinction the system actually makes and echoes the Packs tab legend. The README line becomes "a rarity graded from the token's supply and its market listing", agreeing with its own rarity section.
 * **Verified:** no occurrence of "simulated" remains in `src/` or `README.md`.
 
-### Remaining open item
+### DR-22: Packs draw from more than one artist
 
-Packs can return several pieces by one artist. `fetchRandomPack` picks a random offset and then takes a *contiguous* window of listings ordered by `id`, so an artist who bulk-lists can fill most of a pack; observed 3 of 5 and 5 of 5 from one collection. Deduplication is per-token and does not catch it. This undercuts the discovery premise and wants a per-artist cap in the selection step.
+* **Severity:** Should-fix (behaviour, not polish)
+* **Problem:** packs kept arriving as one artist's collection -- observed 3 of 5 and then 5 of 5 from a single seller. Two coupled causes:
+  1. **The window was contiguous.** One `offset` + `limit` over `order_by: { id: desc }` returns adjacent listing IDs, so anyone who bulk-lists occupies the whole window.
+  2. **The sampling band was tiny.** `Math.random() * 800` only ever reached the newest ~800 active listings, while the calibration sample showed active listing IDs spanning **403 to 8,610,757**. Every pack came from whoever had listed most recently.
+
+  Deduplication was per token, so it could not catch several *different* tokens by one artist. A per-artist cap alone would not have worked either: if the pool itself is one artist, a cap just yields a short pack. Both had to change together.
+* **Remediation:**
+  1. **Three staggered windows in one round trip**, aliased as `w1`/`w2`/`w3` at independent offsets drawn from separate bands (0–400, 400–1600, 1600–4000). No extra latency, and the first band is nearly always populated while the others reach deeper.
+  2. **`selectDiverseListings`** takes at most `PACK_MAX_PER_ARTIST` (2) from any one artist, keyed on creator address. If the pool is too concentrated to fill a pack under the cap, the remainder fills without it -- a short pack would be worse than a repetitive one.
+  3. Deep offsets can overrun the active set on a quiet market, so a fallback fetches the newest listings rather than serving fewer than `count` cards.
+* **Verified against live data** with `npx tsx scripts/check-pack-diversity.ts` over 12 packs:
+
+  | Metric | Result |
+  | :--- | ---: |
+  | Average distinct artists per 5-card pack | **4.58** |
+  | Worst single-artist count | **2** (the cap held) |
+  | Short packs | **0** |
+
+  Unit tests cover the offset bands, the fallback, the cap, and the deliberate relaxation.

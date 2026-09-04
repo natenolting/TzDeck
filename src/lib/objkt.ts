@@ -246,12 +246,21 @@ interface ObjktTokenHolderResponse {
   }>;
 }
 
+export interface ObjktListingRow {
+  id: number;
+  price: number;
+  token: ObjktRawToken;
+}
+
 interface ObjktListingResponse {
-  listing: Array<{
-    id: number;
-    price: number;
-    token: ObjktRawToken;
-  }>;
+  listing: ObjktListingRow[];
+}
+
+/** Three independently offset windows, aliased so one round trip covers them all. */
+interface ObjktPackWindowsResponse {
+  w1?: ObjktListingRow[];
+  w2?: ObjktListingRow[];
+  w3?: ObjktListingRow[];
 }
 
 interface TzktTokenBalance {
@@ -376,75 +385,164 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
   return [];
 }
 
-export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
-  const randomOffset = Math.floor(Math.random() * 800);
-  const fetchLimit = Math.max(count * 4, 24);
+/** At most this many cards from one artist, so a bulk lister cannot fill a pack. */
+export const PACK_MAX_PER_ARTIST = 2;
 
-  const query = `
-    query RandomActiveListings($limit: Int!, $offset: Int!) {
-      listing(
-        where: {
-          status: { _eq: "active" },
-          price: { _gt: 0 },
-          token: { display_uri: { _is_null: false } }
-        },
-        limit: $limit,
-        offset: $offset,
-        order_by: { id: desc }
-      ) {
-        id
-        price
-        token {
-          name
-          token_id
-          fa_contract
-          display_uri
-          artifact_uri
-          thumbnail_uri
-          supply
-          description
-          creators {
-            holder {
-              alias
-              address
-            }
-          }
-          fa {
-            name
-          }
+function listingArtistKey(listing: ObjktListingRow): string {
+  const holder = listing.token.creators?.[0]?.holder;
+  return holder?.address
+    || holder?.alias
+    || `unattributed:${listing.token.fa_contract}`;
+}
+
+/**
+ * Picks `count` listings, taking no more than `maxPerArtist` from any one
+ * artist. If the pool is too concentrated to fill a pack under that cap, the
+ * remainder is filled without it -- a short pack would be worse than a
+ * repetitive one.
+ */
+export function selectDiverseListings(
+  listings: ObjktListingRow[],
+  count: number,
+  maxPerArtist = PACK_MAX_PER_ARTIST,
+): ObjktListingRow[] {
+  const chosen: ObjktListingRow[] = [];
+  const taken = new Set<ObjktListingRow>();
+  const perArtist = new Map<string, number>();
+
+  for (const listing of listings) {
+    if (chosen.length === count) break;
+    const key = listingArtistKey(listing);
+    const used = perArtist.get(key) ?? 0;
+    if (used >= maxPerArtist) continue;
+    chosen.push(listing);
+    taken.add(listing);
+    perArtist.set(key, used + 1);
+  }
+
+  for (const listing of listings) {
+    if (chosen.length === count) break;
+    if (taken.has(listing)) continue;
+    chosen.push(listing);
+    taken.add(listing);
+  }
+
+  return chosen;
+}
+
+/** Keeps one listing per token, preferring the cheapest so "Collect" shows the best price. */
+function cheapestPerToken(listings: ObjktListingRow[]): ObjktListingRow[] {
+  const byToken = new Map<string, ObjktListingRow>();
+
+  for (const item of listings) {
+    const key = `${item.token.fa_contract}:${item.token.token_id}`;
+    const existing = byToken.get(key);
+    if (!existing || item.price < existing.price) {
+      byToken.set(key, item);
+    }
+  }
+
+  return [...byToken.values()];
+}
+
+export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
+  // Three windows rather than one contiguous block. A single offset+limit over
+  // `id desc` returns adjacent listing IDs, so an artist who bulk-lists fills
+  // the whole window -- which is how a pack ends up being one collection. The
+  // bands are staggered so the first is nearly always populated while the
+  // others reach deeper than the newest few hundred listings.
+  const windowSize = Math.max(count * 2, 10);
+  const offsets = [
+    Math.floor(Math.random() * 400),
+    400 + Math.floor(Math.random() * 1_200),
+    1_600 + Math.floor(Math.random() * 2_400),
+  ];
+
+  const listingFields = `
+    id
+    price
+    token {
+      name
+      token_id
+      fa_contract
+      display_uri
+      artifact_uri
+      thumbnail_uri
+      supply
+      description
+      creators {
+        holder {
+          alias
+          address
         }
       }
+      fa {
+        name
+      }
+    }
+  `;
+  const activeWhere = `
+    status: { _eq: "active" },
+    price: { _gt: 0 },
+    token: { display_uri: { _is_null: false } }
+  `;
+  const window = (alias: string, offsetVar: string) => `
+    ${alias}: listing(
+      where: { ${activeWhere} },
+      limit: $limit,
+      offset: ${offsetVar},
+      order_by: { id: desc }
+    ) { ${listingFields} }
+  `;
+
+  const windowsQuery = `
+    query RandomActiveListings($limit: Int!, $o1: Int!, $o2: Int!, $o3: Int!) {
+      ${window("w1", "$o1")}
+      ${window("w2", "$o2")}
+      ${window("w3", "$o3")}
+    }
+  `;
+
+  const fallbackQuery = `
+    query NewestActiveListings($limit: Int!) {
+      listing(
+        where: { ${activeWhere} },
+        limit: $limit,
+        offset: 0,
+        order_by: { id: desc }
+      ) { ${listingFields} }
     }
   `;
 
   try {
-    let data = await objktClient.request<ObjktListingResponse>(query, {
-      limit: fetchLimit,
-      offset: randomOffset,
+    const windows = await objktClient.request<ObjktPackWindowsResponse>(windowsQuery, {
+      limit: windowSize,
+      o1: offsets[0],
+      o2: offsets[1],
+      o3: offsets[2],
     });
 
-    let listings = data?.listing || [];
-    if (listings.length === 0 && randomOffset > 0) {
-      data = await objktClient.request<ObjktListingResponse>(query, {
-        limit: fetchLimit,
-        offset: 0,
+    let listings = [
+      ...(windows?.w1 || []),
+      ...(windows?.w2 || []),
+      ...(windows?.w3 || []),
+    ];
+
+    // Deep offsets overrun the active set on a quiet market; fall back to the
+    // newest listings rather than serving a short pack.
+    if (listings.length < count) {
+      const fallback = await objktClient.request<ObjktListingResponse>(fallbackQuery, {
+        limit: Math.max(count * 4, 24),
       });
-      listings = data?.listing || [];
+      listings = [...listings, ...(fallback?.listing || [])];
     }
 
     if (listings.length === 0) {
       throw new Error("No active listings found");
     }
 
-    const byToken = new Map<string, (typeof listings)[number]>();
-    for (const item of shuffleArray(listings)) {
-      const key = `${item.token.fa_contract}:${item.token.token_id}`;
-      const existing = byToken.get(key);
-      if (!existing || item.price < existing.price) {
-        byToken.set(key, item);
-      }
-    }
-    const selected = [...byToken.values()].slice(0, count);
+    const unique = cheapestPerToken(shuffleArray(listings));
+    const selected = selectDiverseListings(unique, count);
 
     return selected.map((item) => normalizeObjktToken(item.token, {
       listingId: item.id,

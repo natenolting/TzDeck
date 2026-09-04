@@ -13,10 +13,37 @@ import {
   getCardImageSources,
   normalizeObjktToken,
   objktClient,
+  PACK_MAX_PER_ARTIST,
   RARITY_LEGEND,
+  selectDiverseListings,
   RARITY_THRESHOLDS,
   shuffleArray,
 } from "./objkt";
+
+function listingRow(
+  id: number,
+  contract: string,
+  tokenId: string,
+  artistAddress: string,
+  name = `Token ${tokenId}`,
+) {
+  return {
+    id,
+    price: 2_000_000,
+    token: {
+      name,
+      token_id: tokenId,
+      fa_contract: contract,
+      display_uri: `https://example.com/${tokenId}.jpg`,
+      artifact_uri: null,
+      thumbnail_uri: null,
+      supply: 50,
+      description: null,
+      creators: [{ holder: { alias: artistAddress, address: artistAddress } }],
+      fa: { name: "Test Collection" },
+    },
+  };
+}
 
 test("rarity legend matches calculateRarity boundaries", () => {
   assert.deepEqual(
@@ -256,42 +283,54 @@ test("fetchUserHoldings orders OBJKT holdings by the schema-supported timestamp"
   }
 });
 
-test("fetchRandomPack retries an empty random window from offset zero", async () => {
+test("fetchRandomPack samples three staggered windows in one request", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  const originalRandom = Math.random;
+  const requests: Array<Record<string, unknown> | undefined> = [];
+
+  client.request = async (_document, variables) => {
+    requests.push(variables);
+    return {
+      w1: [listingRow(1, "KT1A", "1", "artist-a")],
+      w2: [listingRow(2, "KT1B", "2", "artist-b")],
+      w3: [listingRow(3, "KT1C", "3", "artist-c")],
+    };
+  };
+  Math.random = () => 0.5;
+
+  try {
+    const cards = await fetchRandomPack(3);
+
+    // One round trip, three offsets, each drawn from its own band so the
+    // sample is not a single contiguous block of listing IDs.
+    assert.equal(requests.length, 1);
+    assert.deepEqual(
+      [requests[0]?.o1, requests[0]?.o2, requests[0]?.o3],
+      [200, 1_000, 2_800],
+    );
+    assert.equal(cards.length, 3);
+  } finally {
+    client.request = originalRequest;
+    Math.random = originalRandom;
+  }
+});
+
+test("fetchRandomPack falls back to the newest listings when windows overrun", async () => {
   const client = objktClient as unknown as {
     request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
   };
   const originalRequest = client.request;
   const originalRandom = Math.random;
   const originalConsoleError = console.error;
-  const requestedOffsets: number[] = [];
+  let calls = 0;
 
-  client.request = async (_document, variables) => {
-    requestedOffsets.push(Number(variables?.offset));
-
-    if (requestedOffsets.length === 1) {
-      return { listing: [] };
-    }
-
-    return {
-      listing: [
-        {
-          id: 101,
-          price: 2_000_000,
-          token: {
-            name: "Fallback Find",
-            token_id: "7",
-            fa_contract: "KT1Fallback",
-            display_uri: "https://example.com/fallback.jpg",
-            artifact_uri: null,
-            thumbnail_uri: null,
-            supply: 50,
-            description: null,
-            creators: [],
-            fa: { name: "Fallback Collection" },
-          },
-        },
-      ],
-    };
+  client.request = async () => {
+    calls += 1;
+    if (calls === 1) return { w1: [], w2: [], w3: [] };
+    return { listing: [listingRow(101, "KT1Fallback", "7", "artist-z", "Fallback Find")] };
   };
   Math.random = () => 0.5;
   console.error = () => undefined;
@@ -299,7 +338,7 @@ test("fetchRandomPack retries an empty random window from offset zero", async ()
   try {
     const cards = await fetchRandomPack(1);
 
-    assert.deepEqual(requestedOffsets, [400, 0]);
+    assert.equal(calls, 2);
     assert.equal(cards.length, 1);
     assert.equal(cards[0]?.name, "Fallback Find");
   } finally {
@@ -307,6 +346,45 @@ test("fetchRandomPack retries an empty random window from offset zero", async ()
     Math.random = originalRandom;
     console.error = originalConsoleError;
   }
+});
+
+test("a pack takes at most two cards from any one artist", () => {
+  // A bulk lister dominating the window is the real-world case: five listings
+  // from one artist plus two others.
+  const pool = [
+    listingRow(1, "KT1A", "1", "bulk-lister"),
+    listingRow(2, "KT1A", "2", "bulk-lister"),
+    listingRow(3, "KT1A", "3", "bulk-lister"),
+    listingRow(4, "KT1A", "4", "bulk-lister"),
+    listingRow(5, "KT1A", "5", "bulk-lister"),
+    listingRow(6, "KT1B", "6", "second-artist"),
+    listingRow(7, "KT1C", "7", "third-artist"),
+    listingRow(8, "KT1D", "8", "fourth-artist"),
+  ];
+
+  const picked = selectDiverseListings(pool, 5);
+  const perArtist = new Map<string, number>();
+  for (const item of picked) {
+    const key = item.token.creators?.[0]?.holder.address ?? "none";
+    perArtist.set(key, (perArtist.get(key) ?? 0) + 1);
+  }
+
+  assert.equal(picked.length, 5);
+  assert.equal(perArtist.get("bulk-lister"), PACK_MAX_PER_ARTIST);
+  assert.equal(perArtist.get("second-artist"), 1);
+  assert.equal(perArtist.get("third-artist"), 1);
+  assert.equal(perArtist.get("fourth-artist"), 1);
+  assert.ok([...perArtist.values()].every((n) => n <= PACK_MAX_PER_ARTIST));
+});
+
+test("a pack fills past the cap rather than coming up short", () => {
+  // When the pool really is one artist, a repetitive pack beats a broken one.
+  const pool = [1, 2, 3, 4].map((n) => listingRow(n, "KT1A", String(n), "only-artist"));
+
+  const picked = selectDiverseListings(pool, 4);
+
+  assert.equal(picked.length, 4);
+  assert.equal(new Set(picked).size, 4);
 });
 
 test("fetchRandomPack returns unique tokens using their cheapest listing", async () => {
