@@ -82,7 +82,7 @@ export default function NFTDetailsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative my-auto grid max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-3xl border border-border-strong bg-surface-0 shadow-2xl shadow-indigo-950/70 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
+        className="relative my-auto grid max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-3xl border border-border-strong bg-surface-0 shadow-2xl shadow-black/60 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
       >
         <button
           ref={closeButtonRef}
@@ -139,7 +139,7 @@ export default function NFTDetailsModal({
             {card.price_xtz !== undefined && (
               <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
                 <dt className="text-xs text-text-tertiary">Listed Price</dt>
-                <dd className="mt-1 font-bold tabular-nums text-indigo-200">ꜩ {card.price_xtz}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-accent-hover">ꜩ {card.price_xtz}</dd>
               </div>
             )}
             {card.quantity_owned !== undefined && (
@@ -170,7 +170,7 @@ export default function NFTDetailsModal({
                 onClick={() => onToggleWishlist(card)}
                 className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
                   isWishlisted
-                    ? "border-rose-500/50 bg-rose-950/60 text-rose-300 hover:bg-rose-900/70"
+                    ? "border-saved/50 bg-saved-quiet text-saved hover:bg-saved/20"
                     : "border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3"
                 }`}
               >

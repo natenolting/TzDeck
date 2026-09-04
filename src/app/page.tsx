@@ -58,7 +58,7 @@ export default function Home() {
               width={44}
               height={44}
               priority
-              className="h-11 w-11 rounded-xl shadow-lg shadow-indigo-500/20"
+              className="h-11 w-11 rounded-xl shadow-lg shadow-accent/20"
             />
 
             <div>
@@ -110,7 +110,7 @@ export default function Home() {
             <DeckIcon />
             <span className="tab-label">My Deck</span>
             {address && (
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-success" />
             )}
           </button>
 

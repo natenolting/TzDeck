@@ -521,7 +521,7 @@ flowchart TD
 | **TEST-05** | **Rarity calibration** | Node script: fetch 500 active listings, run `calculateRarity`, print tier distribution | Legendary ≤ 3%, Epic ≤ 10%, Rare ≤ 25%. **Blocks DR-05 merge.** |
 | **TEST-06** | Legend/code parity | Unit test | Every rule string in `RARITY_LEGEND` asserts against the real `calculateRarity` boundary values. Drift fails the build. |
 | **TEST-07** | Pack uniqueness | Unit test on `fetchRandomPack` with a fixture containing duplicate-token listings | Returned cards have unique `getCardKey`; cheapest listing retained. |
-| **TEST-08** | Token discipline | `grep -rn "text-gray-\|border-gray-\|bg-gray-" src/` | Zero hits — all color flows through DR-02 tokens. |
+| **TEST-08** | Token discipline | `grep -rnE '(text\|bg\|border\|ring\|shadow\|from\|via\|to)-(gray\|slate\|indigo\|purple\|blue\|emerald\|rose\|amber\|cyan\|red\|fuchsia\|pink\|teal\|yellow)-[0-9]' src/` | Zero hits. The original gate checked only `gray-`, so an entire palette family passed it; it now covers every Tailwind hue. Bespoke illustration colour lives in named classes in `globals.css`, never in components. |
 | **TEST-09** | No emoji in chrome | `grep -rnP "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]" src/` | Zero hits. The ꜩ glyph (U+A729) is not in range and is permitted. |
 | **TEST-10** | Hit areas | Playwright: measure every `button` / `a[href]` bounding box, **excluding links inline in a sentence** (`el.closest('p')`) | All ≥ 40px on the shorter axis. Inline prose links are exempt per WCAG 2.5.8; forcing a 40px line box mid-paragraph breaks leading. |
 | **TEST-11** | Focus visibility | Playwright: Tab through each tab stop, assert computed `outline-style !== "none"` and outline color is `--accent-hover` | No element falls back to the UA default ring. |
@@ -637,12 +637,22 @@ Re-run cold against the current build after sign-off. The five original blockers
 
 | Item | Severity | Note |
 | :--- | :--- | :--- |
-| 82 raw palette literals across 6 files | Should-fix | `text-indigo-*` doing text-ramp work, `text-red-*`/`bg-red-*` for errors, `text-emerald-*` for success. There are no semantic status tokens. **TEST-08 only greps `gray-`, so this passes a gate written too narrowly.** |
 | Edition/price chips over high-chroma art | Should-fix | A translucent dark fill cannot hold against unpredictable artwork; needs a solid chip or a real scrim. |
-| Emerald does double duty | Should-fix | The "Pack Complete!" success chip and the Uncommon rarity frame share a hue in one view. |
 | About says "simulated rarities" | Note | After DR-04/DR-05 the grading is disclosed and deterministic; "simulated" undercuts that. |
 | Legend wraps 3+2 | Note | Orphan second row. |
 
 ### Process lessons
 
 Two gates were missing rather than failing. TEST-08 checked only `gray-` literals, so an entire palette family slipped through; no gate at all asserted that interactive elements are real controls, which is why a `div onClick` on the primary action survived sixteen completed items and a full green matrix. TEST-14 and TEST-15 close both.
+
+### DR-19: Semantic status tokens and literal-free components
+
+* **Severity:** Should-fix (closes the token-discipline and hue-collision items above)
+* **Problem:** 82 raw Tailwind literals survived DR-02 across six files. Three causes: the palette had **no status tokens**, so errors reached for `red-*`, connected/copied states for `emerald-*` and wishlisted for `rose-*`; accent work used `indigo-*` directly; and the deck stats coloured three numbers in three unrelated hues, which is decoration rather than meaning. The booster pack's iridescent foil was a fourth case -- genuinely bespoke, but scattered across component classNames where it could drift.
+* **Remediation:**
+  1. Added `--success`, `--danger` and `--saved` with quiet variants. `--saved` is its own signal: wishlisting is neither an action nor an error.
+  2. Moved the pack and card-back iridescence into named classes -- `.foil-pack`, `.foil-card-back`, `.foil-sheen`, `.foil-glow-cool`, `.foil-glow-warm`, `.foil-emblem`, `.foil-wordmark`. The hues stay bespoke but live in one documented place, so components hold no literals and the gate can be absolute.
+  3. Deck stat numerals drop to `--text-primary`; their labels already say what each number is.
+  4. The quantity-owned badge dropped `blue-*` -- a fourth hue for "how many you own" -- for neutral chrome.
+  5. "Pack Complete!" became neutral. It is an informational label, not a success alert, and green there collided with the Uncommon frame in the same view. `--success` was then moved off `#34d399` so it no longer aliases `--rarity-uncommon`; two tokens sharing one value is a trap.
+* **Verified:** zero palette literals in `src/`; status tokens measure 7.2:1 to 10.4:1 against the page ground, all clearing AA; pack and card back render unchanged.

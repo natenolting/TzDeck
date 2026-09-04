@@ -94,14 +94,14 @@ export default function NFTCard({
         whileTap={{ scale: 0.98 }}
         onClick={onFlip}
         aria-label={facedownLabel}
-        className={`relative aspect-[5/7] w-full cursor-pointer rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-indigo-950 via-surface-1 to-purple-950 p-4 shadow-xl shadow-indigo-950/50 transition-all hover:border-indigo-400 select-none ${className}`}
+        className={`relative aspect-[5/7] w-full cursor-pointer foil-card-back rounded-2xl border-2 p-4 shadow-xl shadow-black/50 transition-all select-none ${className}`}
       >
-        <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-indigo-400/20 bg-surface-0/40 p-4 backdrop-blur-sm">
+        <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-border-subtle bg-surface-0/40 p-4 backdrop-blur-sm">
           <div aria-hidden="true" className="h-px w-full bg-border-subtle" />
 
           {/* Card Back Center Emblem */}
           <div className="relative flex h-28 w-24 items-center justify-center">
-            <div className="absolute h-20 w-20 rounded-full bg-purple-500/20 blur-xl" />
+            <div className="foil-glow-warm absolute h-20 w-20 rounded-full blur-xl" />
             <Image
               src="/tzdeck-shield-gradient-on-dark.svg"
               alt="TzDeck shield"
@@ -113,7 +113,7 @@ export default function NFTCard({
 
           {/* Card Back Prompt */}
           <div className="text-center">
-            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-2xs font-medium text-indigo-200 border border-indigo-400/30">
+            <span className="inline-block rounded-full bg-accent-quiet px-3 py-1 text-2xs font-medium text-accent-hover border border-accent/30">
               Click to Reveal
             </span>
           </div>
@@ -154,7 +154,7 @@ export default function NFTCard({
 
         <div className="flex items-center gap-1.5">
           {card.quantity_owned && card.quantity_owned > 1 && (
-            <span className="rounded-md bg-blue-900/60 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-blue-200 border border-blue-700/50">
+            <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-text-secondary border border-border-default">
               x{card.quantity_owned}
             </span>
           )}
@@ -169,7 +169,7 @@ export default function NFTCard({
               aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
                 isWishlisted
-                  ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+                  ? "bg-saved-quiet text-saved hover:bg-saved/25"
                   : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-primary"
               }`}
             >
@@ -218,7 +218,7 @@ export default function NFTCard({
             )}
 
             {card.price_xtz !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-2xs font-bold tabular-nums text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
+              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-surface-0/90 px-2 py-0.5 text-2xs font-bold tabular-nums text-accent-hover backdrop-blur-md border border-accent/40 shadow">
                 <span>ꜩ</span>
                 <span>{card.price_xtz}</span>
               </div>
@@ -236,7 +236,7 @@ export default function NFTCard({
 
       {/* Card Info Details */}
       <div className="relative z-10 pt-3">
-        <h3 className="text-sm font-semibold text-text-primary tracking-tight line-clamp-1 group-hover:text-indigo-300 transition-colors">
+        <h3 className="text-sm font-semibold text-text-primary tracking-tight line-clamp-1 group-hover:text-accent-hover transition-colors">
           {card.name}
         </h3>
 

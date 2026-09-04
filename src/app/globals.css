@@ -20,6 +20,16 @@
   --rarity-rare: #22d3ee;
   --rarity-epic: #a78bfa;
   --rarity-legendary: #fbbf24;
+
+  /* Status. Distinct from the accent, which means "action", and from the
+     rarity hues, which mean "tier". */
+  --success: #22c55e;
+  --success-quiet: rgb(34 197 94 / 0.12);
+  --danger: #f87171;
+  --danger-quiet: rgb(248 113 113 / 0.12);
+  /* Saved/wishlisted is its own signal: not an action, not an error. */
+  --saved: #fb7185;
+  --saved-quiet: rgb(251 113 133 / 0.14);
 }
 
 @theme inline {
@@ -42,6 +52,12 @@
   --color-rarity-rare: var(--rarity-rare);
   --color-rarity-epic: var(--rarity-epic);
   --color-rarity-legendary: var(--rarity-legendary);
+  --color-success: var(--success);
+  --color-success-quiet: var(--success-quiet);
+  --color-danger: var(--danger);
+  --color-danger-quiet: var(--danger-quiet);
+  --color-saved: var(--saved);
+  --color-saved-quiet: var(--saved-quiet);
   --font-display: var(--font-oxanium), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
@@ -156,6 +172,83 @@ h4,
   font-family: var(--font-display);
   letter-spacing: -0.02em;
   text-wrap: balance;
+}
+
+/* The booster pack and card back are branded objects rather than system
+   surfaces: their iridescence is deliberately multi-hue and does not belong to
+   the token palette. It lives here, in one place, so components stay literal
+   free and the look cannot drift across files. */
+.foil-pack {
+  background-image: linear-gradient(
+    to bottom,
+    #1e1b4b 0%,
+    var(--surface-1) 50%,
+    #3b0764 100%
+  );
+  border-color: rgb(129 140 248 / 0.4);
+}
+
+.foil-pack:hover {
+  border-color: rgb(165 180 252 / 0.9);
+}
+
+.foil-card-back {
+  background-image: linear-gradient(
+    to bottom right,
+    #1e1b4b 0%,
+    var(--surface-1) 50%,
+    #3b0764 100%
+  );
+  border-color: rgb(99 102 241 / 0.4);
+}
+
+.foil-card-back:hover {
+  border-color: rgb(129 140 248 / 0.9);
+}
+
+/* The moving sheen across the pack: cyan through magenta to amber. */
+.foil-sheen {
+  background-image: linear-gradient(
+    to top right,
+    rgb(6 182 212 / 0.2),
+    rgb(217 70 239 / 0.2),
+    rgb(245 158 11 / 0.2)
+  );
+}
+
+.foil-glow-cool {
+  background-color: rgb(129 140 248 / 0.3);
+}
+
+.group:hover .foil-glow-cool {
+  background-color: rgb(34 211 238 / 0.4);
+}
+
+.foil-glow-warm {
+  background-color: rgb(168 85 247 / 0.3);
+}
+
+.group:hover .foil-glow-warm {
+  background-color: rgb(232 121 249 / 0.4);
+}
+
+.foil-emblem {
+  background-image: linear-gradient(
+    to bottom right,
+    rgb(79 70 229 / 0.3),
+    rgb(147 51 234 / 0.3),
+    rgb(219 39 119 / 0.3)
+  );
+  border-color: rgb(129 140 248 / 0.6);
+}
+
+.foil-wordmark {
+  background-image: linear-gradient(
+    to right,
+    #93c5fd,
+    #c7d2fe,
+    #d8b4fe
+  );
 }
 
 .page-vignette {

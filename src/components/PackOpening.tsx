@@ -164,46 +164,46 @@ export default function PackOpening({
               onClick={openPack}
               disabled={isLoading}
               aria-label={isLoading ? "Opening booster pack" : "Open booster pack"}
-              className="group relative h-[420px] w-[290px] cursor-pointer rounded-3xl border-4 border-indigo-400/40 bg-gradient-to-b from-indigo-950 via-surface-1 to-purple-950 p-6 text-left shadow-2xl shadow-indigo-900/60 transition-all hover:border-indigo-300 hover:shadow-indigo-500/50 select-none overflow-hidden disabled:cursor-wait"
+              className="group relative h-[420px] w-[290px] cursor-pointer foil-pack rounded-3xl border-4 p-6 text-left shadow-2xl shadow-black/60 transition-all hover:shadow-accent/40 select-none overflow-hidden disabled:cursor-wait"
             >
               {/* Metallic Foil Sheen */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-fuchsia-500/20 to-amber-500/20 opacity-70 group-hover:opacity-100 transition-opacity" />
-              <div className="pointer-events-none absolute -top-24 -left-24 h-56 w-56 rounded-full bg-indigo-400/30 blur-2xl group-hover:bg-cyan-400/40 transition-colors" />
-              <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 rounded-full bg-purple-500/30 blur-2xl group-hover:bg-fuchsia-400/40 transition-colors" />
+              <div className="foil-sheen pointer-events-none absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+              <div className="pointer-events-none foil-glow-cool absolute -top-24 -left-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
+              <div className="pointer-events-none foil-glow-warm absolute -bottom-24 -right-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
 
               {/* Pack Top Crimped Edge */}
-              <div className="relative z-10 flex items-center justify-between border-b border-indigo-400/30 pb-3">
-                <span className="text-xs font-black tracking-widest text-indigo-300">
+              <div className="relative z-10 flex items-center justify-between border-b border-accent/30 pb-3">
+                <span className="text-xs font-black tracking-widest text-accent-hover">
                   TZDECK • BOOSTER
                 </span>
-                <span className="rounded-full bg-indigo-500/30 px-2 py-0.5 text-2xs font-bold tabular-nums text-indigo-200">
+                <span className="rounded-full bg-accent/25 px-2 py-0.5 text-2xs font-bold tabular-nums text-accent-hover">
                   5 CARDS
                 </span>
               </div>
 
               {/* Pack Center Artwork */}
               <div className="relative z-10 my-8 flex flex-col items-center justify-center">
-                <div className="relative flex h-28 w-28 items-center justify-center rounded-2xl border-2 border-indigo-400/60 bg-gradient-to-br from-indigo-600/30 via-purple-600/30 to-pink-600/30 shadow-xl backdrop-blur-md">
+                <div className="relative flex h-28 w-28 items-center justify-center foil-emblem rounded-2xl border-2 shadow-xl backdrop-blur-md">
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-                    className="absolute inset-1 rounded-xl border border-dashed border-indigo-300/40"
+                    className="absolute inset-1 rounded-xl border border-dashed border-accent/40"
                   />
-                  <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-indigo-200 to-purple-300">
+                  <span className="foil-wordmark text-5xl font-black text-transparent bg-clip-text">
                     ꜩ
                   </span>
                 </div>
                 <h2 className="mt-4 text-2xl font-extrabold tracking-wider text-text-primary">
                   OBJKT PACK
                 </h2>
-                <p className="text-xs text-indigo-200/80 font-medium">
+                <p className="text-xs text-text-secondary font-medium">
                   Random Active Marketplace Pulls
                 </p>
               </div>
 
               {/* Pack Bottom Footer */}
-              <div className="relative z-10 border-t border-indigo-400/30 pt-3">
-                <div className="rounded-xl bg-indigo-600/40 py-2 text-center text-xs font-bold text-text-primary border border-indigo-400/50 shadow-md group-hover:bg-indigo-500 transition-colors">
+              <div className="relative z-10 border-t border-accent/30 pt-3">
+                <div className="rounded-xl bg-accent/40 py-2 text-center text-xs font-bold text-text-primary border border-accent/50 shadow-md group-hover:bg-accent transition-colors">
                   {isLoading ? "Opening..." : "Click to Rip Open"}
                 </div>
               </div>
@@ -211,7 +211,7 @@ export default function PackOpening({
 
             {/* Error prompt */}
             {error && (
-              <div className="mt-4 rounded-xl bg-red-950/80 border border-red-500/50 px-4 py-2 text-sm text-red-300 max-w-md">
+              <div className="mt-4 rounded-xl bg-danger-quiet border border-danger/50 px-4 py-2 text-sm text-danger max-w-md">
                 {error}
               </div>
             )}
@@ -248,7 +248,7 @@ export default function PackOpening({
             <motion.div
               animate={{ rotate: [0, -10, 10, -5, 5, 0], scale: [1, 1.15, 1] }}
               transition={{ duration: 0.6 }}
-              className="flex items-center gap-4 text-7xl font-black text-indigo-400"
+              className="flex items-center gap-4 text-7xl font-black text-accent-hover"
             >
               <SparklesIcon className="h-10 w-10" />
               <span>ꜩ</span>
@@ -274,7 +274,7 @@ export default function PackOpening({
                 <h2 className="text-xl font-bold text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>Booster Pack Pulls</span>
                   {packState === "complete" && (
-                    <span className="whitespace-nowrap text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/50">
+                    <span className="whitespace-nowrap text-xs px-2.5 py-0.5 rounded-full bg-surface-2 text-text-secondary border border-border-default">
                       Pack Complete!
                     </span>
                   )}
