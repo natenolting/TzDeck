@@ -164,6 +164,7 @@ export default function Home() {
                   key={address}
                   onWishlistToggle={handleWishlistToggle}
                   wishlistIds={wishlistIds}
+                  onBrowsePacks={() => setActiveTab("packs")}
                 />
               ) : (
                 <div className="rounded-3xl border border-border-default bg-surface-1/80 p-12 text-center max-w-lg mx-auto my-12 backdrop-blur-md">
@@ -189,6 +190,7 @@ export default function Home() {
               wishlist={wishlist}
               onWishlistToggle={handleWishlistToggle}
               onClearWishlist={handleClearWishlist}
+              onBrowsePacks={() => setActiveTab("packs")}
             />
           )}
 

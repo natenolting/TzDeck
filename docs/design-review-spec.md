@@ -549,7 +549,7 @@ flowchart TD
   - [x] DR-11 — Raise hit areas to ≥40px; add `aria-label` / `aria-pressed` to SoundToggle.
 - [ ] **Phase 5: Layout, States & Polish**
   - [x] DR-12 — Mobile tab bar: hide scrollbar, edge mask, no-wrap labels, gutter alignment, header alignment.
-  - [ ] DR-13 — Empty-state actions in `WishlistGrid` and `DeckGrid`.
+  - [x] DR-13 — Empty-state actions in `WishlistGrid` and `DeckGrid`.
   - [ ] DR-14 — Deduplicate pack cards by token, cheapest listing wins.
   - [ ] DR-15 — Constrain About prose to 68ch; retitle the callout.
   - [ ] DR-16 — Remove card-back double branding and the reveal-chip pulse.

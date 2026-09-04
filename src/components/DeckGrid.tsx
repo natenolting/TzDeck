@@ -9,6 +9,7 @@ import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
 interface DeckGridProps {
   onWishlistToggle?: (card: NFTCardType) => void;
   wishlistIds?: Set<string>;
+  onBrowsePacks: () => void;
 }
 
 type SortBy = "latest" | "name" | "editions";
@@ -55,7 +56,11 @@ async function requestDeck(address: string, signal: AbortSignal): Promise<NFTCar
   return data.tokens || [];
 }
 
-export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: DeckGridProps) {
+export default function DeckGrid({
+  onWishlistToggle,
+  wishlistIds = new Set(),
+  onBrowsePacks,
+}: DeckGridProps) {
   const { address } = useWallet();
   const [tokens, setTokens] = useState<NFTCardType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,6 +167,13 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
         <p className="mt-2 text-sm text-text-secondary">
           Your wallet doesn’t have any OBJKT NFTs yet. Open booster packs in TzDeck to discover and collect new art pieces!
         </p>
+        <button
+          type="button"
+          onClick={onBrowsePacks}
+          className="button-primary mt-6 px-4 py-2.5 text-xs font-semibold"
+        >
+          Browse Booster Packs
+        </button>
       </div>
     );
   }
