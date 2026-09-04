@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calculateRarity,
+  calculateSupplyRarity,
   convertIpfsUrl,
   extractIpfsHash,
   fetchRandomPack,
@@ -11,8 +13,46 @@ import {
   getCardImageSources,
   normalizeObjktToken,
   objktClient,
+  RARITY_LEGEND,
+  RARITY_THRESHOLDS,
   shuffleArray,
 } from "./objkt";
+
+test("rarity legend matches calculateRarity boundaries", () => {
+  assert.deepEqual(
+    RARITY_LEGEND.map(({ tier, rule }) => [tier, rule]),
+    [
+      ["legendary", `1 of 1 and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
+      ["epic", `≤${RARITY_THRESHOLDS.epicEditions} editions and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
+      ["rare", `≤${RARITY_THRESHOLDS.rareEditions} editions or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`],
+      ["uncommon", `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`],
+      ["common", `>${RARITY_THRESHOLDS.uncommonEditions} editions and under ${RARITY_THRESHOLDS.uncommonPrice}ꜩ`],
+    ],
+  );
+
+  assert.equal(calculateRarity(1, RARITY_THRESHOLDS.topTierPrice), "legendary");
+  assert.equal(calculateRarity(1, RARITY_THRESHOLDS.topTierPrice - 0.001), "epic");
+  assert.equal(
+    calculateRarity(RARITY_THRESHOLDS.epicEditions, RARITY_THRESHOLDS.scarceTierPrice),
+    "epic",
+  );
+  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.topTierPrice), "epic");
+  assert.equal(calculateRarity(RARITY_THRESHOLDS.rareEditions, 0), "rare");
+  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.rarePrice), "rare");
+  assert.equal(calculateRarity(RARITY_THRESHOLDS.uncommonEditions, 0), "uncommon");
+  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.uncommonPrice), "uncommon");
+  assert.equal(
+    calculateRarity(RARITY_THRESHOLDS.uncommonEditions + 1, 0),
+    "common",
+  );
+});
+
+test("calculateSupplyRarity grades wallet holdings without listing prices", () => {
+  assert.equal(calculateSupplyRarity(1), "rare");
+  assert.equal(calculateSupplyRarity(25), "uncommon");
+  assert.equal(calculateSupplyRarity(26), "common");
+  assert.equal(calculateSupplyRarity(undefined), "common");
+});
 
 test("formatShortAddress creates the shared compact wallet label", () => {
   assert.equal(
@@ -58,7 +98,7 @@ test("normalizeObjktToken maps shared OBJKT metadata and listing options", () =>
   assert.equal(card.artist_alias, "tz1abc...3456");
   assert.equal(card.collection_name, "Example Collection");
   assert.equal(card.price_xtz, 25);
-  assert.equal(card.rarity, "epic");
+  assert.equal(card.rarity, "uncommon");
   assert.equal(card.quantity_owned, 2);
 });
 

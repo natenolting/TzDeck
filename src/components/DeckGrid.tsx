@@ -189,6 +189,10 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
         </div>
       </div>
 
+      <p className="text-xs text-text-tertiary">
+        Deck rarity is graded by edition size alone because wallet holdings do not include listing prices.
+      </p>
+
       {/* Filter and Search Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
         {/* Search Input */}

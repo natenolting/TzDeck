@@ -265,7 +265,9 @@ flowchart TD
   }
   ```
 
-  **These thresholds are a starting point, not a finding.** They must be calibrated against real data before merge — see TEST-05. Target distribution over a sample of active listings: Legendary ≤ 3%, Epic ≤ 10%, Rare ≤ 25%, remainder Uncommon/Common. Tune the two price constants (25 and 5) to hit it; leave the edition ladder fixed.
+  **These thresholds are a starting point, not a finding.** They must be calibrated against real data before merge — see TEST-05. Target distribution over a sample of active listings: Legendary ≤ 3%, Epic ≤ 10%, Rare ≤ 25%, remainder Uncommon/Common.
+
+  Calibration found that the starting ladder made the target mathematically impossible: 430 of 500 sampled listings met the fixed Rare-or-better rule, while the three target caps permit at most 190. With approval, the full listing ladder was therefore calibrated while retaining the intended top-tier `AND` and lower-tier `OR` logic. The measured thresholds are 500ꜩ for Legendary; ≤5 editions plus 180ꜩ, or 500ꜩ at any supply, for Epic; 1 edition or 110ꜩ for Rare; and ≤25 editions or 5ꜩ for Uncommon. The observed distribution was 1.6% Legendary, 4.8% Epic, 24.0% Rare, 55.6% Uncommon, and 14.0% Common.
 
   **Deck view (no price data):** `objkt.ts:303` calls `calculateRarity(editions)` with price undefined, so wallet holdings would now floor at Rare. Add an explicit supply-only ladder rather than letting the price-aware function degrade:
 
@@ -534,10 +536,10 @@ flowchart TD
   - [x] DR-01 — Choose display face; wire `next/font`; delete Arial and dangling Geist vars; apply type scale; `tabular-nums` on all numerals.
   - [x] DR-02 — Add surface / border / text-ramp / accent / rarity tokens; migrate components off raw Tailwind grays; collapse the double rule; resolve the ambient glows.
   - [x] DR-03 — Single `:focus-visible` ring; audit and remove orphan `focus:outline-none`.
-- [ ] **Phase 2: Content Integrity**
-  - [ ] DR-04 — Replace odds table with rarity legend; add parity test (TEST-06).
-  - [ ] DR-05 — Re-tier `calculateRarity`; add `calculateSupplyRarity` for deck view; **calibrate against TEST-05 before merge**; add deck-view grading note.
-  - [ ] DR-06 — Heart everywhere; retire the star.
+- [x] **Phase 2: Content Integrity**
+  - [x] DR-04 — Replace odds table with rarity legend; add parity test (TEST-06).
+  - [x] DR-05 — Re-tier `calculateRarity`; add `calculateSupplyRarity` for deck view; **calibrate against TEST-05 before merge**; add deck-view grading note.
+  - [x] DR-06 — Heart everywhere; retire the star.
 - [ ] **Phase 3: Card Craft & Hierarchy**
   - [ ] DR-07 — Delete `foilGradient` and the `inset-0` overlay; rebuild `RARITY_CONFIG` as ring / glow / badge; keep the hover sheen.
   - [ ] DR-08 — Delete the Outstanding Pull banner; move emphasis onto the card.

@@ -3,6 +3,7 @@
 import React from "react";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
+import { HeartIcon } from "./icons";
 
 interface WishlistGridProps {
   wishlist: NFTCardType[];
@@ -18,7 +19,10 @@ export default function WishlistGrid({
   if (wishlist.length === 0) {
     return (
       <div className="rounded-3xl border border-border-default bg-surface-1/80 p-12 text-center max-w-xl mx-auto my-12 backdrop-blur-md">
-        <span className="text-4xl">⭐</span>
+        <HeartIcon
+          filled
+          className="mx-auto h-10 w-10 text-accent-hover"
+        />
         <h3 className="mt-3 text-lg font-bold text-text-primary">Your Wishlist is Empty</h3>
         <p className="mt-2 text-sm text-text-secondary">
           When opening booster packs, click the heart icon on any card to save it to your wishlist and collect it on OBJKT later!
