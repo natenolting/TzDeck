@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter, Oxanium } from "next/font/google";
 import { WalletProvider } from "@/context/WalletContext";
+import { Analytics } from "@vercel/analytics/next";
 
 // Oxanium is the brand face and carries the titles. Both are variable fonts,
 // so the weight axis loads whole rather than pinned -- pinning one weight left
@@ -42,6 +43,7 @@ export default function RootLayout({
     <html lang="en" className={`${displayFont.variable} ${textFont.variable}`}>
       <body>
         <WalletProvider>{children}</WalletProvider>
+        <Analytics />
       </body>
     </html>
   );
