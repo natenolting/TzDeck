@@ -537,7 +537,7 @@ flowchart TD
 - [ ] **Phase 2: Content Integrity**
   - [x] DR-04 — Replace odds table with rarity legend; add parity test (TEST-06).
   - [ ] DR-05 — Re-tier `calculateRarity`; add `calculateSupplyRarity` for deck view; **calibrate against TEST-05 before merge**; add deck-view grading note.
-  - [ ] DR-06 — Heart everywhere; retire the star.
+  - [x] DR-06 — Heart everywhere; retire the star.
 - [ ] **Phase 3: Card Craft & Hierarchy**
   - [ ] DR-07 — Delete `foilGradient` and the `inset-0` overlay; rebuild `RARITY_CONFIG` as ring / glow / badge; keep the hover sheen.
   - [ ] DR-08 — Delete the Outstanding Pull banner; move emphasis onto the card.

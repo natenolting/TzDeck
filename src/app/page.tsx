@@ -11,6 +11,7 @@ import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { HeartIcon } from "@/components/icons";
 
 type ActiveTab = "packs" | "deck" | "wishlist" | "about";
 
@@ -111,7 +112,7 @@ export default function Home() {
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
-            <span>⭐</span>
+            <HeartIcon filled />
             <span>Wishlist</span>
             {wishlist.length > 0 && (
               <span className="rounded-full bg-accent/40 px-1.5 py-0.2 text-2xs font-bold tabular-nums text-accent-hover">
