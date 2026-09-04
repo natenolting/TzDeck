@@ -517,7 +517,7 @@ flowchart TD
 | **TEST-01** | Regression | `npm test` | Existing suite passes. `NFTCard.test.tsx` and `PackOpening.test.tsx` updated for removed emoji and banner. |
 | **TEST-02** | Type safety | `npx tsc --noEmit` | Zero errors. |
 | **TEST-03** | Lint | `npm run lint` | Zero warnings. |
-| **TEST-04** | Build | `npm run build -- --webpack` | Succeeds. Font subset adds < 60KB to first load. |
+| **TEST-04** | Build | `npm run build` | Succeeds. Font subset adds < 60KB to first load. This is the command the host runs, so the build is verified on the same path production takes. |
 | **TEST-05** | **Rarity calibration** | Node script: fetch 500 active listings, run `calculateRarity`, print tier distribution | Legendary ≤ 3%, Epic ≤ 10%, Rare ≤ 25%. **Blocks DR-05 merge.** |
 | **TEST-06** | Legend/code parity | Unit test | Every rule string in `RARITY_LEGEND` asserts against the real `calculateRarity` boundary values. Drift fails the build. |
 | **TEST-07** | Pack uniqueness | Unit test on `fetchRandomPack` with a fixture containing duplicate-token listings | Returned cards have unique `getCardKey`; cheapest listing retained. |

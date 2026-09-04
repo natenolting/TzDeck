@@ -58,8 +58,9 @@ NEXT_PUBLIC_TEZOS_RPC_URL=https://mainnet.api.tez.ie
 npm test                 # Run the automated test suite
 npm run lint             # Check the code with ESLint
 npm run calibrate:rarity # Verify rarity tiers against 500 live listings
+npm run check:diversity  # Verify packs draw from several artists
 npx tsc --noEmit         # Type-check without emitting files
-npm run build -- --webpack
+npm run build            # Production build
 ```
 
 ## Built with
