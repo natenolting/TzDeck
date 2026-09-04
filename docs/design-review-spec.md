@@ -547,12 +547,12 @@ flowchart TD
 - [x] **Phase 4: Icon System & Controls**
   - [x] DR-10 — Build `src/components/icons.tsx`; replace every emoji and every inlined SVG.
   - [x] DR-11 — Raise hit areas to ≥40px; add `aria-label` / `aria-pressed` to SoundToggle.
-- [ ] **Phase 5: Layout, States & Polish**
+- [x] **Phase 5: Layout, States & Polish**
   - [x] DR-12 — Mobile tab bar: hide scrollbar, edge mask, no-wrap labels, gutter alignment, header alignment.
   - [x] DR-13 — Empty-state actions in `WishlistGrid` and `DeckGrid`.
   - [x] DR-14 — Deduplicate pack cards by token, cheapest listing wins.
   - [x] DR-15 — Constrain About prose to 68ch; retitle the callout.
-  - [ ] DR-16 — Remove card-back double branding and the reveal-chip pulse.
+  - [x] DR-16 — Remove card-back double branding and the reveal-chip pulse.
 - [ ] **Sign-off**
   - [ ] Full verification matrix green.
   - [ ] Re-run the design review against the approval bar in `interface-design:design-review`.

@@ -132,10 +132,7 @@ export default function NFTCard({
         className={`relative aspect-[5/7] w-full cursor-pointer rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-indigo-950 via-surface-1 to-purple-950 p-4 shadow-xl shadow-indigo-950/50 transition-all hover:border-indigo-400 select-none ${className}`}
       >
         <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-indigo-400/20 bg-surface-0/40 p-4 backdrop-blur-sm">
-          {/* Card Back Top Logo */}
-          <div className="flex items-center gap-1.5 text-xs font-semibold tracking-widest text-indigo-300">
-            <span className="text-sm">ꜩ</span> TZDECK
-          </div>
+          <div aria-hidden="true" className="h-px w-full bg-border-subtle" />
 
           {/* Card Back Center Emblem */}
           <div className="relative flex h-28 w-24 items-center justify-center">
@@ -151,7 +148,7 @@ export default function NFTCard({
 
           {/* Card Back Prompt */}
           <div className="text-center">
-            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-2xs font-medium text-indigo-200 border border-indigo-400/30 animate-pulse">
+            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-2xs font-medium text-indigo-200 border border-indigo-400/30">
               Click to Reveal
             </span>
           </div>
