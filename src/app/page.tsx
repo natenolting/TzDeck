@@ -85,7 +85,7 @@ export default function Home() {
         <nav className="my-6 flex items-center justify-center gap-2 pb-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab("packs")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "packs"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
@@ -97,7 +97,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("deck")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "deck"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
@@ -112,7 +112,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("wishlist")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "wishlist"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
@@ -129,7 +129,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("about")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "about"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"

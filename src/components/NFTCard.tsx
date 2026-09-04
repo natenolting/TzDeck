@@ -204,7 +204,7 @@ export default function NFTCard({
                 onToggleWishlist(card);
               }}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              className={`rounded-full p-1.5 transition-colors ${
+              className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
                 isWishlisted
                   ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
                   : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-primary"
@@ -212,7 +212,7 @@ export default function NFTCard({
             >
               <HeartIcon
                 filled={isWishlisted}
-                className="h-3.5 w-3.5"
+                className="h-4 w-4"
               />
             </button>
           )}

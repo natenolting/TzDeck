@@ -16,7 +16,9 @@ export default function SoundToggle() {
     <button
       onClick={handleToggle}
       title={isMuted ? "Unmute sound effects" : "Mute sound effects"}
-      className="flex items-center justify-center rounded-xl border border-border-default bg-surface-2 p-2 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary transition-colors"
+      aria-label={isMuted ? "Unmute sound effects" : "Mute sound effects"}
+      aria-pressed={!isMuted}
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-default bg-surface-2 text-xs text-text-secondary hover:border-border-strong hover:text-text-primary transition-colors"
     >
       {isMuted ? (
         <SoundOffIcon />

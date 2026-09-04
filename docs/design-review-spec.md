@@ -544,9 +544,9 @@ flowchart TD
   - [x] DR-07 — Delete `foilGradient` and the `inset-0` overlay; rebuild `RARITY_CONFIG` as ring / glow / badge; keep the hover sheen.
   - [x] DR-08 — Delete the Outstanding Pull banner; move emphasis onto the card.
   - [x] DR-09 — Define Primary / Secondary / Quiet; retire the gradient; re-role every button; demote header Connect in the Deck empty state.
-- [ ] **Phase 4: Icon System & Controls**
+- [x] **Phase 4: Icon System & Controls**
   - [x] DR-10 — Build `src/components/icons.tsx`; replace every emoji and every inlined SVG.
-  - [ ] DR-11 — Raise hit areas to ≥40px; add `aria-label` / `aria-pressed` to SoundToggle.
+  - [x] DR-11 — Raise hit areas to ≥40px; add `aria-label` / `aria-pressed` to SoundToggle.
 - [ ] **Phase 5: Layout, States & Polish**
   - [ ] DR-12 — Mobile tab bar: hide scrollbar, edge mask, no-wrap labels, gutter alignment, header alignment.
   - [ ] DR-13 — Empty-state actions in `WishlistGrid` and `DeckGrid`.

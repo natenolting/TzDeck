@@ -239,7 +239,8 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <button
             onClick={reloadDeck}
             title="Refresh Deck"
-            className="button-secondary p-2"
+            aria-label="Refresh deck"
+            className="button-secondary h-10 w-10"
           >
             <RefreshIcon />
           </button>
