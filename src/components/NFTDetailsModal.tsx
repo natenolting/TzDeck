@@ -91,7 +91,7 @@ export default function NFTDetailsModal({
           type="button"
           onClick={onClose}
           aria-label="Close token details"
-          className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-border-strong bg-black/60 text-xl text-text-primary backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-border-strong bg-black/60 text-xl text-text-primary backdrop-blur-md transition hover:bg-black/80"
         >
           <span aria-hidden="true">×</span>
         </button>

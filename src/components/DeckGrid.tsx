@@ -198,7 +198,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
             placeholder="Search deck by title, artist..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-border-default bg-surface-2 px-3.5 py-2 pl-9 text-xs text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+            className="w-full rounded-xl border border-border-default bg-surface-2 px-3.5 py-2 pl-9 text-xs text-text-primary placeholder:text-text-muted focus:border-accent"
           />
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -220,7 +220,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <select
             value={rarityFilter}
             onChange={(e) => setRarityFilter(e.target.value)}
-            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
+            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent"
           >
             <option value="all">All Rarities</option>
             <option value="legendary">Legendary</option>
@@ -234,7 +234,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent focus:outline-none"
+            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent"
           >
             <option value="latest">Latest Acquired</option>
             <option value="name">Name (A-Z)</option>

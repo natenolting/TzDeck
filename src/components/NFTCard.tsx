@@ -245,7 +245,7 @@ export default function NFTCard({
             aria-label={`View details for ${card.name}`}
             disabled={!imageLoaded}
             onClick={() => setIsDetailsOpen(true)}
-            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 disabled:cursor-default"
+            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
           >
             {!imageLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80 animate-pulse">
