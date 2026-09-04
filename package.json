@@ -12,7 +12,7 @@
     "check:diversity": "tsx scripts/check-pack-diversity.ts"
   },
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   },
   "dependencies": {
     "@airgap/beacon-sdk": "^4.8.1",
