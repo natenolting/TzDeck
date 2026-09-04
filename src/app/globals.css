@@ -163,3 +163,30 @@ h4,
     transparent 52%
   );
 }
+
+.tab-scroller {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.tab-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+@media (width < 420px) {
+  .tab-label {
+    display: none;
+  }
+}

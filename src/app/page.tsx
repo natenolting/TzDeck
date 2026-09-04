@@ -49,7 +49,7 @@ export default function Home() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* ================= HEADER NAVBAR ================= */}
-        <header className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-border-subtle pb-6">
+        <header className="flex flex-col items-start justify-between gap-4 border-b border-border-subtle pb-6 md:flex-row md:items-center">
           <div className="flex items-center gap-3">
             {/* Logo Emblem */}
             <Image
@@ -82,9 +82,11 @@ export default function Home() {
         </header>
 
         {/* ================= TABS NAVIGATION ================= */}
-        <nav className="my-6 flex items-center justify-center gap-2 pb-4 overflow-x-auto">
+        <nav className="tab-scroller -mx-4 my-6 flex items-center justify-start gap-2 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:justify-center sm:px-6 lg:-mx-8 lg:px-8">
           <button
             onClick={() => setActiveTab("packs")}
+            aria-label="Booster Packs"
+            aria-pressed={activeTab === "packs"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "packs"
                 ? "tab-button-active"
@@ -92,11 +94,13 @@ export default function Home() {
             }`}
           >
             <CardsIcon />
-            <span>Booster Packs</span>
+            <span className="tab-label">Booster Packs</span>
           </button>
 
           <button
             onClick={() => setActiveTab("deck")}
+            aria-label="My Deck"
+            aria-pressed={activeTab === "deck"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "deck"
                 ? "tab-button-active"
@@ -104,7 +108,7 @@ export default function Home() {
             }`}
           >
             <DeckIcon />
-            <span>My Deck</span>
+            <span className="tab-label">My Deck</span>
             {address && (
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             )}
@@ -112,6 +116,8 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("wishlist")}
+            aria-label="Wishlist"
+            aria-pressed={activeTab === "wishlist"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "wishlist"
                 ? "tab-button-active"
@@ -119,7 +125,7 @@ export default function Home() {
             }`}
           >
             <HeartIcon filled />
-            <span>Wishlist</span>
+            <span className="tab-label">Wishlist</span>
             {wishlist.length > 0 && (
               <span className="rounded-full bg-accent/40 px-1.5 py-0.2 text-2xs font-bold tabular-nums text-accent-hover">
                 {wishlist.length}
@@ -129,6 +135,8 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("about")}
+            aria-label="About"
+            aria-pressed={activeTab === "about"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "about"
                 ? "tab-button-active"
@@ -136,7 +144,7 @@ export default function Home() {
             }`}
           >
             <InfoIcon />
-            <span>About</span>
+            <span className="tab-label">About</span>
           </button>
         </nav>
 
