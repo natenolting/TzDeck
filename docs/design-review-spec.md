@@ -551,7 +551,7 @@ flowchart TD
   - [x] DR-12 — Mobile tab bar: hide scrollbar, edge mask, no-wrap labels, gutter alignment, header alignment.
   - [x] DR-13 — Empty-state actions in `WishlistGrid` and `DeckGrid`.
   - [x] DR-14 — Deduplicate pack cards by token, cheapest listing wins.
-  - [ ] DR-15 — Constrain About prose to 68ch; retitle the callout.
+  - [x] DR-15 — Constrain About prose to 68ch; retitle the callout.
   - [ ] DR-16 — Remove card-back double branding and the reveal-chip pulse.
 - [ ] **Sign-off**
   - [ ] Full verification matrix green.

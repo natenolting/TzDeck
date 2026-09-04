@@ -210,7 +210,7 @@ export default function Home() {
               </div>
 
               <div className="space-y-4 text-sm text-text-secondary leading-relaxed border-t border-border-subtle pt-6">
-                <p>
+                <p className="max-w-[68ch]">
                   <strong className="text-text-primary">TzDeck</strong> is inspired by gacha card simulators like <a href="https://wikigacha.com" target="_blank" rel="noopener noreferrer" className="text-accent-hover underline hover:text-text-primary">wikigacha.com</a>. It transforms the vast Tezos art ecosystem on OBJKT into collectible virtual booster packs.
                 </p>
 
@@ -242,9 +242,9 @@ export default function Home() {
 
                 <div className="rounded-2xl border border-accent/20 bg-accent-quiet p-4 mt-4">
                   <h4 className="font-bold text-accent-hover text-xs uppercase tracking-wider">
-                    How Purchases Work
+                    How collecting works
                   </h4>
-                  <p className="text-xs text-text-secondary mt-1">
+                  <p className="mt-1 max-w-[68ch] text-xs text-text-secondary">
                     TzDeck is purely a discovery layer. All NFT acquisitions happen safely and directly on official Tezos marketplace contracts via OBJKT.com.
                   </p>
                 </div>
