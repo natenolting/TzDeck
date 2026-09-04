@@ -27,52 +27,40 @@ const RARITY_CONFIG: Record<
   CardRarity,
   {
     label: string;
-    border: string;
-    badgeBg: string;
-    badgeText: string;
+    ring: string;
+    badge: string;
     glow: string;
-    foilGradient: string;
   }
 > = {
   common: {
     label: "Common",
-    border: "border-rarity-common/70 hover:border-rarity-common",
-    badgeBg: "bg-rarity-common/15 border-rarity-common/50",
-    badgeText: "text-rarity-common",
-    glow: "hover:shadow-rarity-common/20",
-    foilGradient: "from-rarity-common/10 via-transparent to-transparent",
+    ring: "ring-1 ring-rarity-common/60 hover:ring-rarity-common",
+    badge: "border-rarity-common/40 bg-rarity-common/15 text-rarity-common",
+    glow: "shadow-[0_0_24px_-10px_var(--rarity-common)] hover:shadow-[0_0_30px_-7px_var(--rarity-common)]",
   },
   uncommon: {
     label: "Uncommon",
-    border: "border-emerald-700/80 hover:border-emerald-500",
-    badgeBg: "bg-emerald-950/80 border-emerald-600",
-    badgeText: "text-emerald-300",
-    glow: "hover:shadow-emerald-500/25",
-    foilGradient: "from-emerald-400/15 via-transparent to-teal-400/15",
+    ring: "ring-1 ring-rarity-uncommon/60 hover:ring-rarity-uncommon",
+    badge: "border-rarity-uncommon/40 bg-rarity-uncommon/15 text-rarity-uncommon",
+    glow: "shadow-[0_0_24px_-10px_var(--rarity-uncommon)] hover:shadow-[0_0_30px_-7px_var(--rarity-uncommon)]",
   },
   rare: {
     label: "Rare",
-    border: "border-cyan-600 hover:border-cyan-400",
-    badgeBg: "bg-cyan-950/80 border-cyan-500",
-    badgeText: "text-cyan-300",
-    glow: "hover:shadow-cyan-500/30",
-    foilGradient: "from-cyan-400/20 via-blue-500/10 to-indigo-500/20",
+    ring: "ring-1 ring-rarity-rare/60 hover:ring-rarity-rare",
+    badge: "border-rarity-rare/40 bg-rarity-rare/15 text-rarity-rare",
+    glow: "shadow-[0_0_24px_-10px_var(--rarity-rare)] hover:shadow-[0_0_30px_-7px_var(--rarity-rare)]",
   },
   epic: {
     label: "Epic",
-    border: "border-purple-600 hover:border-purple-400",
-    badgeBg: "bg-purple-950/80 border-purple-500",
-    badgeText: "text-purple-300",
-    glow: "hover:shadow-purple-500/35",
-    foilGradient: "from-purple-400/25 via-fuchsia-500/15 to-pink-500/25",
+    ring: "ring-1 ring-rarity-epic/60 hover:ring-rarity-epic",
+    badge: "border-rarity-epic/40 bg-rarity-epic/15 text-rarity-epic",
+    glow: "shadow-[0_0_24px_-10px_var(--rarity-epic)] hover:shadow-[0_0_30px_-7px_var(--rarity-epic)]",
   },
   legendary: {
     label: "Legendary",
-    border: "border-amber-500 hover:border-amber-300 shadow-amber-500/20 shadow-lg",
-    badgeBg: "bg-amber-950/90 border-amber-400",
-    badgeText: "text-amber-200 font-bold",
-    glow: "hover:shadow-amber-500/50",
-    foilGradient: "from-amber-400/30 via-yellow-300/20 to-orange-500/30",
+    ring: "ring-1 ring-rarity-legendary/60 hover:ring-rarity-legendary",
+    badge: "border-rarity-legendary/40 bg-rarity-legendary/15 font-bold text-rarity-legendary",
+    glow: "shadow-[0_0_28px_-8px_var(--rarity-legendary)] hover:shadow-[0_0_34px_-5px_var(--rarity-legendary)]",
   },
 };
 
@@ -175,7 +163,7 @@ export default function NFTCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 bg-gradient-to-b from-surface-1 to-surface-0 p-3.5 shadow-lg backdrop-blur-md transition-all duration-300 ${config.border} ${config.glow} ${className}`}
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-b from-surface-1 to-surface-0 p-3.5 backdrop-blur-md transition-all duration-300 ${config.ring} ${config.glow} ${className}`}
     >
       {/* Holographic foil shine overlay on hover */}
       {isHovered && (
@@ -187,13 +175,10 @@ export default function NFTCard({
         />
       )}
 
-      {/* Rarity tint overlay */}
-      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-tr ${config.foilGradient}`} />
-
       {/* Top Header Row */}
       <div className="relative z-10 flex items-center justify-between gap-2 pb-2.5">
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-2xs font-semibold uppercase tracking-wider border ${config.badgeBg} ${config.badgeText}`}
+          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-2xs font-semibold uppercase tracking-wider ${config.badge}`}
         >
           {config.label}
         </span>
