@@ -288,7 +288,7 @@ flowchart TD
 * **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L119), [`src/components/WishlistGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/WishlistGrid.tsx#L22), [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L208-L235)
 * **Severity:** Should-fix
 * **Problem:** The nav tab shows a star, the empty state shows a star, the control on the card is a heart, and the empty-state copy reads "click the heart icon." Three surfaces, two metaphors, one instruction that points at the wrong one.
-* **Remediation:** Standardise on the **heart** — it is already the interactive control and it is the stronger "save this" signal against a star, which reads as rating. Replace both stars with the heart icon from DR-10 and leave the copy as written.
+* **Remediation:** Standardise on the **heart** — it is already the interactive control, and it is the stronger "save this" signal against a star, which reads as rating. Replace both stars with the heart icon from DR-10 and leave the copy as written.
 
 ---
 
@@ -522,7 +522,7 @@ flowchart TD
 | **TEST-06** | Legend/code parity | Unit test | Every rule string in `RARITY_LEGEND` asserts against the real `calculateRarity` boundary values. Drift fails the build. |
 | **TEST-07** | Pack uniqueness | Unit test on `fetchRandomPack` with a fixture containing duplicate-token listings | Returned cards have unique `getCardKey`; cheapest listing retained. |
 | **TEST-08** | Token discipline | `grep -rn "text-gray-\|border-gray-\|bg-gray-" src/` | Zero hits — all color flows through DR-02 tokens. |
-| **TEST-09** | No emoji in chrome | `grep -rnP "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]" src/` | Zero hits. ꜩ (U+A729) is not in range and is permitted. |
+| **TEST-09** | No emoji in chrome | `grep -rnP "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]" src/` | Zero hits. The ꜩ glyph (U+A729) is not in range and is permitted. |
 | **TEST-10** | Hit areas | Playwright: measure every `button` / `a[href]` bounding box, **excluding links inline in a sentence** (`el.closest('p')`) | All ≥ 40px on the shorter axis. Inline prose links are exempt per WCAG 2.5.8; forcing a 40px line box mid-paragraph breaks leading. |
 | **TEST-11** | Focus visibility | Playwright: Tab through each tab stop, assert computed `outline-style !== "none"` and outline color is `--accent-hover` | No element falls back to the UA default ring. |
 | **TEST-12** | Mobile tab bar | Screenshot at 390×844 | No visible scrollbar; no wrapped pill labels; equal pill heights; row aligned to content gutter. |
