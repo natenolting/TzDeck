@@ -145,7 +145,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
         <p className="text-red-300 font-medium mb-4">{error}</p>
         <button
           onClick={reloadDeck}
-          className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-text-primary hover:bg-red-500 transition-colors"
+          className="button-primary px-4 py-2 text-xs font-semibold"
         >
           Try Again
         </button>
@@ -249,7 +249,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <button
             onClick={reloadDeck}
             title="Refresh Deck"
-            className="rounded-xl border border-border-default bg-surface-2 p-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors"
+            className="button-secondary p-2"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

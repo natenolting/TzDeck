@@ -181,7 +181,7 @@ export default function NFTDetailsModal({
               href={card.objkt_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-bold text-text-primary transition hover:from-blue-500 hover:to-indigo-500"
+              className="button-primary flex-1 px-4 py-3 text-sm font-bold"
             >
               Collect on OBJKT
             </a>

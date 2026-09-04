@@ -306,7 +306,7 @@ export default function NFTCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-xs font-semibold text-text-primary shadow-md shadow-indigo-900/30 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-98"
+            className="button-quiet w-full gap-1.5 px-3 py-2 text-xs font-semibold"
           >
             <span>Collect on OBJKT</span>
             <svg

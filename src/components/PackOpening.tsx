@@ -283,7 +283,7 @@ export default function PackOpening({
                 {packState === "revealing" && (
                   <button
                     onClick={handleRevealAll}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-text-primary hover:bg-indigo-500 transition-colors shadow"
+                    className="button-secondary px-4 py-2 text-xs font-semibold"
                   >
                     Reveal All
                   </button>
@@ -291,7 +291,7 @@ export default function PackOpening({
 
                 <button
                   onClick={handleReset}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-text-primary hover:from-blue-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-950/50"
+                  className="button-primary px-4 py-2 text-xs font-semibold"
                 >
                   Open Another Pack
                 </button>

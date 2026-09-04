@@ -71,7 +71,7 @@ export default function Home() {
           {/* Right Navigation & Wallet */}
           <div className="flex items-center gap-3">
             <SoundToggle />
-            <ConnectButton />
+            <ConnectButton variant="quiet" />
           </div>
         </header>
 
@@ -79,9 +79,9 @@ export default function Home() {
         <nav className="my-6 flex items-center justify-center gap-2 pb-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab("packs")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
               activeTab === "packs"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
@@ -91,9 +91,9 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("deck")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
               activeTab === "deck"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
@@ -106,9 +106,9 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("wishlist")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
               activeTab === "wishlist"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
@@ -123,9 +123,9 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("about")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
               activeTab === "about"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-text-primary shadow-md shadow-indigo-950"
+                ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >

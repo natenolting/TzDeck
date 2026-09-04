@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { formatShortAddress } from "@/lib/objkt";
 
-export default function ConnectButton() {
+interface ConnectButtonProps {
+  variant?: "primary" | "quiet";
+}
+
+export default function ConnectButton({ variant = "primary" }: ConnectButtonProps) {
   const { address, connect, disconnect } = useWallet();
   const [copied, setCopied] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -70,7 +74,7 @@ export default function ConnectButton() {
     <button
       onClick={handleConnect}
       disabled={isConnecting}
-      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-2 text-xs font-bold text-text-primary shadow-lg shadow-indigo-900/40 transition-all hover:from-blue-500 hover:to-purple-500 active:scale-98 disabled:opacity-50"
+      className={`${variant === "primary" ? "button-primary" : "button-quiet"} gap-2 px-4 py-2 text-xs font-bold`}
     >
       <span>ꜩ</span>
       <span>{isConnecting ? "Connecting..." : "Connect Tezos Wallet"}</span>
