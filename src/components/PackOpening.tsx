@@ -189,7 +189,10 @@ export default function PackOpening({
                     transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
                     className="absolute inset-1 rounded-xl border border-dashed border-accent/40"
                   />
-                  <span className="foil-wordmark text-5xl font-black text-transparent bg-clip-text">
+                  {/* bg-clip-text paints the gradient only inside the box, and the tz
+                      descender outruns a line-height of 1, so the tail loses its
+                      fill. leading-snug buys the glyph room to sit in. */}
+                  <span className="foil-wordmark text-5xl leading-snug font-black text-transparent bg-clip-text">
                     ꜩ
                   </span>
                 </div>
