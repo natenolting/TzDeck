@@ -1,6 +1,19 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { WalletProvider } from "@/context/WalletContext";
+
+const displayFont = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  weight: ["500", "700"],
+});
+
+const textFont = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: "400",
+});
 
 export const metadata: Metadata = {
   title: "TzDeck",
@@ -25,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${displayFont.variable} ${textFont.variable}`}>
       <body>
         <WalletProvider>{children}</WalletProvider>
       </body>

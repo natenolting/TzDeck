@@ -17,10 +17,10 @@ export default function WishlistGrid({
 }: WishlistGridProps) {
   if (wishlist.length === 0) {
     return (
-      <div className="rounded-3xl border border-gray-800 bg-gray-900/40 p-12 text-center max-w-xl mx-auto my-12 backdrop-blur-md">
+      <div className="rounded-3xl border border-border-default bg-surface-1/80 p-12 text-center max-w-xl mx-auto my-12 backdrop-blur-md">
         <span className="text-4xl">⭐</span>
-        <h3 className="mt-3 text-lg font-bold text-white">Your Wishlist is Empty</h3>
-        <p className="mt-2 text-sm text-gray-400">
+        <h3 className="mt-3 text-lg font-bold text-text-primary">Your Wishlist is Empty</h3>
+        <p className="mt-2 text-sm text-text-secondary">
           When opening booster packs, click the heart icon on any card to save it to your wishlist and collect it on OBJKT later!
         </p>
       </div>
@@ -31,10 +31,10 @@ export default function WishlistGrid({
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex items-center justify-between rounded-2xl border border-gray-800/80 bg-gray-900/60 p-4 backdrop-blur-md">
+      <div className="flex items-center justify-between rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
         <div>
-          <h2 className="text-xl font-bold text-white">Saved Wishlist ({wishlist.length})</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <h2 className="text-xl font-bold tabular-nums text-text-primary">Saved Wishlist ({wishlist.length})</h2>
+          <p className="text-xs text-text-secondary mt-0.5 tabular-nums">
             Total listed value: {totalValue.toFixed(2)} XTZ
           </p>
         </div>

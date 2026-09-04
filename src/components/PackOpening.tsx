@@ -148,7 +148,7 @@ export default function PackOpening({
               whileHover={{ scale: 1.05, rotateY: 5, y: -8 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
               onClick={openPack}
-              className="group relative h-[420px] w-[290px] cursor-pointer rounded-3xl border-4 border-indigo-400/40 bg-gradient-to-b from-indigo-950 via-slate-900 to-purple-950 p-6 shadow-2xl shadow-indigo-900/60 transition-all hover:border-indigo-300 hover:shadow-indigo-500/50 select-none overflow-hidden"
+              className="group relative h-[420px] w-[290px] cursor-pointer rounded-3xl border-4 border-indigo-400/40 bg-gradient-to-b from-indigo-950 via-surface-1 to-purple-950 p-6 shadow-2xl shadow-indigo-900/60 transition-all hover:border-indigo-300 hover:shadow-indigo-500/50 select-none overflow-hidden"
             >
               {/* Metallic Foil Sheen */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-fuchsia-500/20 to-amber-500/20 opacity-70 group-hover:opacity-100 transition-opacity" />
@@ -160,7 +160,7 @@ export default function PackOpening({
                 <span className="text-xs font-black tracking-widest text-indigo-300">
                   TZDECK • BOOSTER
                 </span>
-                <span className="rounded-full bg-indigo-500/30 px-2 py-0.5 text-[10px] font-bold text-indigo-200">
+                <span className="rounded-full bg-indigo-500/30 px-2 py-0.5 text-2xs font-bold tabular-nums text-indigo-200">
                   5 CARDS
                 </span>
               </div>
@@ -177,7 +177,7 @@ export default function PackOpening({
                     ꜩ
                   </span>
                 </div>
-                <h2 className="mt-4 text-2xl font-black tracking-wider text-white">
+                <h2 className="mt-4 text-2xl font-black tracking-wider text-text-primary">
                   OBJKT PACK
                 </h2>
                 <p className="text-xs text-indigo-200/80 font-medium">
@@ -187,7 +187,7 @@ export default function PackOpening({
 
               {/* Pack Bottom Footer */}
               <div className="relative z-10 border-t border-indigo-400/30 pt-3">
-                <div className="rounded-xl bg-indigo-600/40 py-2 text-xs font-bold text-white border border-indigo-400/50 shadow-md group-hover:bg-indigo-500 transition-colors">
+                <div className="rounded-xl bg-indigo-600/40 py-2 text-xs font-bold text-text-primary border border-indigo-400/50 shadow-md group-hover:bg-indigo-500 transition-colors">
                   {isLoading ? "Opening..." : "Click to Rip Open"}
                 </div>
               </div>
@@ -201,20 +201,20 @@ export default function PackOpening({
             )}
 
             {/* Odds & Details banner */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs text-gray-400 max-w-lg">
-              <span className="flex items-center gap-1.5 rounded-lg bg-gray-900/80 px-3 py-1.5 border border-gray-800">
-                <span className="h-2 w-2 rounded-full bg-slate-400" /> Common: 50%
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs text-text-secondary max-w-lg">
+              <span className="flex items-center gap-1.5 rounded-lg bg-surface-1/80 px-3 py-1.5 border border-border-default">
+                <span className="h-2 w-2 rounded-full bg-rarity-common" /> Common: 50%
               </span>
-              <span className="flex items-center gap-1.5 rounded-lg bg-gray-900/80 px-3 py-1.5 border border-gray-800">
+              <span className="flex items-center gap-1.5 rounded-lg bg-surface-1/80 px-3 py-1.5 border border-border-default">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" /> Uncommon: 25%
               </span>
-              <span className="flex items-center gap-1.5 rounded-lg bg-gray-900/80 px-3 py-1.5 border border-gray-800">
+              <span className="flex items-center gap-1.5 rounded-lg bg-surface-1/80 px-3 py-1.5 border border-border-default">
                 <span className="h-2 w-2 rounded-full bg-cyan-400" /> Rare: 15%
               </span>
-              <span className="flex items-center gap-1.5 rounded-lg bg-gray-900/80 px-3 py-1.5 border border-gray-800">
+              <span className="flex items-center gap-1.5 rounded-lg bg-surface-1/80 px-3 py-1.5 border border-border-default">
                 <span className="h-2 w-2 rounded-full bg-purple-400" /> Epic: 7%
               </span>
-              <span className="flex items-center gap-1.5 rounded-lg bg-gray-900/80 px-3 py-1.5 border border-gray-800">
+              <span className="flex items-center gap-1.5 rounded-lg bg-surface-1/80 px-3 py-1.5 border border-border-default">
                 <span className="h-2 w-2 rounded-full bg-amber-400" /> Legendary: 3%
               </span>
             </div>
@@ -237,7 +237,7 @@ export default function PackOpening({
             >
               ✨ ꜩ ✨
             </motion.div>
-            <h3 className="mt-4 text-2xl font-bold text-white tracking-wide animate-pulse">
+            <h3 className="mt-4 text-2xl font-bold text-text-primary tracking-wide animate-pulse">
               Ripping Open Pack...
             </h3>
           </motion.div>
@@ -252,9 +252,9 @@ export default function PackOpening({
             className="w-full flex flex-col items-center"
           >
             {/* Header Control Bar */}
-            <div className="w-full mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gray-900/60 p-4 border border-gray-800 backdrop-blur-md">
+            <div className="w-full mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-surface-1/80 p-4 border border-border-default backdrop-blur-md">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
                   <span>Booster Pack Pulls</span>
                   {packState === "complete" && (
                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/50">
@@ -262,7 +262,7 @@ export default function PackOpening({
                     </span>
                   )}
                 </h2>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-text-secondary mt-0.5 tabular-nums">
                   {packState === "revealing"
                     ? "Click on each card to reveal your pull"
                     : `Revealed 5 cards • Total listed value: ${totalValue.toFixed(2)} XTZ`}
@@ -273,7 +273,7 @@ export default function PackOpening({
                 {packState === "revealing" && (
                   <button
                     onClick={handleRevealAll}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors shadow"
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-text-primary hover:bg-indigo-500 transition-colors shadow"
                   >
                     Reveal All
                   </button>
@@ -281,7 +281,7 @@ export default function PackOpening({
 
                 <button
                   onClick={handleReset}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:from-blue-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-950/50"
+                  className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-text-primary hover:from-blue-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-950/50"
                 >
                   Open Another Pack
                 </button>

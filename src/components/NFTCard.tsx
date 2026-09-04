@@ -36,11 +36,11 @@ const RARITY_CONFIG: Record<
 > = {
   common: {
     label: "Common",
-    border: "border-slate-700 hover:border-slate-500",
-    badgeBg: "bg-slate-800/80 border-slate-600",
-    badgeText: "text-slate-300",
-    glow: "hover:shadow-slate-500/20",
-    foilGradient: "from-slate-500/10 via-transparent to-transparent",
+    border: "border-rarity-common/70 hover:border-rarity-common",
+    badgeBg: "bg-rarity-common/15 border-rarity-common/50",
+    badgeText: "text-rarity-common",
+    glow: "hover:shadow-rarity-common/20",
+    foilGradient: "from-rarity-common/10 via-transparent to-transparent",
   },
   uncommon: {
     label: "Uncommon",
@@ -135,9 +135,9 @@ export default function NFTCard({
         whileHover={{ scale: 1.04, y: -4 }}
         whileTap={{ scale: 0.98 }}
         onClick={onFlip}
-        className={`relative aspect-[5/7] w-full cursor-pointer rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-4 shadow-xl shadow-indigo-950/50 transition-all hover:border-indigo-400 select-none ${className}`}
+        className={`relative aspect-[5/7] w-full cursor-pointer rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-indigo-950 via-surface-1 to-purple-950 p-4 shadow-xl shadow-indigo-950/50 transition-all hover:border-indigo-400 select-none ${className}`}
       >
-        <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-indigo-400/20 bg-gray-950/40 p-4 backdrop-blur-sm">
+        <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-indigo-400/20 bg-surface-0/40 p-4 backdrop-blur-sm">
           {/* Card Back Top Logo */}
           <div className="flex items-center gap-1.5 text-xs font-semibold tracking-widest text-indigo-300">
             <span className="text-sm">ꜩ</span> TZDECK
@@ -157,7 +157,7 @@ export default function NFTCard({
 
           {/* Card Back Prompt */}
           <div className="text-center">
-            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-[11px] font-medium text-indigo-200 border border-indigo-400/30 animate-pulse">
+            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-2xs font-medium text-indigo-200 border border-indigo-400/30 animate-pulse">
               Click to Reveal
             </span>
           </div>
@@ -175,7 +175,7 @@ export default function NFTCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 bg-gradient-to-b from-gray-900/90 to-gray-950/95 p-3.5 shadow-lg backdrop-blur-md transition-all duration-300 ${config.border} ${config.glow} ${className}`}
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 bg-gradient-to-b from-surface-1 to-surface-0 p-3.5 shadow-lg backdrop-blur-md transition-all duration-300 ${config.border} ${config.glow} ${className}`}
     >
       {/* Holographic foil shine overlay on hover */}
       {isHovered && (
@@ -193,14 +193,14 @@ export default function NFTCard({
       {/* Top Header Row */}
       <div className="relative z-10 flex items-center justify-between gap-2 pb-2.5">
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border ${config.badgeBg} ${config.badgeText}`}
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-2xs font-semibold uppercase tracking-wider border ${config.badgeBg} ${config.badgeText}`}
         >
           {config.label}
         </span>
 
         <div className="flex items-center gap-1.5">
           {card.quantity_owned && card.quantity_owned > 1 && (
-            <span className="rounded-md bg-blue-900/60 px-1.5 py-0.5 text-[10px] font-medium text-blue-200 border border-blue-700/50">
+            <span className="rounded-md bg-blue-900/60 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-blue-200 border border-blue-700/50">
               x{card.quantity_owned}
             </span>
           )}
@@ -215,7 +215,7 @@ export default function NFTCard({
               className={`rounded-full p-1.5 transition-colors ${
                 isWishlisted
                   ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
-                  : "bg-gray-800/60 text-gray-400 hover:bg-gray-700 hover:text-white"
+                  : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-primary"
               }`}
             >
               <svg
@@ -238,17 +238,17 @@ export default function NFTCard({
       </div>
 
       {/* Card Artwork Display */}
-      <div className="relative z-10 aspect-square w-full overflow-hidden rounded-xl bg-gray-950 shadow-inner border border-gray-800">
+      <div className="relative z-10 aspect-square w-full overflow-hidden rounded-xl bg-surface-0 shadow-inner border border-border-subtle">
         {!imageError && currentImageUrl ? (
           <button
             type="button"
             aria-label={`View details for ${card.name}`}
             disabled={!imageLoaded}
             onClick={() => setIsDetailsOpen(true)}
-            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 disabled:cursor-default"
+            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
           >
             {!imageLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 animate-pulse">
+              <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80 animate-pulse">
                 <span className="text-xl opacity-30">🖼️</span>
               </div>
             )}
@@ -267,23 +267,23 @@ export default function NFTCard({
             />
 
             {card.editions !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-gray-950/80 px-2 py-0.5 text-[10px] font-medium text-gray-300 backdrop-blur-md border border-gray-800">
+              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-surface-0/80 px-2 py-0.5 text-2xs font-medium tabular-nums text-text-secondary backdrop-blur-md border border-border-subtle">
                 {card.editions === 1 ? "1 of 1" : `Editions: ${card.editions}`}
               </div>
             )}
 
             {card.price_xtz !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-[11px] font-bold text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
+              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-2xs font-bold tabular-nums text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
                 <span>ꜩ</span>
                 <span>{card.price_xtz}</span>
               </div>
             )}
           </button>
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-gray-500 bg-gray-900">
+          <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-text-tertiary bg-surface-1">
             <span className="text-2xl mb-1">🖼️</span>
-            <span className="text-xs font-medium text-gray-400 line-clamp-1">{card.name}</span>
-            <span className="text-[10px] text-gray-600 mt-0.5">Media unavailable</span>
+            <span className="text-xs font-medium text-text-secondary line-clamp-1">{card.name}</span>
+            <span className="text-2xs text-text-muted mt-0.5">Media unavailable</span>
           </div>
         )}
 
@@ -291,31 +291,31 @@ export default function NFTCard({
 
       {/* Card Info Details */}
       <div className="relative z-10 pt-3">
-        <h3 className="text-sm font-semibold text-white tracking-tight line-clamp-1 group-hover:text-indigo-300 transition-colors">
+        <h3 className="text-sm font-semibold text-text-primary tracking-tight line-clamp-1 group-hover:text-indigo-300 transition-colors">
           {card.name}
         </h3>
 
-        <div className="mt-1 flex items-center justify-between text-xs text-gray-400">
-          <span className="truncate max-w-[140px] font-medium text-gray-300">
+        <div className="mt-1 space-y-0.5 text-xs">
+          <p className="truncate font-medium text-text-secondary">
             {card.artist_alias || "Unknown Artist"}
-          </span>
+          </p>
           {card.collection_name && (
-            <span className="truncate max-w-[100px] text-[11px] text-gray-500">
+            <p className="truncate text-2xs text-text-muted">
               {card.collection_name}
-            </span>
+            </p>
           )}
         </div>
       </div>
 
       {/* Action Footer */}
       {showCollectButton && (
-        <div className="relative z-10 mt-3 pt-2 border-t border-gray-800/80">
+        <div className="relative z-10 mt-3 pt-2 border-t border-border-subtle">
           <a
             href={card.objkt_url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-900/30 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-98"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-xs font-semibold text-text-primary shadow-md shadow-indigo-900/30 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-98"
           >
             <span>Collect on OBJKT</span>
             <svg
