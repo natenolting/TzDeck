@@ -11,7 +11,13 @@ import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { HeartIcon } from "@/components/icons";
+import {
+  CardsIcon,
+  DeckIcon,
+  HeartIcon,
+  InfoIcon,
+  SparklesIcon,
+} from "@/components/icons";
 
 type ActiveTab = "packs" | "deck" | "wishlist" | "about";
 
@@ -79,25 +85,25 @@ export default function Home() {
         <nav className="my-6 flex items-center justify-center gap-2 pb-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab("packs")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "packs"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
-            <span>🎴</span>
+            <CardsIcon />
             <span>Booster Packs</span>
           </button>
 
           <button
             onClick={() => setActiveTab("deck")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "deck"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
-            <span>🃏</span>
+            <DeckIcon />
             <span>My Deck</span>
             {address && (
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -106,7 +112,7 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("wishlist")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "wishlist"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
@@ -123,13 +129,13 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("about")}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "about"
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
-            <span>ℹ️</span>
+            <InfoIcon />
             <span>About</span>
           </button>
         </nav>
@@ -200,7 +206,7 @@ export default function Home() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                   <div className="rounded-2xl border border-border-subtle bg-surface-0/60 p-4">
-                    <span className="text-2xl">🎁</span>
+                    <CardsIcon className="h-6 w-6 text-accent-hover" />
                     <h4 className="font-bold text-text-primary mt-2">1. Open Packs</h4>
                     <p className="text-xs text-text-tertiary mt-1">
                       Pull 5 random active marketplace listings currently for sale on OBJKT with simulated rarities and card animations.
@@ -208,7 +214,7 @@ export default function Home() {
                   </div>
 
                   <div className="rounded-2xl border border-border-subtle bg-surface-0/60 p-4">
-                    <span className="text-2xl">✨</span>
+                    <SparklesIcon className="h-6 w-6 text-accent-hover" />
                     <h4 className="font-bold text-text-primary mt-2">2. Discover Art</h4>
                     <p className="text-xs text-text-tertiary mt-1">
                       Discover new artists and collections. Like a piece? Click through to collect it directly on OBJKT.com.
@@ -216,7 +222,7 @@ export default function Home() {
                   </div>
 
                   <div className="rounded-2xl border border-border-subtle bg-surface-0/60 p-4">
-                    <span className="text-2xl">🃏</span>
+                    <DeckIcon className="h-6 w-6 text-accent-hover" />
                     <h4 className="font-bold text-text-primary mt-2">3. Build Your Deck</h4>
                     <p className="text-xs text-text-tertiary mt-1">
                       Connect your Tezos wallet to view all your owned OBJKTs dynamically as your playable, filterable digital card deck.

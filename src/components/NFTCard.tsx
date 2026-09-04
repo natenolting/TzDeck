@@ -12,6 +12,7 @@ import {
 import { motion } from "framer-motion";
 import Image from "next/image";
 import NFTDetailsModal from "./NFTDetailsModal";
+import { ExternalLinkIcon, HeartIcon, ImageOffIcon } from "./icons";
 
 interface NFTCardProps {
   card: NFTCardType;
@@ -203,26 +204,16 @@ export default function NFTCard({
                 onToggleWishlist(card);
               }}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              className={`rounded-full p-1.5 transition-colors ${
+              className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
                 isWishlisted
                   ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
                   : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-primary"
               }`}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill={isWishlisted ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth={isWishlisted ? "0" : "1.8"}
-                className="h-3.5 w-3.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9.653 16.915l-.005-.003-.019-.01a20.759 20.759 0 01-4.704-3.414C3.218 11.91 2 10.147 2 8.167 2 5.312 4.148 3.167 6.833 3.167c1.354 0 2.656.592 3.5 1.579a4.67 4.67 0 013.5-1.579c2.685 0 4.833 2.145 4.833 5c0 1.98-1.218 3.743-2.93 5.321a20.76 20.76 0 01-4.704 3.414l-.019.01-.005.003h-.002a.739.739 0 01-.69 0l-.002-.001z"
-                />
-              </svg>
+              <HeartIcon
+                filled={isWishlisted}
+                className="h-4 w-4"
+              />
             </button>
           )}
         </div>
@@ -240,7 +231,7 @@ export default function NFTCard({
           >
             {!imageLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80 animate-pulse">
-                <span className="text-xl opacity-30">🖼️</span>
+                <ImageOffIcon className="h-5 w-5 text-text-muted" />
               </div>
             )}
             {/* NFT hosts are unbounded, and native error events drive gateway failover. */}
@@ -272,7 +263,7 @@ export default function NFTCard({
           </button>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-text-tertiary bg-surface-1">
-            <span className="text-2xl mb-1">🖼️</span>
+            <ImageOffIcon className="mb-1 h-8 w-8 text-text-muted" />
             <span className="text-xs font-medium text-text-secondary line-clamp-1">{card.name}</span>
             <span className="text-2xs text-text-muted mt-0.5">Media unavailable</span>
           </div>
@@ -309,20 +300,7 @@ export default function NFTCard({
             className="button-quiet w-full gap-1.5 px-3 py-2 text-xs font-semibold"
           >
             <span>Collect on OBJKT</span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2.2"
-              stroke="currentColor"
-              className="h-3.5 w-3.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-              />
-            </svg>
+            <ExternalLinkIcon className="h-3.5 w-3.5" />
           </a>
         </div>
       )}

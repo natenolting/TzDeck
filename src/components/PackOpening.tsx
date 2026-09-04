@@ -10,6 +10,7 @@ import {
 import NFTCard from "./NFTCard";
 import { soundManager } from "@/lib/sound";
 import { motion, AnimatePresence } from "framer-motion";
+import { SparklesIcon } from "./icons";
 
 interface PackOpeningProps {
   onWishlistToggle?: (card: NFTCardType) => void;
@@ -243,9 +244,11 @@ export default function PackOpening({
             <motion.div
               animate={{ rotate: [0, -10, 10, -5, 5, 0], scale: [1, 1.15, 1] }}
               transition={{ duration: 0.6 }}
-              className="text-7xl font-black text-indigo-400"
+              className="flex items-center gap-4 text-7xl font-black text-indigo-400"
             >
-              ✨ ꜩ ✨
+              <SparklesIcon className="h-10 w-10" />
+              <span>ꜩ</span>
+              <SparklesIcon className="h-10 w-10" />
             </motion.div>
             <h3 className="mt-4 text-2xl font-bold text-text-primary tracking-wide animate-pulse">
               Ripping Open Pack...

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
+import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
 
 interface DeckGridProps {
   onWishlistToggle?: (card: NFTCardType) => void;
@@ -156,7 +157,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
   if (tokens.length === 0) {
     return (
       <div className="rounded-3xl border border-border-default bg-surface-1/80 p-12 text-center max-w-xl mx-auto my-12 backdrop-blur-md">
-        <span className="text-4xl">🎴</span>
+        <CardsIcon className="mx-auto h-10 w-10 text-accent-hover" />
         <h3 className="mt-3 text-lg font-bold text-text-primary">No OBJKTs Found in Connected Wallet</h3>
         <p className="mt-2 text-sm text-text-secondary">
           Your wallet doesn’t have any OBJKT NFTs yet. Open booster packs in TzDeck to discover and collect new art pieces!
@@ -204,18 +205,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-xl border border-border-default bg-surface-2 px-3.5 py-2 pl-9 text-xs text-text-primary placeholder:text-text-muted focus:border-accent"
           />
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className="absolute left-3 top-2.5 h-4 w-4 text-text-muted"
-          >
-            <path
-              fillRule="evenodd"
-              d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
         </div>
 
         {/* Filters */}
@@ -249,22 +239,10 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
           <button
             onClick={reloadDeck}
             title="Refresh Deck"
-            className="button-secondary p-2"
+            aria-label="Refresh deck"
+            className="button-secondary h-10 w-10"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-              stroke="currentColor"
-              className="h-4 w-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-              />
-            </svg>
+            <RefreshIcon />
           </button>
         </div>
       </div>
