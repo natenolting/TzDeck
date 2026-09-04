@@ -259,6 +259,29 @@ h4,
   );
 }
 
+/* A chip that sits on top of artwork we do not control.
+   Text contrast against the chip was never the problem -- a 6% white border
+   was. It vanishes over bright art, so the chip loses its edge and reads as
+   part of the image. The edge here is two-sided on purpose: the dark drop
+   shadow defines the chip against light artwork, the light inset ring defines
+   it against dark artwork, so one of the two always registers.
+
+   No backdrop blur: at 92% opacity it is imperceptible, and a hand-written
+   backdrop-filter here is dropped by the CSS pipeline anyway. */
+.art-chip {
+  background-color: color-mix(in srgb, var(--surface-0) 92%, transparent);
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.55),
+    inset 0 0 0 1px rgb(255 255 255 / 0.14);
+}
+
+/* Price carries the accent so it stays identifiable at a glance. */
+.art-chip-accent {
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.55),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 /* A vertical scroll area that fades its bottom edge instead of showing a raw
    scrollbar, so truncated text reads as continuing rather than as cut off. */
 .scroll-fade {

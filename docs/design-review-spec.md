@@ -637,7 +637,6 @@ Re-run cold against the current build after sign-off. The five original blockers
 
 | Item | Severity | Note |
 | :--- | :--- | :--- |
-| Edition/price chips over high-chroma art | Should-fix | A translucent dark fill cannot hold against unpredictable artwork; needs a solid chip or a real scrim. |
 | About says "simulated rarities" | Note | After DR-04/DR-05 the grading is disclosed and deterministic; "simulated" undercuts that. |
 | Legend wraps 3+2 | Note | Orphan second row. |
 
@@ -656,3 +655,15 @@ Two gates were missing rather than failing. TEST-08 checked only `gray-` literal
   4. The quantity-owned badge dropped `blue-*` -- a fourth hue for "how many you own" -- for neutral chrome.
   5. "Pack Complete!" became neutral. It is an informational label, not a success alert, and green there collided with the Uncommon frame in the same view. `--success` was then moved off `#34d399` so it no longer aliases `--rarity-uncommon`; two tokens sharing one value is a trap.
 * **Verified:** zero palette literals in `src/`; status tokens measure 7.2:1 to 10.4:1 against the page ground, all clearing AA; pack and card back render unchanged.
+
+### DR-20: Chips that hold their edge over any artwork
+
+* **Severity:** Should-fix
+* **Diagnosis corrected:** the review called this a legibility problem and proposed a solid chip or a scrim. Measuring first showed text contrast was never the issue -- the editions chip cleared **5.0:1 at worst case** (over white artwork) and the price chip 5.4:1, both already past AA. The real defect was **edge definition**: the chips carried `border-border-subtle`, which is `rgb(255 255 255 / 0.06)`. Six percent white is invisible over bright art, so the chip lost its boundary, and read as part of the image rather than as chrome.
+* **Remediation:** an `.art-chip` class with a deliberately **two-sided edge**, because no edge of one colour survives an unknown backdrop -- white alpha vanishes on light art, black alpha on dark:
+  * a dark drop shadow that defines the chip against light artwork,
+  * a light inset ring that defines it against dark artwork.
+
+  One of the two always registers. Fill goes to 92%, so the chip reads as chrome rather than a translucent artifact, and the editions chip moves off `--text-secondary` to `--text-primary` -- muting is right on a calm dark panel, wrong for a label sitting on someone else's artwork. `.art-chip-accent` swaps the inset ring to the accent, so price stays identifiable.
+* **No backdrop blur.** The previous chips had one. At 92% opacity it is imperceptible, and a handwritten `backdrop-filter` in `globals.css` is dropped by the CSS pipeline regardless (Tailwind's own `backdrop-blur-*` utilities still work). Removed rather than left in as a dead declaration.
+* **Verified:** rendered against five forced backdrops -- white, saturated green, hot pink, yellow and near-black -- and then against a real pack of high-chroma glitch art plus a light greyscale photo, which was the original failure case. TEST-13 still passes: nothing paints over the artwork's centre.

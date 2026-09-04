@@ -212,13 +212,13 @@ export default function NFTCard({
             />
 
             {card.editions !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-surface-0/80 px-2 py-0.5 text-2xs font-medium tabular-nums text-text-secondary backdrop-blur-md border border-border-subtle">
+              <div className="art-chip pointer-events-none absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-2xs font-medium tabular-nums text-text-primary">
                 {card.editions === 1 ? "1 of 1" : `Editions: ${card.editions}`}
               </div>
             )}
 
             {card.price_xtz !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-surface-0/90 px-2 py-0.5 text-2xs font-bold tabular-nums text-accent-hover backdrop-blur-md border border-accent/40 shadow">
+              <div className="art-chip art-chip-accent pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-bold tabular-nums text-accent-hover">
                 <span>ꜩ</span>
                 <span>{card.price_xtz}</span>
               </div>
