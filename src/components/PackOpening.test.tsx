@@ -64,7 +64,7 @@ const cards: NFTCard[] = [
     display_uri: "https://example.com/second.jpg",
     editions: 10,
     objkt_url: "https://objkt.com/asset/KT1Pack/2",
-    rarity: "rare",
+    rarity: "legendary",
   },
 ];
 
@@ -170,4 +170,13 @@ test("resetting a pack clears a pending completion timer", async () => {
 
   assert.equal(completionCount, 0);
   assert.ok(screen.getByText("Click to Rip Open"));
+});
+
+test("pack completion keeps rare-pull emphasis on the cards", async () => {
+  const { fireEvent, screen } = await renderRevealingPack();
+
+  fireEvent.click(screen.getByRole("button", { name: "Reveal All" }));
+
+  assert.ok(screen.getByText("Legendary"));
+  assert.equal(screen.queryByText(/Outstanding Pull/), null);
 });

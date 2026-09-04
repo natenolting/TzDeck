@@ -45,7 +45,7 @@ export default function WishlistGrid({
 
         <button
           onClick={onClearWishlist}
-          className="rounded-xl border border-red-800/50 bg-red-950/40 px-3.5 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-900/60 transition-colors"
+          className="button-secondary px-3.5 py-1.5 text-xs font-semibold"
         >
           Clear Wishlist
         </button>

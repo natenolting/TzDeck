@@ -540,10 +540,10 @@ flowchart TD
   - [x] DR-04 — Replace odds table with rarity legend; add parity test (TEST-06).
   - [x] DR-05 — Re-tier `calculateRarity`; add `calculateSupplyRarity` for deck view; **calibrate against TEST-05 before merge**; add deck-view grading note.
   - [x] DR-06 — Heart everywhere; retire the star.
-- [ ] **Phase 3: Card Craft & Hierarchy**
-  - [ ] DR-07 — Delete `foilGradient` and the `inset-0` overlay; rebuild `RARITY_CONFIG` as ring / glow / badge; keep the hover sheen.
-  - [ ] DR-08 — Delete the Outstanding Pull banner; move emphasis onto the card.
-  - [ ] DR-09 — Define Primary / Secondary / Quiet; retire the gradient; re-role every button; demote header Connect in the Deck empty state.
+- [x] **Phase 3: Card Craft & Hierarchy**
+  - [x] DR-07 — Delete `foilGradient` and the `inset-0` overlay; rebuild `RARITY_CONFIG` as ring / glow / badge; keep the hover sheen.
+  - [x] DR-08 — Delete the Outstanding Pull banner; move emphasis onto the card.
+  - [x] DR-09 — Define Primary / Secondary / Quiet; retire the gradient; re-role every button; demote header Connect in the Deck empty state.
 - [ ] **Phase 4: Icon System & Controls**
   - [ ] DR-10 — Build `src/components/icons.tsx`; replace every emoji and every inlined SVG.
   - [ ] DR-11 — Raise hit areas to ≥40px; add `aria-label` / `aria-pressed` to SoundToggle.
