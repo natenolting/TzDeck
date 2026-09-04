@@ -4,6 +4,7 @@ import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 
 import type { NFTCard } from "@/lib/objkt";
+import { RARITY_CONFIG } from "./rarityStyles";
 
 interface NFTDetailsModalProps {
   card: NFTCard;
@@ -11,10 +12,6 @@ interface NFTDetailsModalProps {
   isWishlisted: boolean;
   onClose: () => void;
   onToggleWishlist?: (card: NFTCard) => void;
-}
-
-function formatRarity(rarity: NFTCard["rarity"]): string {
-  return rarity.charAt(0).toUpperCase() + rarity.slice(1);
 }
 
 export default function NFTDetailsModal({
@@ -25,6 +22,7 @@ export default function NFTDetailsModal({
   onToggleWishlist,
 }: NFTDetailsModalProps) {
   const titleId = useId();
+  const rarity = RARITY_CONFIG[card.rarity || "common"];
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -84,7 +82,7 @@ export default function NFTDetailsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative my-auto grid max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-3xl border border-border-strong bg-surface-0 shadow-2xl shadow-indigo-950/70 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
+        className="relative my-auto grid max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-3xl border border-border-strong bg-surface-0 shadow-2xl shadow-black/60 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]"
       >
         <button
           ref={closeButtonRef}
@@ -109,13 +107,15 @@ export default function NFTDetailsModal({
 
         <div className="flex flex-col gap-5 p-6 sm:p-8">
           <div className="pr-10">
-            <span className="inline-flex rounded-full border border-indigo-500/50 bg-indigo-950 px-3 py-1 text-xs font-bold uppercase tracking-wider text-indigo-200">
-              {formatRarity(card.rarity || "common")}
+            <span
+              className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${rarity.badge}`}
+            >
+              {rarity.label}
             </span>
-            <h2 id={titleId} className="mt-3 text-2xl font-black text-text-primary sm:text-3xl">
+            <h2 id={titleId} className="mt-3 text-2xl font-extrabold text-text-primary sm:text-3xl">
               {card.name}
             </h2>
-            <p className="mt-2 text-sm font-medium text-indigo-300">
+            <p className="mt-2 text-sm font-medium text-accent-hover">
               {card.artist_alias || "Unknown Artist"}
             </p>
             {card.collection_name && (
@@ -124,7 +124,7 @@ export default function NFTDetailsModal({
           </div>
 
           {card.description && (
-            <p className="max-h-36 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
+            <p className="scroll-fade max-h-36 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
               {card.description}
             </p>
           )}
@@ -139,7 +139,7 @@ export default function NFTDetailsModal({
             {card.price_xtz !== undefined && (
               <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
                 <dt className="text-xs text-text-tertiary">Listed Price</dt>
-                <dd className="mt-1 font-bold tabular-nums text-indigo-200">ꜩ {card.price_xtz}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-accent-hover">ꜩ {card.price_xtz}</dd>
               </div>
             )}
             {card.quantity_owned !== undefined && (
@@ -163,14 +163,14 @@ export default function NFTDetailsModal({
             </div>
           </dl>
 
-          <div className="mt-auto flex flex-col gap-2 sm:flex-row">
+          <div className="mt-auto flex flex-col gap-2">
             {onToggleWishlist && (
               <button
                 type="button"
                 onClick={() => onToggleWishlist(card)}
-                className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
+                className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
                   isWishlisted
-                    ? "border-rose-500/50 bg-rose-950/60 text-rose-300 hover:bg-rose-900/70"
+                    ? "border-saved/50 bg-saved-quiet text-saved hover:bg-saved/20"
                     : "border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3"
                 }`}
               >
@@ -181,7 +181,7 @@ export default function NFTDetailsModal({
               href={card.objkt_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="button-primary flex-1 px-4 py-3 text-sm font-bold"
+              className="button-primary w-full px-4 py-3 text-sm font-bold"
             >
               Collect on OBJKT
             </a>

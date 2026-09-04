@@ -39,10 +39,10 @@ export default function ConnectButton({ variant = "primary" }: ConnectButtonProp
           title="Click to copy full address"
           className="flex min-h-10 items-center gap-1.5 rounded-xl border border-border-default bg-surface-2 px-3 py-2.5 text-xs font-mono text-text-primary hover:border-border-strong transition-colors backdrop-blur-md"
         >
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
           <span>{formatShortAddress(address)}</span>
           {copied ? (
-            <span className="flex items-center gap-1 text-2xs text-emerald-400 font-sans">
+            <span className="flex items-center gap-1 text-2xs text-success font-sans">
               <CheckIcon className="h-3.5 w-3.5" />
               Copied
             </span>
@@ -53,7 +53,7 @@ export default function ConnectButton({ variant = "primary" }: ConnectButtonProp
 
         <button
           onClick={disconnect}
-          className="min-h-10 rounded-xl border border-red-800/40 bg-red-950/40 px-3 py-2.5 text-xs font-semibold text-red-300 hover:bg-red-900/60 hover:text-text-primary transition-colors"
+          className="min-h-10 rounded-xl border border-danger/30 bg-danger-quiet px-3 py-2.5 text-xs font-semibold text-danger hover:bg-danger/20 hover:text-text-primary transition-colors"
         >
           Disconnect
         </button>

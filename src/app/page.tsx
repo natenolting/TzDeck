@@ -49,7 +49,7 @@ export default function Home() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* ================= HEADER NAVBAR ================= */}
-        <header className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-border-subtle pb-6">
+        <header className="flex flex-col items-start justify-between gap-4 border-b border-border-subtle pb-6 md:flex-row md:items-center">
           <div className="flex items-center gap-3">
             {/* Logo Emblem */}
             <Image
@@ -58,12 +58,12 @@ export default function Home() {
               width={44}
               height={44}
               priority
-              className="h-11 w-11 rounded-xl shadow-lg shadow-indigo-500/20"
+              className="h-11 w-11 rounded-xl shadow-lg shadow-accent/20"
             />
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight text-text-primary">
+                <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
                   TzDeck
                 </h1>
                 <span className="rounded-full bg-accent-quiet px-2 py-0.5 text-2xs font-bold text-accent-hover border border-accent/30">
@@ -82,9 +82,11 @@ export default function Home() {
         </header>
 
         {/* ================= TABS NAVIGATION ================= */}
-        <nav className="my-6 flex items-center justify-center gap-2 pb-4 overflow-x-auto">
+        <nav className="tab-scroller -mx-4 my-6 flex items-center justify-start gap-2 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:justify-center sm:px-6 lg:-mx-8 lg:px-8">
           <button
             onClick={() => setActiveTab("packs")}
+            aria-label="Booster Packs"
+            aria-pressed={activeTab === "packs"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "packs"
                 ? "tab-button-active"
@@ -92,11 +94,13 @@ export default function Home() {
             }`}
           >
             <CardsIcon />
-            <span>Booster Packs</span>
+            <span className="tab-label">Booster Packs</span>
           </button>
 
           <button
             onClick={() => setActiveTab("deck")}
+            aria-label="My Deck"
+            aria-pressed={activeTab === "deck"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "deck"
                 ? "tab-button-active"
@@ -104,14 +108,16 @@ export default function Home() {
             }`}
           >
             <DeckIcon />
-            <span>My Deck</span>
+            <span className="tab-label">My Deck</span>
             {address && (
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-success" />
             )}
           </button>
 
           <button
             onClick={() => setActiveTab("wishlist")}
+            aria-label="Wishlist"
+            aria-pressed={activeTab === "wishlist"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "wishlist"
                 ? "tab-button-active"
@@ -119,7 +125,7 @@ export default function Home() {
             }`}
           >
             <HeartIcon filled />
-            <span>Wishlist</span>
+            <span className="tab-label">Wishlist</span>
             {wishlist.length > 0 && (
               <span className="rounded-full bg-accent/40 px-1.5 py-0.2 text-2xs font-bold tabular-nums text-accent-hover">
                 {wishlist.length}
@@ -129,6 +135,8 @@ export default function Home() {
 
           <button
             onClick={() => setActiveTab("about")}
+            aria-label="About"
+            aria-pressed={activeTab === "about"}
             className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               activeTab === "about"
                 ? "tab-button-active"
@@ -136,7 +144,7 @@ export default function Home() {
             }`}
           >
             <InfoIcon />
-            <span>About</span>
+            <span className="tab-label">About</span>
           </button>
         </nav>
 
@@ -156,6 +164,7 @@ export default function Home() {
                   key={address}
                   onWishlistToggle={handleWishlistToggle}
                   wishlistIds={wishlistIds}
+                  onBrowsePacks={() => setActiveTab("packs")}
                 />
               ) : (
                 <div className="rounded-3xl border border-border-default bg-surface-1/80 p-12 text-center max-w-lg mx-auto my-12 backdrop-blur-md">
@@ -181,6 +190,7 @@ export default function Home() {
               wishlist={wishlist}
               onWishlistToggle={handleWishlistToggle}
               onClearWishlist={handleClearWishlist}
+              onBrowsePacks={() => setActiveTab("packs")}
             />
           )}
 
@@ -191,7 +201,7 @@ export default function Home() {
               className="max-w-3xl mx-auto rounded-3xl border border-border-default bg-surface-1/80 p-8 sm:p-10 backdrop-blur-md space-y-6"
             >
               <div>
-                <h2 className="text-2xl font-black text-text-primary">
+                <h2 className="text-2xl font-extrabold text-text-primary">
                   About TzDeck
                 </h2>
                 <p className="text-sm text-accent-hover font-medium mt-1">
@@ -200,7 +210,7 @@ export default function Home() {
               </div>
 
               <div className="space-y-4 text-sm text-text-secondary leading-relaxed border-t border-border-subtle pt-6">
-                <p>
+                <p className="max-w-[68ch]">
                   <strong className="text-text-primary">TzDeck</strong> is inspired by gacha card simulators like <a href="https://wikigacha.com" target="_blank" rel="noopener noreferrer" className="text-accent-hover underline hover:text-text-primary">wikigacha.com</a>. It transforms the vast Tezos art ecosystem on OBJKT into collectible virtual booster packs.
                 </p>
 
@@ -232,9 +242,9 @@ export default function Home() {
 
                 <div className="rounded-2xl border border-accent/20 bg-accent-quiet p-4 mt-4">
                   <h4 className="font-bold text-accent-hover text-xs uppercase tracking-wider">
-                    How Purchases Work
+                    How collecting works
                   </h4>
-                  <p className="text-xs text-text-secondary mt-1">
+                  <p className="mt-1 max-w-[68ch] text-xs text-text-secondary">
                     TzDeck is purely a discovery layer. All NFT acquisitions happen safely and directly on official Tezos marketplace contracts via OBJKT.com.
                   </p>
                 </div>

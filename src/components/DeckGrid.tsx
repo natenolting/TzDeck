@@ -9,6 +9,7 @@ import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
 interface DeckGridProps {
   onWishlistToggle?: (card: NFTCardType) => void;
   wishlistIds?: Set<string>;
+  onBrowsePacks: () => void;
 }
 
 type SortBy = "latest" | "name" | "editions";
@@ -55,7 +56,11 @@ async function requestDeck(address: string, signal: AbortSignal): Promise<NFTCar
   return data.tokens || [];
 }
 
-export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: DeckGridProps) {
+export default function DeckGrid({
+  onWishlistToggle,
+  wishlistIds = new Set(),
+  onBrowsePacks,
+}: DeckGridProps) {
   const { address } = useWallet();
   const [tokens, setTokens] = useState<NFTCardType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,7 +139,7 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent mb-4" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-accent border-t-transparent mb-4" />
         <p className="text-sm font-medium text-text-secondary">Loading your Tezos collection & deck...</p>
       </div>
     );
@@ -142,8 +147,8 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-red-500/40 bg-red-950/40 p-8 text-center max-w-lg mx-auto my-12">
-        <p className="text-red-300 font-medium mb-4">{error}</p>
+      <div className="rounded-2xl border border-danger/40 bg-danger-quiet p-8 text-center max-w-lg mx-auto my-12">
+        <p className="text-danger font-medium mb-4">{error}</p>
         <button
           onClick={reloadDeck}
           className="button-primary px-4 py-2 text-xs font-semibold"
@@ -162,6 +167,13 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
         <p className="mt-2 text-sm text-text-secondary">
           Your wallet doesn’t have any OBJKT NFTs yet. Open booster packs in TzDeck to discover and collect new art pieces!
         </p>
+        <button
+          type="button"
+          onClick={onBrowsePacks}
+          className="button-primary mt-6 px-4 py-2.5 text-xs font-semibold"
+        >
+          Browse Booster Packs
+        </button>
       </div>
     );
   }
@@ -176,15 +188,15 @@ export default function DeckGrid({ onWishlistToggle, wishlistIds = new Set() }: 
         </div>
         <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
           <span className="text-xs font-medium text-text-secondary">Unique Artists</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-indigo-300">{stats.artists}</p>
+          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">{stats.artists}</p>
         </div>
         <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
           <span className="text-xs font-medium text-text-secondary">Collections</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-purple-300">{stats.collections}</p>
+          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">{stats.collections}</p>
         </div>
         <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
           <span className="text-xs font-medium text-text-secondary">Rares & Epics</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-amber-300">
+          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">
             {stats.highRarityCount}
           </p>
         </div>

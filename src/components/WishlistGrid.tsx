@@ -9,12 +9,14 @@ interface WishlistGridProps {
   wishlist: NFTCardType[];
   onWishlistToggle: (card: NFTCardType) => void;
   onClearWishlist: () => void;
+  onBrowsePacks: () => void;
 }
 
 export default function WishlistGrid({
   wishlist,
   onWishlistToggle,
   onClearWishlist,
+  onBrowsePacks,
 }: WishlistGridProps) {
   if (wishlist.length === 0) {
     return (
@@ -27,6 +29,13 @@ export default function WishlistGrid({
         <p className="mt-2 text-sm text-text-secondary">
           When opening booster packs, click the heart icon on any card to save it to your wishlist and collect it on OBJKT later!
         </p>
+        <button
+          type="button"
+          onClick={onBrowsePacks}
+          className="button-primary mt-6 px-4 py-2.5 text-xs font-semibold"
+        >
+          Browse Booster Packs
+        </button>
       </div>
     );
   }

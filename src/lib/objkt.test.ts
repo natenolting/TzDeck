@@ -24,7 +24,7 @@ test("rarity legend matches calculateRarity boundaries", () => {
     [
       ["legendary", `1 of 1 and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
       ["epic", `≤${RARITY_THRESHOLDS.epicEditions} editions and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
-      ["rare", `≤${RARITY_THRESHOLDS.rareEditions} editions or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`],
+      ["rare", `1 of 1 or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`],
       ["uncommon", `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`],
       ["common", `>${RARITY_THRESHOLDS.uncommonEditions} editions and under ${RARITY_THRESHOLDS.uncommonPrice}ꜩ`],
     ],
@@ -306,5 +306,50 @@ test("fetchRandomPack retries an empty random window from offset zero", async ()
     client.request = originalRequest;
     Math.random = originalRandom;
     console.error = originalConsoleError;
+  }
+});
+
+test("fetchRandomPack returns unique tokens using their cheapest listing", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  const originalRandom = Math.random;
+
+  const token = (tokenId: string) => ({
+    name: `Token ${tokenId}`,
+    token_id: tokenId,
+    fa_contract: "KT1DuplicateFixture",
+    display_uri: `https://example.com/${tokenId}.jpg`,
+    artifact_uri: null,
+    thumbnail_uri: null,
+    supply: 50,
+    description: null,
+    creators: [],
+    fa: { name: "Duplicate Fixture" },
+  });
+
+  client.request = async () => ({
+    listing: [
+      { id: 1, price: 10_000_000, token: token("duplicate") },
+      { id: 2, price: 2_000_000, token: token("duplicate") },
+      { id: 3, price: 3_000_000, token: token("unique-a") },
+      { id: 4, price: 4_000_000, token: token("unique-b") },
+    ],
+  });
+  Math.random = () => 0.999;
+
+  try {
+    const cards = await fetchRandomPack(3);
+    const keys = cards.map(getCardKey);
+    const duplicate = cards.find(({ token_id }) => token_id === "duplicate");
+
+    assert.equal(cards.length, 3);
+    assert.equal(new Set(keys).size, cards.length);
+    assert.equal(duplicate?.listing_id, 2);
+    assert.equal(duplicate?.price_xtz, 2);
+  } finally {
+    client.request = originalRequest;
+    Math.random = originalRandom;
   }
 });

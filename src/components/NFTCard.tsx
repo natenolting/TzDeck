@@ -3,7 +3,6 @@
 import React, { useCallback, useState, useMemo } from "react";
 import {
   NFTCard as NFTCardType,
-  CardRarity,
   convertIpfsUrl,
   extractIpfsHash,
   getCardImageSources,
@@ -12,63 +11,27 @@ import {
 import { motion } from "framer-motion";
 import Image from "next/image";
 import NFTDetailsModal from "./NFTDetailsModal";
+import { RARITY_CONFIG } from "./rarityStyles";
 import { ExternalLinkIcon, HeartIcon, ImageOffIcon } from "./icons";
 
 interface NFTCardProps {
   card: NFTCardType;
   isFacedown?: boolean;
   onFlip?: () => void;
+  /** Names the face-down card without revealing the pull, e.g. "Reveal card 2 of 5". */
+  facedownLabel?: string;
   showCollectButton?: boolean;
   isWishlisted?: boolean;
   onToggleWishlist?: (card: NFTCardType) => void;
   className?: string;
 }
 
-const RARITY_CONFIG: Record<
-  CardRarity,
-  {
-    label: string;
-    ring: string;
-    badge: string;
-    glow: string;
-  }
-> = {
-  common: {
-    label: "Common",
-    ring: "ring-1 ring-rarity-common/60 hover:ring-rarity-common",
-    badge: "border-rarity-common/40 bg-rarity-common/15 text-rarity-common",
-    glow: "shadow-[0_0_24px_-10px_var(--rarity-common)] hover:shadow-[0_0_30px_-7px_var(--rarity-common)]",
-  },
-  uncommon: {
-    label: "Uncommon",
-    ring: "ring-1 ring-rarity-uncommon/60 hover:ring-rarity-uncommon",
-    badge: "border-rarity-uncommon/40 bg-rarity-uncommon/15 text-rarity-uncommon",
-    glow: "shadow-[0_0_24px_-10px_var(--rarity-uncommon)] hover:shadow-[0_0_30px_-7px_var(--rarity-uncommon)]",
-  },
-  rare: {
-    label: "Rare",
-    ring: "ring-1 ring-rarity-rare/60 hover:ring-rarity-rare",
-    badge: "border-rarity-rare/40 bg-rarity-rare/15 text-rarity-rare",
-    glow: "shadow-[0_0_24px_-10px_var(--rarity-rare)] hover:shadow-[0_0_30px_-7px_var(--rarity-rare)]",
-  },
-  epic: {
-    label: "Epic",
-    ring: "ring-1 ring-rarity-epic/60 hover:ring-rarity-epic",
-    badge: "border-rarity-epic/40 bg-rarity-epic/15 text-rarity-epic",
-    glow: "shadow-[0_0_24px_-10px_var(--rarity-epic)] hover:shadow-[0_0_30px_-7px_var(--rarity-epic)]",
-  },
-  legendary: {
-    label: "Legendary",
-    ring: "ring-1 ring-rarity-legendary/60 hover:ring-rarity-legendary",
-    badge: "border-rarity-legendary/40 bg-rarity-legendary/15 font-bold text-rarity-legendary",
-    glow: "shadow-[0_0_28px_-8px_var(--rarity-legendary)] hover:shadow-[0_0_34px_-5px_var(--rarity-legendary)]",
-  },
-};
 
 export default function NFTCard({
   card,
   isFacedown = false,
   onFlip,
+  facedownLabel = "Reveal card",
   showCollectButton = true,
   isWishlisted = false,
   onToggleWishlist,
@@ -125,21 +88,20 @@ export default function NFTCard({
 
   if (isFacedown) {
     return (
-      <motion.div
+      <motion.button
+        type="button"
         whileHover={{ scale: 1.04, y: -4 }}
         whileTap={{ scale: 0.98 }}
         onClick={onFlip}
-        className={`relative aspect-[5/7] w-full cursor-pointer rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-indigo-950 via-surface-1 to-purple-950 p-4 shadow-xl shadow-indigo-950/50 transition-all hover:border-indigo-400 select-none ${className}`}
+        aria-label={facedownLabel}
+        className={`relative aspect-[5/7] w-full cursor-pointer foil-card-back rounded-2xl border-2 p-4 shadow-xl shadow-black/50 transition-all select-none ${className}`}
       >
-        <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-indigo-400/20 bg-surface-0/40 p-4 backdrop-blur-sm">
-          {/* Card Back Top Logo */}
-          <div className="flex items-center gap-1.5 text-xs font-semibold tracking-widest text-indigo-300">
-            <span className="text-sm">ꜩ</span> TZDECK
-          </div>
+        <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-border-subtle bg-surface-0/40 p-4 backdrop-blur-sm">
+          <div aria-hidden="true" className="h-px w-full bg-border-subtle" />
 
           {/* Card Back Center Emblem */}
           <div className="relative flex h-28 w-24 items-center justify-center">
-            <div className="absolute h-20 w-20 rounded-full bg-purple-500/20 blur-xl" />
+            <div className="foil-glow-warm absolute h-20 w-20 rounded-full blur-xl" />
             <Image
               src="/tzdeck-shield-gradient-on-dark.svg"
               alt="TzDeck shield"
@@ -151,12 +113,12 @@ export default function NFTCard({
 
           {/* Card Back Prompt */}
           <div className="text-center">
-            <span className="inline-block rounded-full bg-indigo-500/20 px-3 py-1 text-2xs font-medium text-indigo-200 border border-indigo-400/30 animate-pulse">
+            <span className="inline-block rounded-full bg-accent-quiet px-3 py-1 text-2xs font-medium text-accent-hover border border-accent/30">
               Click to Reveal
             </span>
           </div>
         </div>
-      </motion.div>
+      </motion.button>
     );
   }
 
@@ -192,7 +154,7 @@ export default function NFTCard({
 
         <div className="flex items-center gap-1.5">
           {card.quantity_owned && card.quantity_owned > 1 && (
-            <span className="rounded-md bg-blue-900/60 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-blue-200 border border-blue-700/50">
+            <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-text-secondary border border-border-default">
               x{card.quantity_owned}
             </span>
           )}
@@ -204,9 +166,10 @@ export default function NFTCard({
                 onToggleWishlist(card);
               }}
               title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
                 isWishlisted
-                  ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+                  ? "bg-saved-quiet text-saved hover:bg-saved/25"
                   : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-primary"
               }`}
             >
@@ -227,7 +190,7 @@ export default function NFTCard({
             aria-label={`View details for ${card.name}`}
             disabled={!imageLoaded}
             onClick={() => setIsDetailsOpen(true)}
-            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
+            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
           >
             {!imageLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80 animate-pulse">
@@ -255,7 +218,7 @@ export default function NFTCard({
             )}
 
             {card.price_xtz !== undefined && (
-              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-indigo-950/90 px-2 py-0.5 text-2xs font-bold tabular-nums text-indigo-200 backdrop-blur-md border border-indigo-700/60 shadow">
+              <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-surface-0/90 px-2 py-0.5 text-2xs font-bold tabular-nums text-accent-hover backdrop-blur-md border border-accent/40 shadow">
                 <span>ꜩ</span>
                 <span>{card.price_xtz}</span>
               </div>
@@ -273,7 +236,7 @@ export default function NFTCard({
 
       {/* Card Info Details */}
       <div className="relative z-10 pt-3">
-        <h3 className="text-sm font-semibold text-text-primary tracking-tight line-clamp-1 group-hover:text-indigo-300 transition-colors">
+        <h3 className="text-sm font-semibold text-text-primary tracking-tight line-clamp-1 group-hover:text-accent-hover transition-colors">
           {card.name}
         </h3>
 

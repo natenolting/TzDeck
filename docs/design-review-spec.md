@@ -133,7 +133,7 @@ flowchart TD
 
   4. All updating numerals — prices, edition counts, deck stats, wishlist count — get `font-variant-numeric: tabular-nums`.
 
-* **Alternative considered:** Archivo + Chivo if Space Grotesk reads too playful for the art-collector audience. Pick one before Phase 2 starts; every later phase assumes a display face exists.
+* **Resolved:** the display face is **Oxanium**, the brand face already used in the TzDeck logo, so the titles and the mark now share a voice. Inter stays for body and UI text. Both are loaded as variable fonts with the weight axis unpinned -- pinning a single weight left the browser synthesising the semibold and bold the UI actually uses. Oxanium's axis tops out at 800, so display headings use `font-extrabold` rather than `font-black`, which would request a weight the face does not have.
 
 ---
 
@@ -288,7 +288,7 @@ flowchart TD
 * **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L119), [`src/components/WishlistGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/WishlistGrid.tsx#L22), [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L208-L235)
 * **Severity:** Should-fix
 * **Problem:** The nav tab shows a star, the empty state shows a star, the control on the card is a heart, and the empty-state copy reads "click the heart icon." Three surfaces, two metaphors, one instruction that points at the wrong one.
-* **Remediation:** Standardise on the **heart** — it is already the interactive control and it is the stronger "save this" signal against a star, which reads as rating. Replace both stars with the heart icon from DR-10 and leave the copy as written.
+* **Remediation:** Standardise on the **heart** — it is already the interactive control, and it is the stronger "save this" signal against a star, which reads as rating. Replace both stars with the heart icon from DR-10 and leave the copy as written.
 
 ---
 
@@ -347,7 +347,7 @@ flowchart TD
 
 * **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L88) (and 100, 115, 132), [`src/components/ConnectButton.tsx`](file:///Users/natenolting/TzDeck/src/components/ConnectButton.tsx#L70-L82), [`src/components/PackOpening.tsx`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L284), [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L318)
 * **Severity:** Blocker
-* **Problem:** `bg-gradient-to-r from-blue-600 to-indigo-600` is applied to the active tab, Connect Wallet, Open Another Pack, and "Collect on OBJKT" on every card. In the revealed-pack view that is seven gradient buttons at once; in the Deck empty state, two identical Connect Wallet buttons render simultaneously (header at `page.tsx:78` and empty state at `page.tsx:170`). Promotion without demotion is not hierarchy — nothing wins because everything won.
+* **Problem:** `bg-gradient-to-r from-blue-600 to-indigo-600` is applied to the active tab, Connect Wallet, Open Another Pack, and "Collect on OBJKT" on every card. In the revealed-pack view that is seven gradient buttons at once; in the Deck empty state, two identical Connect Wallet buttons appear at once (header at `page.tsx:78` and empty state at `page.tsx:170`). Promotion without demotion is not hierarchy — nothing wins because everything won.
 
   It also kills DR-07's work at the last step: the CTA on a Legendary card is pixel-identical to the CTA on a Common.
 * **Remediation:** Three button roles, one primary per view.
@@ -414,7 +414,7 @@ flowchart TD
 
 * **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L83)
 * **Severity:** Blocker
-* **Problem:** At 390×844 the tab row fails four ways at once. A bright native scrollbar renders full-width beneath the tabs. Labels wrap inside the pills ("Booster / Packs", "My / Deck") so pill heights go ragged, 32px against 48px. The row clips mid-"About" at the right edge with no fade or affordance signalling more content. And the row sits at an 8px inset while the content below sits at 16px, breaking the gutter.
+* **Problem:** At 390×844 the tab row fails four ways at once. A bright native scrollbar renders full-width beneath the tabs. Labels wrap inside the pills ("Booster / Packs", "My / Deck") so pill heights go ragged, 32px against 48px. The row clips mid-"About" at the right edge with no fade or affordance signalling more content. And the row sits 8px from the edge while the content below sits at 16px, breaking the gutter.
 * **Remediation:**
 
   1. Hide the scrollbar, keep the scroll:
@@ -521,11 +521,13 @@ flowchart TD
 | **TEST-05** | **Rarity calibration** | Node script: fetch 500 active listings, run `calculateRarity`, print tier distribution | Legendary ≤ 3%, Epic ≤ 10%, Rare ≤ 25%. **Blocks DR-05 merge.** |
 | **TEST-06** | Legend/code parity | Unit test | Every rule string in `RARITY_LEGEND` asserts against the real `calculateRarity` boundary values. Drift fails the build. |
 | **TEST-07** | Pack uniqueness | Unit test on `fetchRandomPack` with a fixture containing duplicate-token listings | Returned cards have unique `getCardKey`; cheapest listing retained. |
-| **TEST-08** | Token discipline | `grep -rn "text-gray-\|border-gray-\|bg-gray-" src/` | Zero hits — all color flows through DR-02 tokens. |
-| **TEST-09** | No emoji in chrome | `grep -rnP "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]" src/` | Zero hits. ꜩ (U+A729) is not in range and is permitted. |
-| **TEST-10** | Hit areas | Playwright: measure every `button` / `a[href]` bounding box | All ≥ 40px on the shorter axis. |
+| **TEST-08** | Token discipline | `grep -rnE '(text\|bg\|border\|ring\|shadow\|from\|via\|to)-(gray\|slate\|indigo\|purple\|blue\|emerald\|rose\|amber\|cyan\|red\|fuchsia\|pink\|teal\|yellow)-[0-9]' src/` | Zero hits. The original gate checked only `gray-`, so an entire palette family passed it; it now covers every Tailwind hue. Bespoke illustration colour lives in named classes in `globals.css`, never in components. |
+| **TEST-09** | No emoji in chrome | `grep -rnP "[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]" src/` | Zero hits. The ꜩ glyph (U+A729) is not in range and is permitted. |
+| **TEST-10** | Hit areas | Playwright: measure every `button` / `a[href]` bounding box, **excluding links inline in a sentence** (`el.closest('p')`) | All ≥ 40px on the shorter axis. Inline prose links are exempt per WCAG 2.5.8; forcing a 40px line box mid-paragraph breaks leading. |
 | **TEST-11** | Focus visibility | Playwright: Tab through each tab stop, assert computed `outline-style !== "none"` and outline color is `--accent-hover` | No element falls back to the UA default ring. |
 | **TEST-12** | Mobile tab bar | Screenshot at 390×844 | No visible scrollbar; no wrapped pill labels; equal pill heights; row aligned to content gutter. |
+| **TEST-14** | Real controls | Playwright: every element with a click handler or `cursor-pointer` resolves to `BUTTON`/`A` with an accessible name | No `div onClick`. Covered in code by the PackOpening regression test. |
+| **TEST-15** | Rarity parity | Assert the modal badge colour equals `--rarity-<tier>` for the rendered card | One tier never renders two colours across surfaces. |
 | **TEST-13** | Artwork purity | Screenshot a Legendary and a Common card side by side | No color overlay intersects the image bounds; the two are visually distinct beyond tint. |
 
 ---
@@ -547,15 +549,15 @@ flowchart TD
 - [x] **Phase 4: Icon System & Controls**
   - [x] DR-10 — Build `src/components/icons.tsx`; replace every emoji and every inlined SVG.
   - [x] DR-11 — Raise hit areas to ≥40px; add `aria-label` / `aria-pressed` to SoundToggle.
-- [ ] **Phase 5: Layout, States & Polish**
-  - [ ] DR-12 — Mobile tab bar: hide scrollbar, edge mask, no-wrap labels, gutter alignment, header alignment.
-  - [ ] DR-13 — Empty-state actions in `WishlistGrid` and `DeckGrid`.
-  - [ ] DR-14 — Deduplicate pack cards by token, cheapest listing wins.
-  - [ ] DR-15 — Constrain About prose to 68ch; retitle the callout.
-  - [ ] DR-16 — Remove card-back double branding and the reveal-chip pulse.
-- [ ] **Sign-off**
-  - [ ] Full verification matrix green.
-  - [ ] Re-run the design review against the approval bar in `interface-design:design-review`.
+- [x] **Phase 5: Layout, States & Polish**
+  - [x] DR-12 — Mobile tab bar: hide scrollbar, edge mask, no-wrap labels, gutter alignment, header alignment.
+  - [x] DR-13 — Empty-state actions in `WishlistGrid` and `DeckGrid`.
+  - [x] DR-14 — Deduplicate pack cards by token, cheapest listing wins.
+  - [x] DR-15 — Constrain About prose to 68ch; retitle the callout.
+  - [x] DR-16 — Remove card-back double branding and the reveal-chip pulse.
+- [x] **Sign-off**
+  - [x] Full verification matrix green — see §7.
+  - [x] Re-run the design review against the approval bar in `interface-design:design-review`.
 
 ---
 
@@ -567,3 +569,90 @@ flowchart TD
 | Layout restructure beyond the tab bar | The desktop composition holds; the failures are in typography, color, and content, not in the grid. |
 | Reveal animation redesign | DR-08 changes where emphasis lands; a full motion pass should follow it, not precede it. |
 | `NFTDetailsModal` accessibility | Already correct — portal, focus trap, Escape, focus restore, `aria-modal` + `aria-labelledby`, real focus ring. Use it as the reference implementation for DR-03. |
+
+---
+
+## 7. Verification Results
+
+Run on September 3, 2026, against `localhost:3000` at 1440×900 and 390×844.
+
+| Test | Result | Evidence |
+| :--- | :--- | :--- |
+| TEST-01 | **Pass** | 32/32, 0 fail. Includes legend parity and pack-uniqueness cases. |
+| TEST-02 | **Pass** | `tsc --noEmit` clean. |
+| TEST-03 | **Pass** | ESLint clean. |
+| TEST-04 | **Pass** | Webpack build succeeds; 4 routes emitted. |
+| TEST-05 | **Pass** | Live 500-listing sample: Legendary **1.6%** (≤3), Epic **4.8%** (≤10), Rare **24%** (≤25). |
+| TEST-06 | **Pass** | Legend strings generated from `RARITY_THRESHOLDS`; asserted against boundary values. |
+| TEST-07 | **Pass** | Unique `getCardKey` per pack; cheapest listing retained. |
+| TEST-08 | **Pass** | 0 raw `text-gray-` / `border-gray-` / `bg-gray-` literals in `src/`. |
+| TEST-09 | **Pass** | 0 emoji in `src/`. (NFT *titles* may contain emoji — that is artist content, not chrome.) |
+| TEST-10 | **Pass** | 0 controls under 40px on the shorter axis, desktop and mobile. Inline prose links exempt. |
+| TEST-11 | **Pass** | Every control resolves `outline: 2px solid rgb(129,140,248)`; no UA fallback ring. |
+| TEST-12 | **Pass** | 390px: no scrollbar, icon-only tabs, equal pill heights, gutter-aligned. |
+| TEST-13 | **Pass** | `elementsFromPoint` at each artwork centre returns zero painted elements above the image. |
+
+### Calibrated thresholds (TEST-05)
+
+`topTierPrice: 500` · `scarceTierPrice: 180` · `rarePrice: 110` · `uncommonPrice: 5` · `epicEditions: 5` · `rareEditions: 1` · `uncommonEditions: 25`
+
+Re-run `npx tsx scripts/calibrate-rarity.ts` after any threshold change; it exits non-zero when a tier breaches its ceiling.
+
+### Defects found during sign-off and fixed
+
+1. **Legend copy** — the Rare rule rendered as `≤1 editions or 110ꜩ+`. Added `formatEditionRule` so a ceiling of 1 reads "1 of 1"; parity test updated.
+2. **"Pack Complete!" chip wrapped its own text** at 390px (107×42, two lines) inside the heading flex. Added `whitespace-nowrap` and let the heading row wrap the chip beneath.
+3. **Inline prose link forced to `min-h-10`** in About to satisfy TEST-10, which broke the paragraph's line box. Reverted, and TEST-10 narrowed to exempt links inline in a sentence per WCAG 2.5.8 — the gate was over-broad as originally written.
+
+### Open item (not a blocker)
+
+Listing prices are seller-declared and unbounded — the calibration sample contained a listing at ~10¹² ꜩ. A 1/1 priced absurdly therefore self-promotes to Legendary. Tiers hold statistically, but consider clamping the top tier to a percentile of the live price distribution rather than an absolute constant if the badge is ever given weight beyond display.
+
+---
+
+## 8. Second Review (September 3, 2026)
+
+Re-run cold against the current build after sign-off. The five original blockers were all closed and the visual craft bar was met, but the pass surfaced one blocker the first review and this spec both missed, plus a modal cluster that never received the Phase 3 treatment.
+
+### DR-17: The pack and card backs must be real buttons
+
+* **Severity:** Blocker
+* **Problem:** `PackOpening.tsx` rendered the booster pack as `<motion.div onClick={openPack}>` -- no role, no `tabIndex`, no accessible name. Measured: the idle screen exposed six tabbable controls and the pack was not among them, so a keyboard or screen-reader user could not open a pack at all. That is the product's primary action.
+
+  The card backs looked reachable only because Framer Motion injects `tabindex` on elements carrying `whileTap`; the pack had no `whileTap`, so it got nothing. Neither element was a control, and neither had an accessible name.
+* **Remediation:** `motion.button type="button"` for both. The pack takes `aria-label="Open booster pack"` and `disabled={isLoading}`; each back takes a positional `facedownLabel` (`Reveal card 2 of 5`) so the name never spoils the pull it is about to reveal.
+* **Verified:** the pack now sits in the tab order, takes the focus ring, and opens a pack on Enter alone; the five backs are buttons with distinct labels that leak no token name. Locked in by TEST-14.
+
+### DR-18: Modal inherits the rarity and layout system
+
+* **Severity:** Should-fix
+* **Problem:** three defects, one cause -- `NFTDetailsModal` never received the Phase 3 pass.
+  1. The rarity badge hardcoded `border-indigo-500/50 bg-indigo-950 text-indigo-200` for every tier, so Uncommon read emerald on the card and indigo in the modal.
+  2. `Collect on OBJKT` wrapped to three lines (measured 120x70 at 1440px).
+  3. The description used a raw `overflow-y-auto` scrollbar and truncated mid-sentence, while the mobile tab bar had already solved that with a mask.
+* **Remediation:** `RARITY_CONFIG` moved out of `NFTCard.tsx` into `src/components/rarityStyles.ts` so both surfaces read one source; the modal badge now renders `rarity.badge` and `rarity.label`. Footer buttons stack full width -- the metadata column is only ~320-390px, so a side-by-side row cannot hold these labels. A `.scroll-fade` utility fades the bottom edge and hides the scrollbar.
+* **Verified:** badge colour equals `--rarity-epic` exactly; no horizontal overflow at 1440px or 390px; scrollbar hidden.
+
+### Still open after this pass
+
+| Item | Severity | Note |
+| :--- | :--- | :--- |
+| Edition/price chips over high-chroma art | Should-fix | A translucent dark fill cannot hold against unpredictable artwork; needs a solid chip or a real scrim. |
+| About says "simulated rarities" | Note | After DR-04/DR-05 the grading is disclosed and deterministic; "simulated" undercuts that. |
+| Legend wraps 3+2 | Note | Orphan second row. |
+
+### Process lessons
+
+Two gates were missing rather than failing. TEST-08 checked only `gray-` literals, so an entire palette family slipped through; no gate at all asserted that interactive elements are real controls, which is why a `div onClick` on the primary action survived sixteen completed items and a full green matrix. TEST-14 and TEST-15 close both.
+
+### DR-19: Semantic status tokens and literal-free components
+
+* **Severity:** Should-fix (closes the token-discipline and hue-collision items above)
+* **Problem:** 82 raw Tailwind literals survived DR-02 across six files. Three causes: the palette had **no status tokens**, so errors reached for `red-*`, connected/copied states for `emerald-*` and wishlisted for `rose-*`; accent work used `indigo-*` directly; and the deck stats coloured three numbers in three unrelated hues, which is decoration rather than meaning. The booster pack's iridescent foil was a fourth case -- genuinely bespoke, but scattered across component classNames where it could drift.
+* **Remediation:**
+  1. Added `--success`, `--danger` and `--saved` with quiet variants. `--saved` is its own signal: wishlisting is neither an action nor an error.
+  2. Moved the pack and card-back iridescence into named classes -- `.foil-pack`, `.foil-card-back`, `.foil-sheen`, `.foil-glow-cool`, `.foil-glow-warm`, `.foil-emblem`, `.foil-wordmark`. The hues stay bespoke but live in one documented place, so components hold no literals and the gate can be absolute.
+  3. Deck stat numerals drop to `--text-primary`; their labels already say what each number is.
+  4. The quantity-owned badge dropped `blue-*` -- a fourth hue for "how many you own" -- for neutral chrome.
+  5. "Pack Complete!" became neutral. It is an informational label, not a success alert, and green there collided with the Uncommon frame in the same view. `--success` was then moved off `#34d399` so it no longer aliases `--rarity-uncommon`; two tokens sharing one value is a trap.
+* **Verified:** zero palette literals in `src/`; status tokens measure 7.2:1 to 10.4:1 against the page ground, all clearing AA; pack and card back render unchanged.
