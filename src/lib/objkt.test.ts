@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calculateRarity,
   convertIpfsUrl,
   extractIpfsHash,
   fetchRandomPack,
@@ -11,8 +12,33 @@ import {
   getCardImageSources,
   normalizeObjktToken,
   objktClient,
+  RARITY_LEGEND,
+  RARITY_THRESHOLDS,
   shuffleArray,
 } from "./objkt";
+
+test("rarity legend matches calculateRarity boundaries", () => {
+  assert.deepEqual(
+    RARITY_LEGEND.map(({ tier, rule }) => [tier, rule]),
+    [
+      ["legendary", `1 of 1 or ${RARITY_THRESHOLDS.legendaryPrice}ꜩ+`],
+      ["epic", `≤${RARITY_THRESHOLDS.epicEditions} editions or ${RARITY_THRESHOLDS.epicPrice}ꜩ+`],
+      ["rare", `≤${RARITY_THRESHOLDS.rareEditions} editions or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`],
+      ["uncommon", `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`],
+      ["common", "Open edition · under 1ꜩ"],
+    ],
+  );
+
+  assert.equal(calculateRarity(1, 0), "legendary");
+  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.legendaryPrice), "legendary");
+  assert.equal(calculateRarity(RARITY_THRESHOLDS.epicEditions, 0), "epic");
+  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.epicPrice), "epic");
+  assert.equal(calculateRarity(RARITY_THRESHOLDS.rareEditions, 0), "rare");
+  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.rarePrice), "rare");
+  assert.equal(calculateRarity(RARITY_THRESHOLDS.uncommonEditions, 0), "uncommon");
+  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.uncommonPrice), "uncommon");
+  assert.equal(calculateRarity(101, 0), "common");
+});
 
 test("formatShortAddress creates the shared compact wallet label", () => {
   assert.equal(

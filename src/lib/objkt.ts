@@ -5,6 +5,44 @@ export const objktClient = new GraphQLClient(OBJKT_API_URL);
 
 export type CardRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 
+export const RARITY_THRESHOLDS = {
+  legendaryPrice: 50,
+  epicEditions: 5,
+  epicPrice: 20,
+  rareEditions: 25,
+  rarePrice: 5,
+  uncommonEditions: 100,
+  uncommonPrice: 1,
+} as const;
+
+export const RARITY_LEGEND: ReadonlyArray<{
+  tier: CardRarity;
+  label: string;
+  rule: string;
+}> = [
+  {
+    tier: "legendary",
+    label: "Legendary",
+    rule: `1 of 1 or ${RARITY_THRESHOLDS.legendaryPrice}ꜩ+`,
+  },
+  {
+    tier: "epic",
+    label: "Epic",
+    rule: `≤${RARITY_THRESHOLDS.epicEditions} editions or ${RARITY_THRESHOLDS.epicPrice}ꜩ+`,
+  },
+  {
+    tier: "rare",
+    label: "Rare",
+    rule: `≤${RARITY_THRESHOLDS.rareEditions} editions or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`,
+  },
+  {
+    tier: "uncommon",
+    label: "Uncommon",
+    rule: `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`,
+  },
+  { tier: "common", label: "Common", rule: "Open edition · under 1ꜩ" },
+];
+
 export interface NFTCard {
   listing_id?: number;
   token_id: string;
@@ -108,10 +146,13 @@ export function shuffleArray<T>(items: T[]): T[] {
 
 export function calculateRarity(editions?: number, priceXtz?: number): CardRarity {
   if (editions === 1) return "legendary";
-  if (priceXtz && priceXtz >= 50) return "legendary";
-  if ((editions && editions <= 5) || (priceXtz && priceXtz >= 20)) return "epic";
-  if ((editions && editions <= 25) || (priceXtz && priceXtz >= 5)) return "rare";
-  if ((editions && editions <= 100) || (priceXtz && priceXtz >= 1)) return "uncommon";
+  if (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.legendaryPrice) return "legendary";
+  if ((editions !== undefined && editions <= RARITY_THRESHOLDS.epicEditions)
+    || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.epicPrice)) return "epic";
+  if ((editions !== undefined && editions <= RARITY_THRESHOLDS.rareEditions)
+    || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.rarePrice)) return "rare";
+  if ((editions !== undefined && editions <= RARITY_THRESHOLDS.uncommonEditions)
+    || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.uncommonPrice)) return "uncommon";
   return "common";
 }
 

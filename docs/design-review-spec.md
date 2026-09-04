@@ -535,7 +535,7 @@ flowchart TD
   - [x] DR-02 — Add surface / border / text-ramp / accent / rarity tokens; migrate components off raw Tailwind grays; collapse the double rule; resolve the ambient glows.
   - [x] DR-03 — Single `:focus-visible` ring; audit and remove orphan `focus:outline-none`.
 - [ ] **Phase 2: Content Integrity**
-  - [ ] DR-04 — Replace odds table with rarity legend; add parity test (TEST-06).
+  - [x] DR-04 — Replace odds table with rarity legend; add parity test (TEST-06).
   - [ ] DR-05 — Re-tier `calculateRarity`; add `calculateSupplyRarity` for deck view; **calibrate against TEST-05 before merge**; add deck-view grading note.
   - [ ] DR-06 — Heart everywhere; retire the star.
 - [ ] **Phase 3: Card Craft & Hierarchy**
