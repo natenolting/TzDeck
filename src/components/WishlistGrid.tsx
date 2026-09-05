@@ -41,6 +41,7 @@ export default function WishlistGrid({
   }
 
   const totalValue = wishlist.reduce((sum, c) => sum + (c.price_xtz || 0), 0);
+  const wishlistIds = new Set(wishlist.map(getCardKey));
 
   return (
     <div className="w-full space-y-6">
@@ -67,6 +68,8 @@ export default function WishlistGrid({
             card={card}
             showCollectButton={true}
             isWishlisted={true}
+            detailCards={wishlist}
+            detailWishlistIds={wishlistIds}
             onToggleWishlist={onWishlistToggle}
           />
         ))}

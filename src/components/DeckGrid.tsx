@@ -275,6 +275,8 @@ export default function DeckGrid({
                 card={token}
                 showCollectButton={true}
                 isWishlisted={isWish}
+                detailCards={filteredTokens}
+                detailWishlistIds={wishlistIds}
                 onToggleWishlist={onWishlistToggle}
               />
             );

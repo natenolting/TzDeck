@@ -179,6 +179,30 @@ export function ExternalLinkIcon({ className = base }: IconProps) {
   );
 }
 
+export function ChevronLeftIcon({ className = base }: IconProps) {
+  return (
+    <svg {...iconProps(className)}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m15.75 19.5-7.5-7.5 7.5-7.5"
+      />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon({ className = base }: IconProps) {
+  return (
+    <svg {...iconProps(className)}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m8.25 4.5 7.5 7.5-7.5 7.5"
+      />
+    </svg>
+  );
+}
+
 export function ImageOffIcon({ className = base }: IconProps) {
   return (
     <svg {...iconProps(className)}>

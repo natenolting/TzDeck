@@ -1,30 +1,71 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { NFTCard } from "@/lib/objkt";
+import {
+  convertIpfsUrl,
+  getCardImageSources,
+  getCardKey,
+  type NFTCard,
+} from "@/lib/objkt";
+import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
 import { RARITY_CONFIG } from "./rarityStyles";
 
 interface NFTDetailsModalProps {
   card: NFTCard;
   imageUrl: string;
   isWishlisted: boolean;
+  navigationCards?: NFTCard[];
+  wishlistIds?: Set<string>;
   onClose: () => void;
   onToggleWishlist?: (card: NFTCard) => void;
+}
+
+function getPrimaryImageUrl(card: NFTCard) {
+  const [rawUri = ""] = getCardImageSources(
+    card.display_uri,
+    card.thumbnail_uri,
+    card.artifact_uri,
+  );
+
+  return convertIpfsUrl(rawUri);
 }
 
 export default function NFTDetailsModal({
   card,
   imageUrl,
   isWishlisted,
+  navigationCards,
+  wishlistIds,
   onClose,
   onToggleWishlist,
 }: NFTDetailsModalProps) {
   const titleId = useId();
-  const rarity = RARITY_CONFIG[card.rarity || "common"];
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const initialCardKey = getCardKey(card);
+  const cards = navigationCards?.some(
+    (navigationCard) => getCardKey(navigationCard) === initialCardKey,
+  )
+    ? navigationCards
+    : [card];
+  const [activeCardKey, setActiveCardKey] = useState(initialCardKey);
+  const matchedIndex = cards.findIndex(
+    (navigationCard) => getCardKey(navigationCard) === activeCardKey,
+  );
+  const activeIndex = matchedIndex >= 0 ? matchedIndex : 0;
+  const activeCard = cards[activeIndex];
+  const activeKey = getCardKey(activeCard);
+  const activeImageUrl = activeKey === initialCardKey
+    ? imageUrl
+    : getPrimaryImageUrl(activeCard);
+  const activeIsWishlisted = activeKey === initialCardKey
+    ? isWishlisted
+    : wishlistIds?.has(activeKey) ?? false;
+  const rarity = RARITY_CONFIG[activeCard.rarity || "common"];
+  const previousCard = cards[activeIndex - 1];
+  const nextCard = cards[activeIndex + 1];
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -94,15 +135,39 @@ export default function NFTDetailsModal({
           <span aria-hidden="true">×</span>
         </button>
 
-        <div className="flex min-h-[320px] items-center justify-center bg-black/50 p-4 sm:p-6">
-          {/* Reuse the card's resolved gateway URL without adding an unbounded image allowlist. */}
+        <div className="relative flex min-h-[320px] items-center justify-center bg-black/50 p-4 sm:p-6">
+          {/* Reuse the opened card's resolved URL and derive sibling URLs locally. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={imageUrl}
-            alt={card.name}
+            src={activeImageUrl}
+            alt={activeCard.name}
             decoding="async"
             className="max-h-[75vh] w-full rounded-2xl object-contain shadow-2xl"
           />
+
+          {previousCard && (
+            <button
+              type="button"
+              onClick={() => setActiveCardKey(getCardKey(previousCard))}
+              aria-label="View previous card"
+              title="Previous card"
+              className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:left-5"
+            >
+              <ChevronLeftIcon className="h-6 w-6" />
+            </button>
+          )}
+
+          {nextCard && (
+            <button
+              type="button"
+              onClick={() => setActiveCardKey(getCardKey(nextCard))}
+              aria-label="View next card"
+              title="Next card"
+              className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:right-5"
+            >
+              <ChevronRightIcon className="h-6 w-6" />
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-5 p-6 sm:p-8">
@@ -113,39 +178,39 @@ export default function NFTDetailsModal({
               {rarity.label}
             </span>
             <h2 id={titleId} className="mt-3 text-2xl font-extrabold text-text-primary sm:text-3xl">
-              {card.name}
+              {activeCard.name}
             </h2>
             <p className="mt-2 text-sm font-medium text-accent-hover">
-              {card.artist_alias || "Unknown Artist"}
+              {activeCard.artist_alias || "Unknown Artist"}
             </p>
-            {card.collection_name && (
-              <p className="mt-1 text-xs text-text-muted">{card.collection_name}</p>
+            {activeCard.collection_name && (
+              <p className="mt-1 text-xs text-text-muted">{activeCard.collection_name}</p>
             )}
           </div>
 
-          {card.description && (
+          {activeCard.description && (
             <p className="scroll-fade max-h-36 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
-              {card.description}
+              {activeCard.description}
             </p>
           )}
 
           <dl className="grid grid-cols-2 gap-3 text-sm">
-            {card.editions !== undefined && (
+            {activeCard.editions !== undefined && (
               <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
                 <dt className="text-xs text-text-tertiary">Editions</dt>
-                <dd className="mt-1 font-bold tabular-nums text-text-primary">{card.editions}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-text-primary">{activeCard.editions}</dd>
               </div>
             )}
-            {card.price_xtz !== undefined && (
+            {activeCard.price_xtz !== undefined && (
               <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
                 <dt className="text-xs text-text-tertiary">Listed Price</dt>
-                <dd className="mt-1 font-bold tabular-nums text-accent-hover">ꜩ {card.price_xtz}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-accent-hover">ꜩ {activeCard.price_xtz}</dd>
               </div>
             )}
-            {card.quantity_owned !== undefined && (
+            {activeCard.quantity_owned !== undefined && (
               <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
                 <dt className="text-xs text-text-tertiary">Owned</dt>
-                <dd className="mt-1 font-bold tabular-nums text-text-primary">{card.quantity_owned}</dd>
+                <dd className="mt-1 font-bold tabular-nums text-text-primary">{activeCard.quantity_owned}</dd>
               </div>
             )}
           </dl>
@@ -154,12 +219,12 @@ export default function NFTDetailsModal({
             <div>
               <dt className="text-text-tertiary">Contract</dt>
               <dd className="mt-1 break-all font-mono text-text-secondary">
-                {card.contract_address}
+                {activeCard.contract_address}
               </dd>
             </div>
             <div>
               <dt className="text-text-tertiary">Token ID</dt>
-              <dd className="mt-1 break-all font-mono text-text-secondary">{card.token_id}</dd>
+              <dd className="mt-1 break-all font-mono text-text-secondary">{activeCard.token_id}</dd>
             </div>
           </dl>
 
@@ -167,18 +232,18 @@ export default function NFTDetailsModal({
             {onToggleWishlist && (
               <button
                 type="button"
-                onClick={() => onToggleWishlist(card)}
+                onClick={() => onToggleWishlist(activeCard)}
                 className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
-                  isWishlisted
+                  activeIsWishlisted
                     ? "border-saved/50 bg-saved-quiet text-saved hover:bg-saved/20"
                     : "border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3"
                 }`}
               >
-                {isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                {activeIsWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
               </button>
             )}
             <a
-              href={card.objkt_url}
+              href={activeCard.objkt_url}
               target="_blank"
               rel="noopener noreferrer"
               className="button-primary w-full px-4 py-3 text-sm font-bold"

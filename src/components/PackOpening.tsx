@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CardRarity,
   getCardKey,
@@ -143,6 +143,10 @@ export default function PackOpening({
   };
 
   const totalValue = cards.reduce((sum, c) => sum + (c.price_xtz || 0), 0);
+  const revealedCards = useMemo(
+    () => cards.filter((_, index) => flippedIndices.has(index)),
+    [cards, flippedIndices],
+  );
 
   return (
     <div className="relative w-full max-w-6xl mx-auto py-6">
@@ -339,6 +343,8 @@ export default function PackOpening({
                       onFlip={() => handleFlipCard(idx)}
                       showCollectButton={isFlipped}
                       isWishlisted={isWish}
+                      detailCards={revealedCards}
+                      detailWishlistIds={wishlistIds}
                       onToggleWishlist={onWishlistToggle}
                     />
                   </div>

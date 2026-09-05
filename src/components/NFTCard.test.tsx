@@ -65,6 +65,22 @@ const card: NFTCardType = {
   quantity_owned: 2,
 };
 
+const secondCard: NFTCardType = {
+  ...card,
+  token_id: "43",
+  name: "Neon Horizon",
+  display_uri: "https://example.com/neon-horizon.jpg",
+  rarity: "rare",
+};
+
+const thirdCard: NFTCardType = {
+  ...card,
+  token_id: "44",
+  name: "Last Light",
+  display_uri: "https://example.com/last-light.jpg",
+  rarity: "legendary",
+};
+
 afterEach(() => {
   testingLibrary?.cleanup();
   document.body.style.overflow = "";
@@ -115,6 +131,48 @@ test("clicking visible card artwork opens a modal with token information", async
   assert.equal(toggledCard, card);
   assert.equal(screen.getByTestId("nft-details-backdrop").parentElement, document.body);
   assert.equal(document.body.style.overflow, "hidden");
+});
+
+test("a token thumbnail uses the deck spinner until its artwork loads", async () => {
+  const { fireEvent, render, screen, NFTCard } = await loadTestHarness();
+  const { container } = render(<NFTCard card={card} />);
+
+  assert.ok(container.querySelector(".animate-spin"));
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+
+  assert.equal(container.querySelector(".animate-spin"), null);
+});
+
+test("card details navigate within the supplied card order", async () => {
+  const { fireEvent, render, screen, NFTCard, within } = await loadTestHarness();
+  render(
+    <NFTCard
+      card={card}
+      detailCards={[card, secondCard, thirdCard]}
+      detailWishlistIds={new Set([`${secondCard.contract_address}:${secondCard.token_id}`])}
+      onToggleWishlist={() => undefined}
+    />,
+  );
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+  fireEvent.click(
+    screen.getByRole("button", { name: `View details for ${card.name}` }),
+  );
+
+  let modal = within(screen.getByRole("dialog", { name: card.name }));
+  assert.equal(modal.queryByRole("button", { name: "View previous card" }), null);
+  fireEvent.click(modal.getByRole("button", { name: "View next card" }));
+
+  modal = within(screen.getByRole("dialog", { name: secondCard.name }));
+  assert.ok(modal.getByRole("button", { name: "View previous card" }));
+  assert.ok(modal.getByRole("button", { name: "View next card" }));
+  assert.ok(modal.getByRole("button", { name: "Remove from Wishlist" }));
+  fireEvent.click(modal.getByRole("button", { name: "View next card" }));
+
+  modal = within(screen.getByRole("dialog", { name: thirdCard.name }));
+  assert.ok(modal.getByRole("button", { name: "View previous card" }));
+  assert.equal(modal.queryByRole("button", { name: "View next card" }), null);
 });
 
 test("Escape and backdrop clicks close the token modal", async () => {
