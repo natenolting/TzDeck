@@ -22,6 +22,8 @@ interface NFTCardProps {
   facedownLabel?: string;
   showCollectButton?: boolean;
   isWishlisted?: boolean;
+  detailCards?: NFTCardType[];
+  detailWishlistIds?: Set<string>;
   onToggleWishlist?: (card: NFTCardType) => void;
   className?: string;
 }
@@ -34,6 +36,8 @@ export default function NFTCard({
   facedownLabel = "Reveal card",
   showCollectButton = true,
   isWishlisted = false,
+  detailCards,
+  detailWishlistIds,
   onToggleWishlist,
   className = "",
 }: NFTCardProps) {
@@ -277,6 +281,8 @@ export default function NFTCard({
           card={card}
           imageUrl={currentImageUrl}
           isWishlisted={isWishlisted}
+          navigationCards={detailCards}
+          wishlistIds={detailWishlistIds}
           onClose={closeDetails}
           onToggleWishlist={onToggleWishlist}
         />

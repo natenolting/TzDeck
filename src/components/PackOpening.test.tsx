@@ -181,6 +181,32 @@ test("pack completion keeps rare-pull emphasis on the cards", async () => {
   assert.equal(screen.queryByText(/Outstanding Pull/), null);
 });
 
+test("pack detail navigation includes only revealed cards", async () => {
+  const { fireEvent, screen } = await renderRevealingPack();
+
+  fireEvent.click(screen.getByRole("button", { name: "Reveal card 1 of 2" }));
+  fireEvent.load(screen.getByRole("img", { name: "First Pull" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "View details for First Pull" }),
+  );
+
+  assert.equal(
+    screen.queryByRole("button", { name: "View previous card" }),
+    null,
+  );
+  assert.equal(screen.queryByRole("button", { name: "View next card" }), null);
+  fireEvent.click(screen.getByRole("button", { name: "Close token details" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "Reveal card 2 of 2" }));
+  fireEvent.load(screen.getByRole("img", { name: "Second Pull" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "View details for Second Pull" }),
+  );
+
+  assert.ok(screen.getByRole("button", { name: "View previous card" }));
+  assert.equal(screen.queryByRole("button", { name: "View next card" }), null);
+});
+
 test("the pack and every card back are real buttons a keyboard can reach", async () => {
   const { render, screen, PackOpening } = await loadTestHarness();
   mockSuccessfulPackRequest();
