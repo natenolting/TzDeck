@@ -39,7 +39,7 @@ export default function ConnectButton({ variant = "primary" }: ConnectButtonProp
           title="Click to copy full address"
           className="flex min-h-10 items-center gap-1.5 rounded-xl border border-border-default bg-surface-2 px-3 py-2.5 text-xs font-mono text-text-primary hover:border-border-strong transition-colors backdrop-blur-md"
         >
-          <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-success" />
           <span>{formatShortAddress(address)}</span>
           {copied ? (
             <span className="flex items-center gap-1 text-2xs text-success font-sans">
