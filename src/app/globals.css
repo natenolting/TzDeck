@@ -185,11 +185,14 @@ h4,
     var(--surface-1) 50%,
     #3b0764 100%
   );
-  border-color: rgb(129 140 248 / 0.4);
 }
 
-.foil-pack:hover {
-  border-color: rgb(165 180 252 / 0.9);
+.foil-pack-body {
+  width: 17.5rem;
+  box-shadow:
+    inset 10px 0 18px rgb(0 0 0 / 0.2),
+    inset -10px 0 18px rgb(0 0 0 / 0.24),
+    0 18px 44px rgb(0 0 0 / 0.52);
 }
 
 .foil-card-back {
@@ -232,23 +235,154 @@ h4,
   background-color: rgb(232 121 249 / 0.4);
 }
 
-.foil-emblem {
-  background-image: linear-gradient(
-    to bottom right,
-    rgb(79 70 229 / 0.3),
-    rgb(147 51 234 / 0.3),
-    rgb(219 39 119 / 0.3)
+/* A separate, wider heat seal gives the pouch its pillow-pack shoulders. The
+   dense alternating highlights are pressed ribs; the clip-path cuts the outer
+   edge into actual teeth instead of merely drawing a zigzag inside a box. */
+.foil-pack-seal {
+  position: relative;
+  z-index: 20;
+  width: 18.5rem;
+  height: 1.75rem;
+  flex: none;
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.2),
+      transparent 24%,
+      rgb(0 0 0 / 0.24) 78%,
+      rgb(129 140 248 / 0.2)
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgb(255 255 255 / 0.2) 0 1px,
+      rgb(0 0 0 / 0.34) 1px 2px,
+      transparent 2px 5px
+    ),
+    linear-gradient(90deg, #242052, #312e81 48%, #25164b);
+  clip-path: polygon(
+    0% 7px,
+    1.7857% 1px,
+    3.5714% 7px,
+    5.3571% 1px,
+    7.1429% 7px,
+    8.9286% 1px,
+    10.7143% 7px,
+    12.5% 1px,
+    14.2857% 7px,
+    16.0714% 1px,
+    17.8571% 7px,
+    19.6429% 1px,
+    21.4286% 7px,
+    23.2143% 1px,
+    25% 7px,
+    26.7857% 1px,
+    28.5714% 7px,
+    30.3571% 1px,
+    32.1429% 7px,
+    33.9286% 1px,
+    35.7143% 7px,
+    37.5% 1px,
+    39.2857% 7px,
+    41.0714% 1px,
+    42.8571% 7px,
+    44.6429% 1px,
+    46.4286% 7px,
+    48.2143% 1px,
+    50% 7px,
+    51.7857% 1px,
+    53.5714% 7px,
+    55.3571% 1px,
+    57.1429% 7px,
+    58.9286% 1px,
+    60.7143% 7px,
+    62.5% 1px,
+    64.2857% 7px,
+    66.0714% 1px,
+    67.8571% 7px,
+    69.6429% 1px,
+    71.4286% 7px,
+    73.2143% 1px,
+    75% 7px,
+    76.7857% 1px,
+    78.5714% 7px,
+    80.3571% 1px,
+    82.1429% 7px,
+    83.9286% 1px,
+    85.7143% 7px,
+    87.5% 1px,
+    89.2857% 7px,
+    91.0714% 1px,
+    92.8571% 7px,
+    94.6429% 1px,
+    96.4286% 7px,
+    98.2143% 1px,
+    100% 7px,
+    100% 100%,
+    0% 100%
   );
-  border-color: rgb(129 140 248 / 0.6);
 }
 
-.foil-wordmark {
+.foil-pack-seal::after {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.25rem;
+  left: 0.55rem;
+  height: 2px;
+  border-top: 1px solid rgb(255 255 255 / 0.18);
+  border-bottom: 1px solid rgb(0 0 0 / 0.5);
+  content: "";
+}
+
+.foil-pack-seal-top {
+  margin-bottom: -0.375rem;
+}
+
+.foil-pack-seal-bottom {
+  margin-top: -0.375rem;
+  transform: scaleY(-1);
+}
+
+/* Diagonal holographic sweep, the light-catching streak that crosses a real
+   foil pack when it tilts. Oversized background so the sweep has room to
+   travel on hover instead of just fading. */
+.foil-holo-sweep {
   background-image: linear-gradient(
-    to right,
-    #93c5fd,
-    #c7d2fe,
-    #d8b4fe
+    115deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.4) 42%,
+    rgb(94 234 212 / 0.35) 47%,
+    rgb(232 121 249 / 0.4) 52%,
+    rgb(250 204 21 / 0.3) 58%,
+    transparent 70%
   );
+  background-size: 240% 240%;
+  background-position: 15% 0%;
+  mix-blend-mode: overlay;
+  transition: background-position 900ms ease;
+}
+
+.group:hover .foil-holo-sweep {
+  background-position: 85% 100%;
+}
+
+/* Ray burst behind the emblem, masked to a soft-edged disc so it reads as
+   glow rather than a hard-edged sunburst sticker. */
+.foil-starburst {
+  background-image: repeating-conic-gradient(
+    from 0deg,
+    rgb(199 210 254 / 0.22) 0deg 3deg,
+    transparent 3deg 16deg
+  );
+  mask-image: radial-gradient(circle, black 0%, black 45%, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle, black 0%, black 45%, transparent 72%);
+}
+
+/* Set-name ribbon: a slightly skewed banner, the way a set/expansion logo
+   sits on a canted plate on real packs rather than plain centered text. */
+.foil-ribbon {
+  clip-path: polygon(3% 0%, 100% 0%, 97% 100%, 0% 100%);
+  background-image: linear-gradient(to right, var(--accent), var(--accent-hover));
+  box-shadow: 0 4px 14px rgb(49 46 129 / 0.45);
 }
 
 .page-vignette {
