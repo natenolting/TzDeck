@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ConnectButton from "@/components/ConnectButton";
 import DeckGrid from "@/components/DeckGrid";
 import PackOpening from "@/components/PackOpening";
 import WishlistGrid from "@/components/WishlistGrid";
 import SoundToggle from "@/components/SoundToggle";
 import { useWallet } from "@/context/WalletContext";
-import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
+import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -21,10 +21,33 @@ import {
 
 type ActiveTab = "packs" | "deck" | "wishlist" | "about";
 
+const RARITY_DOT_CLASS: Record<CardRarity, string> = {
+  legendary: "bg-rarity-legendary",
+  epic: "bg-rarity-epic",
+  rare: "bg-rarity-rare",
+  uncommon: "bg-rarity-uncommon",
+  common: "bg-rarity-common",
+};
+
 export default function Home() {
   const { address } = useWallet();
   const [activeTab, setActiveTab] = useState<ActiveTab>("packs");
   const wishlist = useWishlist();
+  const rarityHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusRarityRef = useRef(false);
+
+  const handleShowRarity = () => {
+    focusRarityRef.current = true;
+    setActiveTab("about");
+  };
+
+  useEffect(() => {
+    if (activeTab === "about" && focusRarityRef.current) {
+      focusRarityRef.current = false;
+      rarityHeadingRef.current?.focus({ preventScroll: true });
+      rarityHeadingRef.current?.scrollIntoView({ block: "start" });
+    }
+  }, [activeTab]);
 
   const handleWishlistToggle = (card: NFTCardType) => {
     const key = getCardKey(card);
@@ -152,6 +175,7 @@ export default function Home() {
         <div className="pb-16">
           {activeTab === "packs" && (
             <PackOpening
+              onShowRarity={handleShowRarity}
               onWishlistToggle={handleWishlistToggle}
               wishlistIds={wishlistIds}
             />
@@ -239,6 +263,35 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
+
+                <section aria-labelledby="rarity-grading" className="border-t border-border-subtle pt-6">
+                  <h3
+                    id="rarity-grading"
+                    ref={rarityHeadingRef}
+                    tabIndex={-1}
+                    className="scroll-mt-6 font-bold text-text-primary"
+                  >
+                    How rarity is graded
+                  </h3>
+                  <p className="mt-2 max-w-[68ch]">
+                    Pack rarity reflects edition size and listed price. The pull is random; the grade follows these rules.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-text-secondary">
+                    {RARITY_LEGEND.map(({ tier, label, rule }) => (
+                      <span
+                        key={tier}
+                        className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-1/80 px-3 py-1.5"
+                      >
+                        <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${RARITY_DOT_CLASS[tier]}`} />
+                        <span className="font-semibold text-text-primary">{label}</span>
+                        <span>{rule}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-3 max-w-[68ch] text-xs">
+                    My Deck uses edition size alone because wallet holdings do not include listing prices.
+                  </p>
+                </section>
 
                 <div className="rounded-2xl border border-accent/20 bg-accent-quiet p-4 mt-4">
                   <h4 className="font-bold text-accent-hover text-xs uppercase tracking-wider">
