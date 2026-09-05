@@ -11,6 +11,7 @@ import NFTCard from "./NFTCard";
 import { soundManager } from "@/lib/sound";
 import { motion, AnimatePresence } from "framer-motion";
 import { SparklesIcon } from "./icons";
+import Image from "next/image";
 
 interface PackOpeningProps {
   onWishlistToggle?: (card: NFTCardType) => void;
@@ -158,58 +159,72 @@ export default function PackOpening({
             {/* Booster Foil Pack Graphic */}
             <motion.button
               type="button"
-              whileHover={{ scale: 1.05, rotateY: 5, y: -8 }}
+              whileHover={{ y: -8 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
               onClick={openPack}
               disabled={isLoading}
               aria-label={isLoading ? "Opening booster pack" : "Open booster pack"}
-              className="group relative h-[420px] w-[290px] cursor-pointer foil-pack rounded-3xl border-4 p-6 text-left shadow-2xl shadow-black/60 transition-all hover:shadow-accent/40 select-none overflow-hidden disabled:cursor-wait"
+              className="group font-display relative flex h-[456px] w-[296px] cursor-pointer flex-col items-center text-left drop-shadow-2xl transition-all hover:drop-shadow-[0_24px_28px_rgb(99_102_241/0.3)] select-none disabled:cursor-wait"
             >
-              {/* Metallic Foil Sheen */}
-              <div className="foil-sheen pointer-events-none absolute inset-0 opacity-70 group-hover:opacity-100 transition-opacity" />
-              <div className="pointer-events-none foil-glow-cool absolute -top-24 -left-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
-              <div className="pointer-events-none foil-glow-warm absolute -bottom-24 -right-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
+              {/* The seals are wider than the pouch, as on a real pillow pack.
+                  Their clipped outer edge changes the actual silhouette. */}
+              <div className="foil-pack-seal foil-pack-seal-top" aria-hidden="true" />
 
-              {/* Pack Top Crimped Edge */}
-              <div className="relative z-10 flex items-center justify-between border-b border-accent/30 pb-3">
-                <span className="text-xs font-black tracking-widest text-accent-hover">
-                  TZDECK • BOOSTER
-                </span>
-                <span className="rounded-full bg-accent/25 px-2 py-0.5 text-2xs font-bold tabular-nums text-accent-hover">
-                  5 CARDS
-                </span>
-              </div>
+              <div className="foil-pack foil-pack-body relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                {/* Metallic foil sheen + light-catching holo sweep */}
+                <div className="foil-sheen pointer-events-none absolute inset-0 opacity-60 group-hover:opacity-90 transition-opacity" />
+                <div className="foil-holo-sweep pointer-events-none absolute inset-0" />
+                <div className="pointer-events-none foil-glow-cool absolute -top-24 -left-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
+                <div className="pointer-events-none foil-glow-warm absolute -bottom-24 -right-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
 
-              {/* Pack Center Artwork */}
-              <div className="relative z-10 my-8 flex flex-col items-center justify-center">
-                <div className="relative flex h-28 w-28 items-center justify-center foil-emblem rounded-2xl border-2 shadow-xl backdrop-blur-md">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-                    className="absolute inset-1 rounded-xl border border-dashed border-accent/40"
-                  />
-                  {/* bg-clip-text paints the gradient only inside the box, and the tz
-                      descender outruns a line-height of 1, so the tail loses its
-                      fill. leading-snug buys the glyph room to sit in. */}
-                  <span className="foil-wordmark text-5xl leading-snug font-black text-transparent bg-clip-text">
-                    ꜩ
+                {/* Pack Header: wordmark + corner count badge, like a rating stamp */}
+                <div className="relative z-10 flex items-start justify-between px-5 pt-4">
+                  <span className="mt-1.5 text-xs font-black tracking-[0.2em] text-accent-hover">
+                    TZDECK
+                  </span>
+                  <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-full border-2 border-accent-hover/70 bg-surface-0/70 text-accent-hover shadow-md backdrop-blur-sm">
+                    <span className="text-sm font-black leading-none">5</span>
+                    <span className="text-[0.55rem] font-bold leading-none tracking-wide">CARDS</span>
+                  </div>
+                </div>
+
+                {/* Pack Center Artwork */}
+                <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-5">
+                  <div className="relative flex h-28 w-28 items-center justify-center">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
+                      className="foil-starburst pointer-events-none absolute -inset-6"
+                    />
+                    <Image
+                      src="/tzdeck-icon-gradient-on-light.svg"
+                      alt=""
+                      width={112}
+                      height={112}
+                      className="relative z-10 h-28 w-28 rounded-2xl shadow-xl ring-2 ring-accent-hover/70"
+                    />
+                  </div>
+
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="foil-ribbon px-5 py-1.5 text-lg font-black tracking-wider text-text-primary">
+                      OBJKT PACK
+                    </span>
+                    <p className="text-xs text-text-secondary font-medium text-center">
+                      Random Active Marketplace Pulls
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pack Bottom Footer: full-bleed color band, like a set's product stripe */}
+                <div className="relative z-10 mt-auto bg-gradient-to-r from-accent to-accent-hover py-3 text-center shadow-[0_-2px_12px_rgb(0_0_0/0.35)]">
+                  <span className="text-sm font-black uppercase tracking-widest text-text-primary">
+                    {isLoading ? "Opening..." : "Click to Rip Open"}
                   </span>
                 </div>
-                <h2 className="mt-4 text-2xl font-extrabold tracking-wider text-text-primary">
-                  OBJKT PACK
-                </h2>
-                <p className="text-xs text-text-secondary font-medium">
-                  Random Active Marketplace Pulls
-                </p>
               </div>
 
-              {/* Pack Bottom Footer */}
-              <div className="relative z-10 border-t border-accent/30 pt-3">
-                <div className="rounded-xl bg-accent/40 py-2 text-center text-xs font-bold text-text-primary border border-accent/50 shadow-md group-hover:bg-accent transition-colors">
-                  {isLoading ? "Opening..." : "Click to Rip Open"}
-                </div>
-              </div>
+              <div className="foil-pack-seal foil-pack-seal-bottom" aria-hidden="true" />
             </motion.button>
 
             {/* Error prompt */}
