@@ -2,10 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CardRarity,
   getCardKey,
   NFTCard as NFTCardType,
-  RARITY_LEGEND,
 } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
 import { soundManager } from "@/lib/sound";
@@ -16,20 +14,14 @@ import Image from "next/image";
 interface PackOpeningProps {
   onWishlistToggle?: (card: NFTCardType) => void;
   wishlistIds?: Set<string>;
+  onShowRarity?: () => void;
 }
 
 type PackState = "idle" | "opening" | "revealing" | "complete";
 
-const RARITY_DOT_CLASS: Record<CardRarity, string> = {
-  legendary: "bg-rarity-legendary",
-  epic: "bg-rarity-epic",
-  rare: "bg-rarity-rare",
-  uncommon: "bg-rarity-uncommon",
-  common: "bg-rarity-common",
-};
-
 export default function PackOpening({
   onWishlistToggle,
+  onShowRarity,
   wishlistIds = new Set(),
 }: PackOpeningProps) {
   const [packState, setPackState] = useState<PackState>("idle");
@@ -238,23 +230,16 @@ export default function PackOpening({
               </div>
             )}
 
-            <div className="mt-8 max-w-3xl">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                How rarity is graded
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-text-secondary">
-                {RARITY_LEGEND.map(({ tier, label, rule }) => (
-                  <span
-                    key={tier}
-                    className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-1/80 px-3 py-1.5"
-                  >
-                    <span className={`h-2 w-2 rounded-full ${RARITY_DOT_CLASS[tier]}`} />
-                    <span className="font-semibold text-text-primary">{label}</span>
-                    <span>{rule}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
+            <p className="mt-8 max-w-sm text-xs text-text-tertiary">
+              Rarity reflects edition size and listed price.{" "}
+              <button
+                type="button"
+                onClick={onShowRarity}
+                className="cursor-pointer text-accent-hover underline underline-offset-4 hover:text-text-primary"
+              >
+                How grading works <span aria-hidden="true">→</span>
+              </button>
+            </p>
           </motion.div>
         )}
 
