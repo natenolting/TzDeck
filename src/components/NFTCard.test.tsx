@@ -117,6 +117,17 @@ test("clicking visible card artwork opens a modal with token information", async
   assert.equal(document.body.style.overflow, "hidden");
 });
 
+test("a token thumbnail uses the deck spinner until its artwork loads", async () => {
+  const { fireEvent, render, screen, NFTCard } = await loadTestHarness();
+  const { container } = render(<NFTCard card={card} />);
+
+  assert.ok(container.querySelector(".animate-spin"));
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+
+  assert.equal(container.querySelector(".animate-spin"), null);
+});
+
 test("Escape and backdrop clicks close the token modal", async () => {
   const { fireEvent, render, screen, userEvent, NFTCard } = await loadTestHarness();
   const user = userEvent.setup({ document });

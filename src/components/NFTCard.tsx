@@ -193,8 +193,11 @@ export default function NFTCard({
             className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
           >
             {!imageLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80 animate-pulse">
-                <ImageOffIcon className="h-5 w-5 text-text-muted" />
+              <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80">
+                <div
+                  aria-hidden="true"
+                  className="h-10 w-10 animate-spin rounded-full border-4 border-accent border-t-transparent"
+                />
               </div>
             )}
             {/* NFT hosts are unbounded, and native error events drive gateway failover. */}
