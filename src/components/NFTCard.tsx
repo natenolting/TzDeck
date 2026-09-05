@@ -83,18 +83,18 @@ export default function NFTCard({
         aria-label={facedownLabel}
         className={`relative aspect-[5/7] w-full cursor-pointer foil-card-back rounded-2xl border-2 p-4 shadow-xl shadow-black/50 transition-all select-none ${className}`}
       >
-        <div className="flex h-full w-full flex-col items-center justify-between rounded-xl border border-border-subtle bg-surface-0/40 p-4 backdrop-blur-sm">
+        <div className="relative flex h-full w-full flex-col items-center justify-between rounded-xl border border-border-subtle bg-surface-0/40 p-4 backdrop-blur-sm">
           <div aria-hidden="true" className="h-px w-full bg-border-subtle" />
 
           {/* Card Back Center Emblem */}
-          <div className="relative flex h-28 w-24 items-center justify-center">
-            <div className="foil-glow-warm absolute h-20 w-20 rounded-full blur-xl" />
+          <div className="absolute left-1/2 top-1/2 flex w-[46%] -translate-x-1/2 -translate-y-1/2 items-center justify-center">
+            <div className="foil-glow-warm absolute aspect-square w-full rounded-full blur-xl" />
             <Image
               src="/tzdeck-shield-gradient-on-dark.svg"
               alt="TzDeck shield"
               width={88}
               height={113}
-              className="relative h-24 w-auto drop-shadow-[0_10px_18px_rgba(79,70,229,0.28)]"
+              className="relative h-auto w-full drop-shadow-[0_10px_18px_rgba(79,70,229,0.28)]"
             />
           </div>
 
