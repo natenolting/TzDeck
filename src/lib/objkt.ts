@@ -1,4 +1,5 @@
 import { GraphQLClient } from "graphql-request";
+import { CID } from "multiformats/cid";
 
 const OBJKT_API_URL = process.env.NEXT_PUBLIC_OBJKT_API_URL || "https://data.objkt.com/v3/graphql";
 export const objktClient = new GraphQLClient(OBJKT_API_URL);
@@ -85,8 +86,7 @@ export function getCardKey(
 export const IPFS_GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs/",
   "https://ipfs.io/ipfs/",
-  "https://dweb.link/ipfs/",
-  "https://w3s.link/ipfs/",
+  "https://{cid}.ipfs.dweb.link/",
 ];
 
 export function extractIpfsHash(uri?: string): string | null {
@@ -99,10 +99,16 @@ export function extractIpfsHash(uri?: string): string | null {
   }
   if (clean.startsWith("ipfs://ipfs/")) return clean.slice(12);
   if (clean.startsWith("ipfs://")) return clean.slice(7);
-  const match = clean.match(/\/ipfs\/([^#]+)/);
+  const subdomain = clean.match(/^https?:\/\/([^.]+)\.ipfs\.[^/?#]+(.*)$/i);
+  if (subdomain) return subdomain[1] + (subdomain[2] === "/" ? "" : subdomain[2]);
+  const match = clean.match(/\/ipfs\/(.+)/);
   if (match) return match[1];
-  if (/^(Qm[a-zA-Z0-9]{44}|bafy[a-zA-Z0-9]+)/.test(clean)) return clean;
-  return null;
+  try {
+    CID.parse(clean.split(/[/?#]/, 1)[0]);
+    return clean;
+  } catch {
+    return null;
+  }
 }
 
 export function convertIpfsUrl(uri?: string, gatewayIndex = 0): string {
@@ -118,6 +124,18 @@ export function convertIpfsUrl(uri?: string, gatewayIndex = 0): string {
   const hash = extractIpfsHash(uri);
   if (hash) {
     const gateway = IPFS_GATEWAYS[gatewayIndex % IPFS_GATEWAYS.length];
+    if (gateway.includes("{cid}")) {
+      const [cid] = hash.split(/[/?#]/, 1);
+      const suffix = hash.slice(cid.length);
+      try {
+        // DNS hostnames require CIDv1/base32, including for legacy Qm… CIDs.
+        const hostnameCid = CID.parse(cid).toV1().toString();
+        return `${gateway.replace("{cid}", hostnameCid)}${suffix.replace(/^\//, "")}`;
+      } catch {
+        // Malformed token metadata must not throw during card rendering.
+        return uri;
+      }
+    }
     return `${gateway}${hash}`;
   }
   return uri;

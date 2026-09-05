@@ -182,11 +182,57 @@ test("shuffleArray distributes each item uniformly across positions", () => {
   );
 });
 
-test("convertIpfsUrl sends an IPFS asset directly to the selected gateway", () => {
+test("convertIpfsUrl converts CIDv0 to CIDv1/base32 for dweb subdomains", () => {
   assert.equal(
-    convertIpfsUrl("ipfs://QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU", 2),
-    "https://dweb.link/ipfs/QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU",
+    convertIpfsUrl("ipfs://QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n", 2),
+    "https://bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku.ipfs.dweb.link/",
   );
+});
+
+test("convertIpfsUrl preserves a CIDv1 image across supported URL representations", () => {
+  const cid = "bafkreigdf3ynjvbfxq5ouefpurwdaizt4es2lfd7poeq62a5lkmlpevydy";
+  const expected = `https://${cid}.ipfs.dweb.link/`;
+  for (const uri of [
+    cid,
+    `ipfs://${cid}`,
+    `ipfs://ipfs/${cid}`,
+    `https://gateway.pinata.cloud/ipfs/${cid}`,
+    `https://dweb.link/ipfs/${cid}`,
+    `/api/media?ipfs=${cid}`,
+    `/api/media?url=${encodeURIComponent(expected)}`,
+    expected,
+  ]) {
+    assert.equal(convertIpfsUrl(uri, 2), expected, uri);
+  }
+});
+
+test("dweb subdomain conversion preserves paths, queries, and fragments", () => {
+  const cid = "bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm";
+  for (const suffix of [
+    "/folder/preview%20image.png?filename=preview.png#art",
+    "?filename=preview.png#art",
+    "/folder/",
+  ]) {
+    const expected = `https://${cid}.ipfs.dweb.link/${suffix.replace(/^\//, "")}`;
+    assert.equal(convertIpfsUrl(`ipfs://${cid}${suffix}`, 2), expected);
+    assert.equal(convertIpfsUrl(`https://dweb.link/ipfs/${cid}${suffix}`, 2), expected);
+    assert.equal(convertIpfsUrl(expected, 2), expected);
+  }
+});
+
+test("subdomain media URLs remain recognizable across gateway fallbacks", () => {
+  const cid = "bafkreigdf3ynjvbfxq5ouefpurwdaizt4es2lfd7poeq62a5lkmlpevydy";
+  const uri = `https://${cid}.ipfs.dweb.link/folder/preview.png?download=true#art`;
+  assert.equal(extractIpfsHash(uri), `${cid}/folder/preview.png?download=true#art`);
+  assert.equal(convertIpfsUrl(uri, 1), `https://ipfs.io/ipfs/${cid}/folder/preview.png?download=true#art`);
+  assert.deepEqual(getCardImageSources(`ipfs://${cid}`, `https://${cid}.ipfs.dweb.link/`), [`ipfs://${cid}`]);
+});
+
+test("invalid CIDs do not throw or generate malformed dweb hostnames", () => {
+  for (const uri of ["ipfs://not-a-cid/preview.png", "ipfs:///preview.png", "https://dweb.link/ipfs/invalid"]) {
+    assert.equal(convertIpfsUrl(uri, 2), uri);
+  }
+  assert.equal(convertIpfsUrl(undefined, 2), "");
 });
 
 test("extractIpfsHash accepts a raw CID while preserving its path", () => {
