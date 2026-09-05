@@ -6,6 +6,7 @@ import DeckGrid from "@/components/DeckGrid";
 import PackOpening from "@/components/PackOpening";
 import WishlistGrid from "@/components/WishlistGrid";
 import SoundToggle from "@/components/SoundToggle";
+import Footer from "@/components/Footer";
 import { useWallet } from "@/context/WalletContext";
 import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
@@ -67,10 +68,10 @@ export default function Home() {
   const wishlistIds = new Set(wishlist.map(getCardKey));
 
   return (
-    <main className="min-h-screen bg-surface-0 text-text-primary selection:bg-accent selection:text-text-primary">
+    <div className="min-h-screen bg-surface-0 text-text-primary selection:bg-accent selection:text-text-primary">
       <div className="page-vignette pointer-events-none fixed inset-0" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="relative z-10 flex min-h-screen max-w-7xl mx-auto flex-col px-4 sm:px-6 lg:px-8 py-6">
         {/* ================= HEADER NAVBAR ================= */}
         <header className="flex flex-col items-start justify-between gap-4 border-b border-border-subtle pb-6 md:flex-row md:items-center">
           <div className="flex items-center gap-3">
@@ -172,7 +173,7 @@ export default function Home() {
         </nav>
 
         {/* ================= TAB CONTENTS ================= */}
-        <div className="pb-16">
+        <main className="flex-1 pb-16">
           {activeTab === "packs" && (
             <PackOpening
               onShowRarity={handleShowRarity}
@@ -304,8 +305,9 @@ export default function Home() {
               </div>
             </motion.div>
           )}
-        </div>
+        </main>
+        <Footer />
       </div>
-    </main>
+    </div>
   );
 }
