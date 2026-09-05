@@ -84,8 +84,8 @@ export function getCardKey(
 }
 
 export const IPFS_GATEWAYS = [
+  "https://ipfs.filebase.io/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
-  "https://ipfs.io/ipfs/",
   "https://{cid}.ipfs.dweb.link/",
 ];
 

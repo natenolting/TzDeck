@@ -54,6 +54,7 @@ const card: NFTCardType = {
   name: "The Cosmic Hourglass",
   description: "An ancient hourglass containing an entire universe.",
   display_uri: "https://example.com/hourglass.jpg",
+  thumbnail_uri: "https://example.com/hourglass-thumbnail.jpg",
   artifact_uri: "https://example.com/hourglass-full.jpg",
   artist_alias: "Zyren",
   artist_address: "tz1ExampleArtist",
@@ -101,6 +102,7 @@ test("clicking visible card artwork opens a modal with token information", async
   );
 
   const thumbnail = screen.getByRole("img", { name: card.name });
+  assert.equal(thumbnail.getAttribute("src"), card.thumbnail_uri);
   fireEvent.load(thumbnail);
   await user.click(
     screen.getByRole("button", { name: `View details for ${card.name}` }),
@@ -259,6 +261,7 @@ test("an unavailable card image cannot open token details", async () => {
   const { fireEvent, render, screen, NFTCard } = await loadTestHarness();
   render(<NFTCard card={card} />);
 
+  fireEvent.error(screen.getByRole("img", { name: card.name }));
   fireEvent.error(screen.getByRole("img", { name: card.name }));
   fireEvent.error(screen.getByRole("img", { name: card.name }));
 

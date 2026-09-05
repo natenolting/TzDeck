@@ -44,10 +44,18 @@ export default function NFTCard({
   // Ordered fallback sources
   const sources = useMemo(() => {
     return getCardImageSources(
+      card.thumbnail_uri,
+      card.display_uri,
+      card.artifact_uri,
+    );
+  }, [card.display_uri, card.thumbnail_uri, card.artifact_uri]);
+
+  const detailRawUri = useMemo(() => {
+    return getCardImageSources(
       card.display_uri,
       card.thumbnail_uri,
       card.artifact_uri,
-    );
+    )[0] || "";
   }, [card.display_uri, card.thumbnail_uri, card.artifact_uri]);
 
   const [sourceIdx, setSourceIdx] = useState(0);
@@ -67,6 +75,7 @@ export default function NFTCard({
 
   const currentRawUri = sources[sourceIdx] || "";
   const currentImageUrl = convertIpfsUrl(currentRawUri, gatewayIdx);
+  const detailImageUrl = convertIpfsUrl(detailRawUri, gatewayIdx);
   const closeDetails = useCallback(() => setIsDetailsOpen(false), []);
 
   const handleImageError = () => {
@@ -279,7 +288,7 @@ export default function NFTCard({
       {isDetailsOpen && (
         <NFTDetailsModal
           card={card}
-          imageUrl={currentImageUrl}
+          imageUrl={detailImageUrl}
           isWishlisted={isWishlisted}
           navigationCards={detailCards}
           wishlistIds={detailWishlistIds}
