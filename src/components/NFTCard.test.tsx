@@ -54,6 +54,7 @@ const card: NFTCardType = {
   name: "The Cosmic Hourglass",
   description: "An ancient hourglass containing an entire universe.",
   display_uri: "https://example.com/hourglass.jpg",
+  thumbnail_uri: "https://example.com/hourglass-thumbnail.jpg",
   artifact_uri: "https://example.com/hourglass-full.jpg",
   artist_alias: "Zyren",
   artist_address: "tz1ExampleArtist",
@@ -101,6 +102,7 @@ test("clicking visible card artwork opens a modal with token information", async
   );
 
   const thumbnail = screen.getByRole("img", { name: card.name });
+  assert.equal(thumbnail.getAttribute("src"), card.thumbnail_uri);
   fireEvent.load(thumbnail);
   await user.click(
     screen.getByRole("button", { name: `View details for ${card.name}` }),
@@ -142,6 +144,53 @@ test("a token thumbnail uses the deck spinner until its artwork loads", async ()
   fireEvent.load(screen.getByRole("img", { name: card.name }));
 
   assert.equal(container.querySelector(".animate-spin"), null);
+});
+
+test("the detail modal retries gateways and then falls back to the thumbnail", async () => {
+  const { fireEvent, render, screen, NFTCard, within } = await loadTestHarness();
+  const displayCid = "bafkreigdf3ynjvbfxq5ouefpurwdaizt4es2lfd7poeq62a5lkmlpevydy";
+  const thumbnailCid = "bafkreia2w3ie24d3twcuwa3isp2d627b7gb6eg6o7apsh5lt7bsdkzyzxe";
+  const ipfsCard = {
+    ...card,
+    display_uri: `ipfs://${displayCid}`,
+    thumbnail_uri: `ipfs://${thumbnailCid}`,
+    artifact_uri: undefined,
+  };
+
+  render(<NFTCard card={ipfsCard} />);
+  const cardArtwork = screen.getByRole("img", { name: ipfsCard.name });
+  fireEvent.load(cardArtwork);
+  fireEvent.click(
+    screen.getByRole("button", { name: `View details for ${ipfsCard.name}` }),
+  );
+
+  const modal = within(screen.getByRole("dialog", { name: ipfsCard.name }));
+  let modalArtwork = modal.getByRole("img", { name: ipfsCard.name });
+  assert.equal(
+    modalArtwork.getAttribute("src"),
+    `https://ipfs.filebase.io/ipfs/${displayCid}`,
+  );
+  assert.ok(modal.getByRole("status", { name: "Loading token artwork" }));
+
+  fireEvent.error(modalArtwork);
+  modalArtwork = modal.getByRole("img", { name: ipfsCard.name });
+  assert.equal(
+    modalArtwork.getAttribute("src"),
+    `https://${displayCid}.ipfs.dweb.link/`,
+  );
+
+  fireEvent.error(modalArtwork);
+  modalArtwork = modal.getByRole("img", { name: ipfsCard.name });
+  assert.equal(
+    modalArtwork.getAttribute("src"),
+    `https://ipfs.filebase.io/ipfs/${thumbnailCid}`,
+  );
+
+  fireEvent.load(modalArtwork);
+  assert.equal(
+    modal.queryByRole("status", { name: "Loading token artwork" }),
+    null,
+  );
 });
 
 test("card details navigate within the supplied card order", async () => {
@@ -259,6 +308,7 @@ test("an unavailable card image cannot open token details", async () => {
   const { fireEvent, render, screen, NFTCard } = await loadTestHarness();
   render(<NFTCard card={card} />);
 
+  fireEvent.error(screen.getByRole("img", { name: card.name }));
   fireEvent.error(screen.getByRole("img", { name: card.name }));
   fireEvent.error(screen.getByRole("img", { name: card.name }));
 

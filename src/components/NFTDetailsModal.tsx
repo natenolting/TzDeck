@@ -3,18 +3,13 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import {
-  convertIpfsUrl,
-  getCardImageSources,
-  getCardKey,
-  type NFTCard,
-} from "@/lib/objkt";
-import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
+import { getCardImageSources, getCardKey, type NFTCard } from "@/lib/objkt";
+import { useFailoverImage } from "@/hooks/useFailoverImage";
+import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon } from "./icons";
 import { RARITY_CONFIG } from "./rarityStyles";
 
 interface NFTDetailsModalProps {
   card: NFTCard;
-  imageUrl: string;
   isWishlisted: boolean;
   navigationCards?: NFTCard[];
   wishlistIds?: Set<string>;
@@ -22,19 +17,54 @@ interface NFTDetailsModalProps {
   onToggleWishlist?: (card: NFTCard) => void;
 }
 
-function getPrimaryImageUrl(card: NFTCard) {
-  const [rawUri = ""] = getCardImageSources(
+function ModalArtwork({ card }: { card: NFTCard }) {
+  const sources = getCardImageSources(
     card.display_uri,
     card.thumbnail_uri,
     card.artifact_uri,
   );
+  const { imageUrl, loaded, failed, handleLoad, handleError } = useFailoverImage(sources);
 
-  return convertIpfsUrl(rawUri);
+  if (failed || !imageUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center text-text-tertiary">
+        <ImageOffIcon className="mb-2 h-10 w-10 text-text-muted" />
+        <span className="text-sm font-medium text-text-secondary">{card.name}</span>
+        <span className="mt-1 text-xs text-text-muted">Media unavailable</span>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+          <div
+            aria-label="Loading token artwork"
+            role="status"
+            className="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent"
+          />
+        </div>
+      )}
+      {/* NFT hosts are unbounded; useFailoverImage drives gateway failover
+          on both an error event and a load timeout. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageUrl}
+        alt={card.name}
+        onLoad={handleLoad}
+        onError={handleError}
+        decoding="async"
+        className={`max-h-[75vh] w-full rounded-2xl object-contain shadow-2xl transition-opacity ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+      />
+    </>
+  );
 }
 
 export default function NFTDetailsModal({
   card,
-  imageUrl,
   isWishlisted,
   navigationCards,
   wishlistIds,
@@ -57,9 +87,6 @@ export default function NFTDetailsModal({
   const activeIndex = matchedIndex >= 0 ? matchedIndex : 0;
   const activeCard = cards[activeIndex];
   const activeKey = getCardKey(activeCard);
-  const activeImageUrl = activeKey === initialCardKey
-    ? imageUrl
-    : getPrimaryImageUrl(activeCard);
   const activeIsWishlisted = activeKey === initialCardKey
     ? isWishlisted
     : wishlistIds?.has(activeKey) ?? false;
@@ -136,14 +163,7 @@ export default function NFTDetailsModal({
         </button>
 
         <div className="relative flex min-h-[320px] items-center justify-center bg-black/50 p-4 sm:p-6">
-          {/* Reuse the opened card's resolved URL and derive sibling URLs locally. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={activeImageUrl}
-            alt={activeCard.name}
-            decoding="async"
-            className="max-h-[75vh] w-full rounded-2xl object-contain shadow-2xl"
-          />
+          <ModalArtwork key={activeKey} card={activeCard} />
 
           {previousCard && (
             <button

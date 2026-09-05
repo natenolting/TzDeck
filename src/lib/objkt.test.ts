@@ -121,7 +121,10 @@ test("normalizeObjktToken maps shared OBJKT metadata and listing options", () =>
 
   assert.equal(card.listing_id, 99);
   assert.equal(card.name, "OBJKT #42");
-  assert.equal(card.display_uri, "https://gateway.pinata.cloud/ipfs/QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU");
+  assert.equal(
+    card.display_uri,
+    "https://ipfs.filebase.io/ipfs/QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU",
+  );
   assert.equal(card.artist_alias, "tz1abc...3456");
   assert.equal(card.collection_name, "Example Collection");
   assert.equal(card.price_xtz, 25);
@@ -182,11 +185,60 @@ test("shuffleArray distributes each item uniformly across positions", () => {
   );
 });
 
-test("convertIpfsUrl sends an IPFS asset directly to the selected gateway", () => {
+test("convertIpfsUrl converts CIDv0 to CIDv1/base32 for dweb subdomains", () => {
   assert.equal(
-    convertIpfsUrl("ipfs://QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU", 2),
-    "https://dweb.link/ipfs/QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU",
+    convertIpfsUrl("ipfs://QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n", 1),
+    "https://bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku.ipfs.dweb.link/",
   );
+});
+
+test("convertIpfsUrl normalizes supported URL representations to the primary gateway", () => {
+  const cid = "bafkreigdf3ynjvbfxq5ouefpurwdaizt4es2lfd7poeq62a5lkmlpevydy";
+  const expected = `https://ipfs.filebase.io/ipfs/${cid}`;
+  for (const uri of [
+    cid,
+    `ipfs://${cid}`,
+    `ipfs://ipfs/${cid}`,
+    `https://gateway.pinata.cloud/ipfs/${cid}`,
+    `https://dweb.link/ipfs/${cid}`,
+    `/api/media?ipfs=${cid}`,
+    `/api/media?url=${encodeURIComponent(expected)}`,
+    expected,
+  ]) {
+    assert.equal(convertIpfsUrl(uri), expected, uri);
+  }
+});
+
+test("dweb subdomain conversion preserves paths, queries, and fragments", () => {
+  const cid = "bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm";
+  for (const suffix of [
+    "/folder/preview%20image.png?filename=preview.png#art",
+    "?filename=preview.png#art",
+    "/folder/",
+  ]) {
+    const expected = `https://${cid}.ipfs.dweb.link/${suffix.replace(/^\//, "")}`;
+    assert.equal(convertIpfsUrl(`ipfs://${cid}${suffix}`, 1), expected);
+    assert.equal(convertIpfsUrl(`https://dweb.link/ipfs/${cid}${suffix}`, 1), expected);
+    assert.equal(convertIpfsUrl(expected, 1), expected);
+  }
+});
+
+test("subdomain media URLs remain recognizable across gateway fallbacks", () => {
+  const cid = "bafkreigdf3ynjvbfxq5ouefpurwdaizt4es2lfd7poeq62a5lkmlpevydy";
+  const uri = `https://${cid}.ipfs.dweb.link/folder/preview.png?download=true#art`;
+  assert.equal(extractIpfsHash(uri), `${cid}/folder/preview.png?download=true#art`);
+  assert.equal(convertIpfsUrl(uri, 1), uri);
+  assert.deepEqual(
+    getCardImageSources(`ipfs://${cid}`, `https://${cid}.ipfs.dweb.link/`),
+    [`ipfs://${cid}`],
+  );
+});
+
+test("invalid CIDs do not throw or generate malformed dweb hostnames", () => {
+  for (const uri of ["ipfs://not-a-cid/preview.png", "ipfs:///preview.png", "https://dweb.link/ipfs/invalid"]) {
+    assert.equal(convertIpfsUrl(uri, 1), uri);
+  }
+  assert.equal(convertIpfsUrl(undefined, 1), "");
 });
 
 test("extractIpfsHash accepts a raw CID while preserving its path", () => {
@@ -209,7 +261,7 @@ test("convertIpfsUrl restores an IPFS URL saved by the unfinished media proxy", 
       "/api/media?ipfs=bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm",
       1,
     ),
-    "https://ipfs.io/ipfs/bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm",
+    "https://bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm.ipfs.dweb.link/",
   );
 });
 

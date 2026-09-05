@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/*.test.ts src/context/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts",
+    "test": "tsx --test src/lib/*.test.ts src/context/*.test.ts src/hooks/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts",
     "calibrate:rarity": "tsx scripts/calibrate-rarity.ts",
     "check:diversity": "tsx scripts/check-pack-diversity.ts"
   },
@@ -21,6 +21,7 @@
     "@vercel/analytics": "^2.0.1",
     "framer-motion": "^13.1.1",
     "graphql-request": "^7.4.0",
+    "multiformats": "^9.9.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"
