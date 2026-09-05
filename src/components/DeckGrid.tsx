@@ -14,6 +14,9 @@ interface DeckGridProps {
 
 type SortBy = "latest" | "name" | "editions";
 
+const SELECT_CLASS =
+  "rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent";
+
 interface DeckApiResponse {
   tokens?: NFTCardType[];
   error?: string;
@@ -182,24 +185,17 @@ export default function DeckGrid({
     <div className="w-full space-y-6">
       {/* Stats Header Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-text-secondary">Total Cards</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">{stats.total}</p>
-        </div>
-        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-text-secondary">Unique Artists</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">{stats.artists}</p>
-        </div>
-        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-text-secondary">Collections</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">{stats.collections}</p>
-        </div>
-        <div className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
-          <span className="text-xs font-medium text-text-secondary">Rares & Epics</span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">
-            {stats.highRarityCount}
-          </p>
-        </div>
+        {[
+          { label: "Total Cards", value: stats.total },
+          { label: "Unique Artists", value: stats.artists },
+          { label: "Collections", value: stats.collections },
+          { label: "Rares & Epics", value: stats.highRarityCount },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-2xl border border-border-default bg-surface-1/80 p-4 backdrop-blur-md">
+            <span className="text-xs font-medium text-text-secondary">{label}</span>
+            <p className="mt-1 text-2xl font-black tabular-nums text-text-primary">{value}</p>
+          </div>
+        ))}
       </div>
 
       <p className="text-xs text-text-tertiary">
@@ -226,7 +222,7 @@ export default function DeckGrid({
           <select
             value={rarityFilter}
             onChange={(e) => setRarityFilter(e.target.value)}
-            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent"
+            className={SELECT_CLASS}
           >
             <option value="all">All Rarities</option>
             <option value="legendary">Legendary</option>
@@ -240,7 +236,7 @@ export default function DeckGrid({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary focus:border-accent"
+            className={SELECT_CLASS}
           >
             <option value="latest">Latest Acquired</option>
             <option value="name">Name (A-Z)</option>
