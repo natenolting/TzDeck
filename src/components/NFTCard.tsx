@@ -1,13 +1,8 @@
 "use client";
 
 import React, { useCallback, useState, useMemo } from "react";
-import {
-  NFTCard as NFTCardType,
-  convertIpfsUrl,
-  extractIpfsHash,
-  getCardImageSources,
-  IPFS_GATEWAYS,
-} from "@/lib/objkt";
+import { NFTCard as NFTCardType, getCardImageSources } from "@/lib/objkt";
+import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import NFTDetailsModal from "./NFTDetailsModal";
@@ -50,18 +45,13 @@ export default function NFTCard({
     );
   }, [card.display_uri, card.thumbnail_uri, card.artifact_uri]);
 
-  const detailRawUri = useMemo(() => {
-    return getCardImageSources(
-      card.display_uri,
-      card.thumbnail_uri,
-      card.artifact_uri,
-    )[0] || "";
-  }, [card.display_uri, card.thumbnail_uri, card.artifact_uri]);
-
-  const [sourceIdx, setSourceIdx] = useState(0);
-  const [gatewayIdx, setGatewayIdx] = useState(0);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const {
+    imageUrl: currentImageUrl,
+    loaded: imageLoaded,
+    failed: imageError,
+    handleLoad,
+    handleError: handleImageError,
+  } = useFailoverImage(sources);
   const [isHovered, setIsHovered] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -73,23 +63,7 @@ export default function NFTCard({
       ? 0.5
       : 0.3;
 
-  const currentRawUri = sources[sourceIdx] || "";
-  const currentImageUrl = convertIpfsUrl(currentRawUri, gatewayIdx);
-  const detailImageUrl = convertIpfsUrl(detailRawUri, gatewayIdx);
   const closeDetails = useCallback(() => setIsDetailsOpen(false), []);
-
-  const handleImageError = () => {
-    setImageLoaded(false);
-
-    if (extractIpfsHash(currentRawUri) && gatewayIdx < IPFS_GATEWAYS.length - 1) {
-      setGatewayIdx((prev) => prev + 1);
-    } else if (sourceIdx < sources.length - 1) {
-      setSourceIdx((prev) => prev + 1);
-      setGatewayIdx(0);
-    } else {
-      setImageError(true);
-    }
-  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -213,12 +187,13 @@ export default function NFTCard({
                 />
               </div>
             )}
-            {/* NFT hosts are unbounded, and native error events drive gateway failover. */}
+            {/* NFT hosts are unbounded; useFailoverImage drives gateway failover
+                on both an error event and a load timeout. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentImageUrl}
               alt={card.name}
-              onLoad={() => setImageLoaded(true)}
+              onLoad={handleLoad}
               onError={handleImageError}
               loading="lazy"
               decoding="async"
@@ -288,7 +263,6 @@ export default function NFTCard({
       {isDetailsOpen && (
         <NFTDetailsModal
           card={card}
-          imageUrl={detailImageUrl}
           isWishlisted={isWishlisted}
           navigationCards={detailCards}
           wishlistIds={detailWishlistIds}

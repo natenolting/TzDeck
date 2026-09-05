@@ -83,9 +83,11 @@ export function getCardKey(
   return `${card.contract_address}:${card.token_id}`;
 }
 
+// Pinata's public gateway now rate-limits every anonymous request (429,
+// verified 2026-09-05) -- it is a dead hop, not a real fallback, so it is
+// left out rather than kept as a step every retry chain has to burn through.
 export const IPFS_GATEWAYS = [
   "https://ipfs.filebase.io/ipfs/",
-  "https://gateway.pinata.cloud/ipfs/",
   "https://{cid}.ipfs.dweb.link/",
 ];
 
