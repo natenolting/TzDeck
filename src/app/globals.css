@@ -377,6 +377,12 @@ h4,
   -webkit-mask-image: radial-gradient(circle, black 0%, black 45%, transparent 72%);
 }
 
+/* Center the visible capitals without the font's extra vertical space. */
+.pack-band-label {
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
+}
+
 /* Set-name ribbon: a slightly skewed banner, the way a set/expansion logo
    sits on a canted plate on real packs rather than plain centered text. */
 .foil-ribbon {
