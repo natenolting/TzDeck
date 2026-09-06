@@ -186,7 +186,8 @@ export default function Home() {
         </nav>
 
         {/* ================= TAB CONTENTS ================= */}
-        <main className="flex-1 pb-16">
+        {/* Packs is a single-screen hero; extra main padding added phantom scroll. */}
+        <main className={activeTab === "packs" ? "flex-1" : "flex-1 pb-16"}>
           {activeTab === "packs" && (
             <PackOpening
               onShowRarity={handleShowRarity}
