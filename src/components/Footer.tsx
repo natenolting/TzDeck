@@ -1,4 +1,5 @@
 import { InstagramIcon, ObjktIcon, TwitterIcon } from "./SocialIcons";
+import SupportLink from "./SupportLink";
 
 const SOCIAL_LINKS = [
   { label: "Explore OBJKT", href: "https://objkt.com", Icon: ObjktIcon },
@@ -16,6 +17,7 @@ export default function Footer() {
         <p className="mt-1">Discover art on Tezos. Pull. Collect. Discover.</p>
       </div>
       <nav aria-label="Footer" className="flex flex-wrap items-center gap-2">
+        <SupportLink iconOnly />
         {SOCIAL_LINKS.map(({ label, href, Icon }) => (
           <a
             key={href}

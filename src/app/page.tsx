@@ -7,6 +7,7 @@ import PackOpening from "@/components/PackOpening";
 import WishlistGrid from "@/components/WishlistGrid";
 import SoundToggle from "@/components/SoundToggle";
 import Footer from "@/components/Footer";
+import SupportLink from "@/components/SupportLink";
 import { useWallet } from "@/context/WalletContext";
 import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
@@ -302,6 +303,15 @@ export default function Home() {
                     TzDeck is purely a discovery layer. All NFT acquisitions happen safely and directly on official Tezos marketplace contracts via OBJKT.com.
                   </p>
                 </div>
+                <section aria-labelledby="hosting-support" className="border-t border-border-subtle pt-6">
+                  <h3 id="hosting-support" className="font-bold text-text-primary">
+                    Help keep TzDeck online
+                  </h3>
+                  <p className="mt-2 max-w-[68ch]">
+                    TzDeck is a personal project. Optional contributions help cover hosting and server costs and keep the site running for everyone.
+                  </p>
+                  <SupportLink>Support on Ko-fi</SupportLink>
+                </section>
               </div>
             </motion.div>
           )}
