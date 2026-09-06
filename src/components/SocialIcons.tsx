@@ -28,3 +28,12 @@ export function InstagramIcon() {
     </svg>
   );
 }
+export function CoffeeIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <path d="M3 5h14v9a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V5Z" />
+      <path d="M17 6h2a3 3 0 0 1 0 6h-2M2 22h17" />
+      <path d="M10 9.5c-2-2-5 1-2.5 3L10 15l2.5-2.5c2.5-2-.5-5-2.5-3Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
