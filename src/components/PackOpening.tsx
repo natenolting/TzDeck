@@ -141,7 +141,7 @@ export default function PackOpening({
   );
 
   return (
-    <div className="relative w-full max-w-6xl mx-auto py-6">
+    <div className="relative w-full max-w-6xl mx-auto overflow-hidden py-6">
       <AnimatePresence mode="wait">
         {/* ================= IDLE STATE: SEALED PACK ================= */}
         {packState === "idle" && (
