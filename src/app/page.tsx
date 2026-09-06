@@ -13,6 +13,7 @@ import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import {
   CardsIcon,
   DeckIcon,
@@ -89,7 +90,18 @@ export default function Home() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
-                  TzDeck
+                  <Link
+                    href="/"
+                    aria-label="TzDeck home — Booster Packs"
+                    onNavigate={(event) => {
+                      event.preventDefault();
+                      setActiveTab("packs");
+                      window.scrollTo({ top: 0 });
+                    }}
+                    className="rounded-sm transition-colors hover:text-accent-hover"
+                  >
+                    TzDeck
+                  </Link>
                 </h1>
                 <span className="rounded-full bg-accent-quiet px-2 py-0.5 text-2xs font-bold text-accent-hover border border-accent/30">
                   OBJKT Gacha
