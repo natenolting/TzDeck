@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PROTOTYPE — Battle System Combat Simulator (throwaway, do not ship)</title>
+<style>
+  :root {
+    --bg: #0b0c10;
+    --panel: #15171d;
+    --panel-2: #1c1f28;
+    --border: #2a2e3a;
+    --text: #e7e9ee;
+    --text-dim: #9aa0ac;
+    --accent: #6c8cff;
+    --win: #4ade80;
+    --lose: #f87171;
+    --draw: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .banner {
+    background: #3a2e0f;
+    border: 1px solid #6b5a1f;
+    color: #f5d67a;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  .intro {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    color: var(--text-dim);
+    font-size: 0.92rem;
+  }
+  .intro strong { color: var(--text); }
+  .intro code { color: var(--accent); }
+  section { margin-bottom: 28px; }
+  h2 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .card-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .card-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-width: 210px;
+    flex: 1;
+  }
+  .card-panel h3 { margin: 0 0 8px; font-size: 0.95rem; }
+  .stat-line { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 2px 0; }
+  .stat-line span:first-child { color: var(--text-dim); }
+  .tier-legendary { color: #fbbf24; }
+  .tier-epic { color: #c084fc; }
+  .tier-rare { color: #38bdf8; }
+  .tier-uncommon { color: #4ade80; }
+  .tier-common { color: #9aa0ac; }
+  .result-panel {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+  }
+  .outcome-win { color: var(--win); font-weight: 700; }
+  .outcome-lose { color: var(--lose); font-weight: 700; }
+  .outcome-draw { color: var(--draw); font-weight: 700; }
+  button {
+    background: var(--accent);
+    color: #0b0c10;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 4px 8px 4px 0;
+  }
+  button:hover { filter: brightness(1.1); }
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .tab-btn.active { background: var(--accent); color: #0b0c10; border-color: var(--accent); }
+  .scenario-desc {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+  }
+  .scenario-desc strong { color: var(--text); }
+  .step-list { list-style: none; padding: 0; margin: 10px 0 0; }
+  .step-list li { margin-bottom: 6px; }
+  .step-list button.done { background: #2a4d3a; color: #a7f3d0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-dim); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<span class="banner">⚠ PROTOTYPE — throwaway, not production code</span>
+<h1>TzDeck Battle System — Combat Simulator</h1>
+
+<div class="intro">
+  <strong>Question this answers:</strong> the requirements doc at <code>docs/brainstorms/battle-system-requirements.md</code>
+  left two things as "must validate via simulation before committing formulas" (R13, R15, and the corresponding Outstanding
+  Questions): <strong>(1)</strong> how often do battles end in a draw once Power/HP come from per-card signals
+  (edition scarcity → Power, description length → HP) instead of a flat per-tier bucket, and <strong>(2)</strong> can a
+  brand-new Level&nbsp;1 Common card realistically win its first battle once matchmaking picks each opponent wallet's
+  <em>best-fitting</em> card (R15) rather than always their strongest. All numeric formulas below are placeholders —
+  the doc explicitly defers exact numbers to planning. This file exists to sanity-check the <em>shape</em> of the
+  design, not to hand over final numbers.
+</div>
+
+<section>
+  <h2>Free play — single battle</h2>
+  <div class="card-row" id="free-cards"></div>
+  <div style="margin-top:14px;">
+    <button onclick="freePlayRandomBattle()">Generate two random cards and fight</button>
+    <button onclick="freePlayExactCounterexample()">Load the reviewer's proven draw (10 Pow/100 HP vs 11 Pow/95 HP)</button>
+    <button onclick="freePlayIdenticalTie()">Load two identical Level-1 Commons</button>
+  </div>
+  <div class="result-panel" id="free-result">Click a button above to run a battle.</div>
+</section>
+
+<section>
+  <h2>Free play — aggregate simulation</h2>
+  <div class="scenario-desc">
+    Generates a representative population across all five rarity tiers (mixed edition counts, description lengths,
+    and levels 1–20), then runs many random battles / matchmaking attempts and reports the aggregate rates the
+    requirements doc asks for.
+  </div>
+  <button onclick="runDrawRateSimulation(10000)">Run 10,000 random battles — draw rate</button>
+  <button onclick="runFirstWinSimulation(5000)">Run 5,000 matchmaking attempts (match by Power only, as specified)</button>
+  <button onclick="runFirstWinSimulation(5000, true)">Run 5,000 matchmaking attempts (match by combined Power×HP strength)</button>
+  <div class="result-panel" id="agg-result">Click a button above to run the aggregate simulation.</div>
+</section>
+
+<section>
+  <h2>Guided walkthroughs</h2>
+  <div class="tabs" id="tab-bar"></div>
+  <div id="scenario-body"></div>
+</section>
+
+<script>
+// ============================================================================
+// PURE LOGIC MODULE — this is the part worth lifting into src/lib if the
+// design survives. No DOM references below this block.
+// ============================================================================
+const BattleSim = (() => {
+
+  // --- Rarity tiers (placeholder edition-only thresholds, mirrors the
+  // extended 5-tier calculateSupplyRarity described in R8) ---
+  const TIER_EDITION_THRESHOLDS = [
+    { tier: "legendary", max: 1 },
+    { tier: "epic", max: 5 },
+    { tier: "rare", max: 25 },
+    { tier: "uncommon", max: 100 },
+    { tier: "common", max: Infinity },
+  ];
+
+  const TIER_HP_BASELINE = {
+    legendary: 200,
+    epic: 160,
+    rare: 120,
+    uncommon: 90,
+    common: 70,
+  };
+
+  function tierFromEditions(editions) {
+    return TIER_EDITION_THRESHOLDS.find(t => editions <= t.max).tier;
+  }
+
+  // Power: continuous, fewer editions -> higher Power. Smooth log decay,
+  // floored so it never approaches zero even for huge open editions.
+  const POWER_MIN = 10;
+  const POWER_MAX = 100;
+  function powerFromEditions(editions) {
+    const decay = 1 + Math.log10(Math.max(1, editions));
+    return Math.round(POWER_MIN + (POWER_MAX - POWER_MIN) / decay);
+  }
+
+  // HP: tier baseline + BOUNDED diminishing-returns modifier from
+  // (length-normalized) description length, capped at +20% of baseline,
+  // with a guaranteed floor. This is the anti-gaming bound from R8 —
+  // no amount of padding pushes HP past baseline * 1.2.
+  const DESC_MODIFIER_CAP = 0.2;
+  const DESC_DECAY_CHARS = 200;
+  const HP_FLOOR = 50;
+  function hpFromTierAndDescription(tier, descriptionLength) {
+    const normalized = Math.max(0, descriptionLength || 0);
+    const modifier = DESC_MODIFIER_CAP * (1 - Math.exp(-normalized / DESC_DECAY_CHARS));
+    const baseline = TIER_HP_BASELINE[tier];
+    return Math.max(HP_FLOOR, Math.round(baseline * (1 + modifier)));
+  }
+
+  // Level scaling: +10% Power/HP per level above 1, additive (placeholder —
+  // exact curve is explicitly deferred to planning per R11's Outstanding Q).
+  const PER_LEVEL_BONUS = 0.10;
+  function applyLevel(basePower, baseHp, level) {
+    const multiplier = 1 + PER_LEVEL_BONUS * (level - 1);
+    return {
+      power: Math.round(basePower * multiplier),
+      hp: Math.round(baseHp * multiplier),
+    };
+  }
+
+  function makeCard({ editions, descriptionLength, level, label }) {
+    const tier = tierFromEditions(editions);
+    const basePower = powerFromEditions(editions);
+    const baseHp = hpFromTierAndDescription(tier, descriptionLength);
+    const { power, hp } = applyLevel(basePower, baseHp, level);
+    return { label, tier, editions, descriptionLength, level, power, hp, basePower, baseHp };
+  }
+
+  // Combat resolution per R13: simultaneous fixed damage, resolved by
+  // comparing rounds-to-kill. Equal rounds-to-kill = mutual knockout draw.
+  function resolveBattle(cardA, cardB) {
+    const roundsToKillB = Math.ceil(cardB.hp / cardA.power);
+    const roundsToKillA = Math.ceil(cardA.hp / cardB.power);
+    let outcome;
+    if (roundsToKillB < roundsToKillA) outcome = "A";
+    else if (roundsToKillA < roundsToKillB) outcome = "B";
+    else outcome = "draw";
+    return { roundsToKillA, roundsToKillB, outcome };
+  }
+
+  // --- Random population generation for aggregate sims ---
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+
+  const TIER_EDITION_SAMPLE_RANGES = {
+    legendary: [1, 1],
+    epic: [2, 5],
+    rare: [6, 25],
+    uncommon: [26, 100],
+    common: [101, 5000],
+  };
+
+  function randomCard(level) {
+    const tier = pick(Object.keys(TIER_EDITION_SAMPLE_RANGES));
+    const [lo, hi] = TIER_EDITION_SAMPLE_RANGES[tier];
+    const editions = randInt(lo, hi);
+    const descriptionLength = randInt(0, 600); // 0 = missing description
+    return makeCard({ editions, descriptionLength, level: level ?? randInt(1, 20), label: `${tier} L${level ?? "?"}` });
+  }
+
+  // Matchmaking per R15: reduce a pool of "wallets" (each holding several
+  // cards at various levels) to one candidate per wallet -- whichever of
+  // that wallet's cards best fits the attacker's power, not their strongest
+  // -- then pick within a widening strength band.
+  function bestFittingCard(attackerCard, walletCards) {
+    return walletCards
+      .slice()
+      .sort((a, b) => Math.abs(a.power - attackerCard.power) - Math.abs(b.power - attackerCard.power))[0];
+  }
+
+  function findMatch(attackerCard, wallets, bandStart = 10, bandStep = 10, maxBand = 200) {
+    const candidates = wallets.map(w => bestFittingCard(attackerCard, w));
+    let band = bandStart;
+    while (band <= maxBand) {
+      const inBand = candidates.filter(c => Math.abs(c.power - attackerCard.power) <= band);
+      if (inBand.length > 0) return pick(inBand);
+      band += bandStep;
+    }
+    return null; // "No eligible opponent available" (R15)
+  }
+
+  // --- Comparison variant: match on a COMBINED power+HP strength score
+  // instead of Power alone. Tests whether "best fitting" (R15) needs to
+  // account for both decoupled stats, not just one of them.
+  function strengthScore(card) { return card.power * card.hp; }
+  function bestFittingCardByStrength(attackerCard, walletCards) {
+    const target = strengthScore(attackerCard);
+    return walletCards
+      .slice()
+      .sort((a, b) => Math.abs(strengthScore(a) - target) - Math.abs(strengthScore(b) - target))[0];
+  }
+  function findMatchByStrength(attackerCard, wallets, bandStartPct = 0.1, bandStepPct = 0.1, maxBandPct = 3) {
+    const candidates = wallets.map(w => bestFittingCardByStrength(attackerCard, w));
+    const target = strengthScore(attackerCard);
+    let bandPct = bandStartPct;
+    while (bandPct <= maxBandPct) {
+      const band = target * bandPct;
+      const inBand = candidates.filter(c => Math.abs(strengthScore(c) - target) <= band);
+      if (inBand.length > 0) return pick(inBand);
+      bandPct += bandStepPct;
+    }
+    return null;
+  }
+
+  function generateWalletPool(count, cardsPerWallet = 3) {
+    const wallets = [];
+    for (let i = 0; i < count; i += 1) {
+      const cards = [];
+      for (let j = 0; j < cardsPerWallet; j += 1) cards.push(randomCard());
+      wallets.push(cards);
+    }
+    return wallets;
+  }
+
+  return {
+    tierFromEditions, powerFromEditions, hpFromTierAndDescription, applyLevel,
+    makeCard, resolveBattle, randomCard, bestFittingCard, findMatch, generateWalletPool,
+    bestFittingCardByStrength, findMatchByStrength,
+  };
+})();
+
+// ============================================================================
+// THIN PAGE SHELL — everything below reaches into the DOM; none of it is
+// worth keeping past this prototype's lifetime.
+// ============================================================================
+
+function renderCardPanel(card) {
+  return `<div class="card-panel">
+    <h3>${card.label ?? "Card"} <span class="tier-${card.tier}">[${card.tier}]</span></h3>
+    <div class="stat-line"><span>Level</span><span>${card.level}</span></div>
+    <div class="stat-line"><span>Editions</span><span>${card.editions}</span></div>
+    <div class="stat-line"><span>Description length</span><span>${card.descriptionLength} chars</span></div>
+    <div class="stat-line"><span>Power</span><span>${card.power}</span></div>
+    <div class="stat-line"><span>HP</span><span>${card.hp}</span></div>
+  </div>`;
+}
+
+function renderBattleResult(cardA, cardB, result) {
+  const outcomeText = result.outcome === "draw"
+    ? `<span class="outcome-draw">DRAW</span> — both sides reach 0 HP on round ${result.roundsToKillA} (mutual knockout).`
+    : result.outcome === "A"
+      ? `<span class="outcome-win">${cardA.label} wins</span> on round ${result.roundsToKillB} (${cardB.label} dies first).`
+      : `<span class="outcome-win">${cardB.label} wins</span> on round ${result.roundsToKillA} (${cardA.label} dies first).`;
+  return `Rounds for A to kill B: ${result.roundsToKillB}\nRounds for B to kill A: ${result.roundsToKillA}\n\n${outcomeText}`;
+}
+
+function freePlayRandomBattle() {
+  const a = BattleSim.randomCard();
+  const b = BattleSim.randomCard();
+  a.label = "Card A"; b.label = "Card B";
+  const result = BattleSim.resolveBattle(a, b);
+  document.getElementById("free-cards").innerHTML = renderCardPanel(a) + renderCardPanel(b);
+  document.getElementById("free-result").innerHTML = renderBattleResult(a, b, result);
+}
+
+function freePlayExactCounterexample() {
+  // Manually constructed to reproduce the reviewer's exact numbers,
+  // bypassing the edition/description formulas.
+  const a = { label: "Card A (manual)", tier: "common", editions: "-", descriptionLength: "-", level: "-", power: 10, hp: 100 };
+  const b = { label: "Card B (manual)", tier: "common", editions: "-", descriptionLength: "-", level: "-", power: 11, hp: 95 };
+  const result = BattleSim.resolveBattle(a, b);
+  document.getElementById("free-cards").innerHTML = renderCardPanel(a) + renderCardPanel(b);
+  document.getElementById("free-result").innerHTML =
+    "This is the exact counterexample from the design review: unequal stats, still a permanent draw.\n\n" +
+    renderBattleResult(a, b, result);
+}
+
+function freePlayIdenticalTie() {
+  const a = BattleSim.makeCard({ editions: 500, descriptionLength: 40, level: 1, label: "Card A (Common)" });
+  const b = BattleSim.makeCard({ editions: 500, descriptionLength: 40, level: 1, label: "Card B (Common, identical metadata)" });
+  const result = BattleSim.resolveBattle(a, b);
+  document.getElementById("free-cards").innerHTML = renderCardPanel(a) + renderCardPanel(b);
+  document.getElementById("free-result").innerHTML =
+    "The trivial case the per-card stat change was meant to reduce the frequency of — two cards with\n" +
+    "identical editions AND identical description length still tie exactly, every time.\n\n" +
+    renderBattleResult(a, b, result);
+}
+
+function runDrawRateSimulation(n) {
+  let draws = 0, aWins = 0, bWins = 0;
+  const marginBuckets = { "0 (exact tie)": 0, "1-2 rounds": 0, "3-5 rounds": 0, "6+ rounds": 0 };
+  for (let i = 0; i < n; i += 1) {
+    const a = BattleSim.randomCard();
+    const b = BattleSim.randomCard();
+    const result = BattleSim.resolveBattle(a, b);
+    if (result.outcome === "draw") draws += 1;
+    else if (result.outcome === "A") aWins += 1;
+    else bWins += 1;
+    const margin = Math.abs(result.roundsToKillA - result.roundsToKillB);
+    if (margin === 0) marginBuckets["0 (exact tie)"] += 1;
+    else if (margin <= 2) marginBuckets["1-2 rounds"] += 1;
+    else if (margin <= 5) marginBuckets["3-5 rounds"] += 1;
+    else marginBuckets["6+ rounds"] += 1;
+  }
+  const pct = x => ((x / n) * 100).toFixed(1) + "%";
+  let out = `Simulated ${n.toLocaleString()} battles between two independently-generated random cards\n`;
+  out += `(mixed tiers, editions, description lengths, levels 1-20).\n\n`;
+  out += `Draws: ${draws.toLocaleString()} (${pct(draws)})\n`;
+  out += `Side A wins: ${aWins.toLocaleString()} (${pct(aWins)})\n`;
+  out += `Side B wins: ${bWins.toLocaleString()} (${pct(bWins)})\n\n`;
+  out += `Margin distribution (rounds-to-kill difference between sides):\n`;
+  for (const [bucket, count] of Object.entries(marginBuckets)) {
+    out += `  ${bucket.padEnd(16)} ${pct(count)} (${count.toLocaleString()})\n`;
+  }
+  document.getElementById("agg-result").textContent = out;
+}
+
+function randIntTop(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function runFirstWinSimulation(n, useCombinedStrength) {
+  const WALLET_POOL_SIZE = 300;
+  let wins = 0, draws = 0, losses = 0, noOpponent = 0;
+  for (let i = 0; i < n; i += 1) {
+    const wallets = BattleSim.generateWalletPool(WALLET_POOL_SIZE, 3);
+    const attacker = BattleSim.makeCard({ editions: randIntTop(101, 5000), descriptionLength: randIntTop(0, 300), level: 1, label: "New Common" });
+    const opponentCard = useCombinedStrength
+      ? BattleSim.findMatchByStrength(attacker, wallets)
+      : BattleSim.findMatch(attacker, wallets);
+    if (!opponentCard) { noOpponent += 1; continue; }
+    const result = BattleSim.resolveBattle(attacker, opponentCard);
+    if (result.outcome === "A") wins += 1;
+    else if (result.outcome === "draw") draws += 1;
+    else losses += 1;
+  }
+  const attempted = n - noOpponent;
+  const pct = x => attempted > 0 ? ((x / attempted) * 100).toFixed(1) + "%" : "n/a";
+  let out = `Simulated ${n.toLocaleString()} brand-new Level-1 Common cards each attempting one random\n`;
+  out += `matchmaking search against a fresh pool of ${WALLET_POOL_SIZE} opted-in wallets (3 cards each,\n`;
+  out += `levels 1-20), matching ${useCombinedStrength ? "by combined Power×HP strength" : "by Power only (as R15 currently reads)"}.\n\n`;
+  out += `No suitable opponent found: ${noOpponent.toLocaleString()} (${((noOpponent / n) * 100).toFixed(1)}%)\n\n`;
+  out += `Of the ${attempted.toLocaleString()} battles that did happen:\n`;
+  out += `  New card wins:  ${pct(wins)} (${wins.toLocaleString()})\n`;
+  out += `  Draws:          ${pct(draws)} (${draws.toLocaleString()})\n`;
+  out += `  New card loses: ${pct(losses)} (${losses.toLocaleString()})\n`;
+  document.getElementById("agg-result").textContent = out;
+}
+
+// --- Guided walkthrough scenarios ---
+const scenarios = [
+  {
+    id: "trivial-tie",
+    title: "The trivial tie",
+    description: "Two cards with identical editions and identical description length (e.g. two mass-produced " +
+      "Commons) still always draw. This is the case the per-card stat change directly targets — it's expected " +
+      "and accepted per the requirements doc, not a bug.",
+    steps: [
+      { label: "Generate two identical Level-1 Commons and fight", action: freePlayIdenticalTie },
+    ],
+  },
+  {
+    id: "proven-counterexample",
+    title: "The proven unequal-stat draw",
+    description: "The design review's exact counterexample: Card A (10 Power, 100 HP) vs Card B (11 Power, 95 HP). " +
+      "Neither stat is equal, yet it's still a permanent draw — proof that distinct per-card stats don't structurally " +
+      "eliminate draws, only reduce collisions from identical metadata.",
+    steps: [
+      { label: "Load the counterexample and fight", action: freePlayExactCounterexample },
+    ],
+  },
+  {
+    id: "unmatched-veteran",
+    title: "New common vs. a leveled veteran, unmatched",
+    description: "What happens if matchmaking ignored the strength band and a new Level-1 Common just fought " +
+      "whatever card it happened to draw — including a high-level Legendary. Shows why R15's best-fitting-card " +
+      "rule matters.",
+    steps: [
+      { label: "Fight a new Common against a random high-level card", action: () => {
+          const a = BattleSim.makeCard({ editions: randIntLocal(101, 5000), descriptionLength: 50, level: 1, label: "New Common" });
+          const b = BattleSim.makeCard({ editions: 1, descriptionLength: 500, level: 15, label: "Leveled Legendary" });
+          const result = BattleSim.resolveBattle(a, b);
+          document.getElementById("free-cards").innerHTML = renderCardPanel(a) + renderCardPanel(b);
+          document.getElementById("free-result").innerHTML = renderBattleResult(a, b, result);
+        } },
+    ],
+  },
+  {
+    id: "matched-veteran",
+    title: "New common vs. a veteran's wallet, WITH matchmaking",
+    description: "Same veteran wallet as above, but this time it also holds a Level-1 card of its own, and " +
+      "matchmaking (R15) is asked to find the best-fitting card for a new Common attacker rather than always " +
+      "picking the wallet's strongest. Run it a few times — the opponent should stay close to Level 1, not jump " +
+      "to the veteran's Legendary.",
+    steps: [
+      { label: "Run matchmaking for a new Common against this veteran's wallet", action: () => {
+          const attacker = BattleSim.makeCard({ editions: randIntLocal(101, 5000), descriptionLength: 50, level: 1, label: "New Common" });
+          const veteranWallet = [
+            BattleSim.makeCard({ editions: 1, descriptionLength: 500, level: 15, label: "Veteran's Legendary" }),
+            BattleSim.makeCard({ editions: randIntLocal(101, 5000), descriptionLength: 30, level: 1, label: "Veteran's spare Common" }),
+          ];
+          const opponent = BattleSim.bestFittingCard(attacker, veteranWallet);
+          const result = BattleSim.resolveBattle(attacker, opponent);
+          document.getElementById("free-cards").innerHTML = renderCardPanel(attacker) + renderCardPanel(opponent);
+          document.getElementById("free-result").innerHTML =
+            `Matchmaking picked: ${opponent.label} (not necessarily the veteran's strongest card).\n\n` +
+            renderBattleResult(attacker, opponent, result);
+        } },
+    ],
+  },
+  {
+    id: "aggregate",
+    title: "Aggregate check",
+    description: "The actual questions the requirements doc asks to have validated: overall draw rate, and " +
+      "first-win accessibility for brand-new Common cards under real matchmaking.",
+    steps: [
+      { label: "Run 10,000-battle draw-rate simulation", action: () => runDrawRateSimulation(10000) },
+      { label: "Run 5,000-attempt new-card first-win simulation (match by Power only)", action: () => runFirstWinSimulation(5000) },
+      { label: "Run the same, matching by combined Power×HP strength instead", action: () => runFirstWinSimulation(5000, true) },
+    ],
+  },
+];
+
+function randIntLocal(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+let activeTab = 0;
+function renderTabs() {
+  const bar = document.getElementById("tab-bar");
+  bar.innerHTML = scenarios.map((s, i) =>
+    `<button class="tab-btn ${i === activeTab ? "active" : ""}" onclick="selectTab(${i})">${s.title}</button>`
+  ).join("");
+  const s = scenarios[activeTab];
+  const body = document.getElementById("scenario-body");
+  body.innerHTML = `
+    <div class="scenario-desc"><strong>${s.title}.</strong> ${s.description}</div>
+    <ul class="step-list">
+      ${s.steps.map((step, i) => `<li><button onclick="runScenarioStep(${activeTab}, ${i}, this)">${step.label}</button></li>`).join("")}
+    </ul>
+  `;
+}
+function selectTab(i) { activeTab = i; renderTabs(); }
+function runScenarioStep(tabIndex, stepIndex, btn) {
+  scenarios[tabIndex].steps[stepIndex].action();
+  btn.classList.add("done");
+  document.querySelector("section h2").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+renderTabs();
+freePlayRandomBattle();
+</script>
+
+</body>
+</html>
