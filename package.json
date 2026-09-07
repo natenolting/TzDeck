@@ -7,15 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/*.test.ts src/context/*.test.ts src/hooks/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts",
+    "test": "tsx --test src/lib/*.test.ts src/lib/battle/*.test.ts src/context/*.test.ts src/hooks/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts src/app/api/battle/*/*.test.ts",
     "calibrate:rarity": "tsx scripts/calibrate-rarity.ts",
-    "check:diversity": "tsx scripts/check-pack-diversity.ts"
+    "check:diversity": "tsx scripts/check-pack-diversity.ts",
+    "migrate": "tsx scripts/migrate.ts"
   },
   "engines": {
     "node": "24.x"
   },
   "dependencies": {
     "@airgap/beacon-sdk": "^4.8.1",
+    "@neondatabase/serverless": "^1.1.0",
     "@taquito/beacon-wallet": "^25.0.0",
     "@taquito/taquito": "^25.0.0",
     "@vercel/analytics": "^2.0.1",
@@ -32,11 +34,13 @@
     "@testing-library/user-event": "^14.6.7",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "jsdom": "^29.1.1",
+    "pg": "^8.23.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
