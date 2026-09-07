@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { computeParamHash } from "@/lib/battle/auth";
 import { fetchBattleHoldingsPage, type BattleTokenMetadata } from "@/lib/battle/holdings";
 import { authenticateAndClaim, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import {
-  completeAttempt,
+  checkRateLimit,
+  commitHoldingsRefresh,
   ensureWalletExists,
   failAttempt,
-  markHoldingsSyncComplete,
-  promoteHoldingsSnapshot,
   releaseLeaseForContinuation,
   stageHoldingsPage,
   startOrResumeHoldingsSync,
@@ -16,6 +16,10 @@ import {
 export const maxDuration = 20;
 const PAGE_SIZE = 100;
 const MAX_PAGES_PER_INVOCATION = 4;
+// Same reasoning as opt-in's budget: generous enough for a large wallet's
+// bounded continuation loop, still a real bound on outright abuse.
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_MAX_REQUESTS = 20;
 
 function toStagedCard(metadata: BattleTokenMetadata): StagedCard {
   return {
@@ -64,6 +68,12 @@ export async function POST(request: NextRequest) {
     }
     const { wallet, nonce, generation } = auth;
 
+    const withinBudget = await checkRateLimit(`refresh:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
+    if (!withinBudget) {
+      await failAttempt(nonce, generation, { error: "rate_limited" }, 429, true);
+      return errorResponse(429, "rate_limited");
+    }
+
     const walletRow = await ensureWalletExists(wallet);
     const capturedHoldingsGeneration = walletRow.holdings_generation;
     const syncId = `sync:${nonce}`;
@@ -79,11 +89,20 @@ export async function POST(request: NextRequest) {
         await failAttempt(nonce, generation, { error: "holdings_unavailable" }, 503, true);
         return errorResponse(503, "holdings_unavailable");
       }
-      await stageHoldingsPage(syncId, page.cards.map(toStagedCard), page.complete ? null : String(page.nextCursor));
+      const staged = await stageHoldingsPage(
+        syncId,
+        generation,
+        page.cards.map(toStagedCard),
+        page.complete ? null : String(page.nextCursor),
+        page.complete,
+      );
+      if (staged.stale) {
+        await failAttempt(nonce, generation, { error: "sync_superseded" }, 409, true);
+        return errorResponse(409, "sync_superseded");
+      }
       cursor = page.nextCursor;
       complete = page.complete;
       pagesThisInvocation += 1;
-      if (complete) await markHoldingsSyncComplete(syncId);
     }
 
     if (!complete) {
@@ -91,15 +110,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: "in_progress" }, { status: 202 });
     }
 
-    const promotion = await promoteHoldingsSnapshot(syncId);
-    if (!promotion.promoted) {
-      await failAttempt(nonce, generation, { error: "stale_holdings_generation" }, 409, false);
-      return errorResponse(409, "stale_holdings_generation");
-    }
-
-    const response = { refreshed: true };
-    await completeAttempt(nonce, generation, response, 200);
-    return NextResponse.json(response, { status: 200 });
+    const result = await commitHoldingsRefresh(nonce, generation, wallet, computeParamHash([]), syncId);
+    return NextResponse.json(result.response, { status: result.status_code });
   } catch (error) {
     console.error("Error in refresh route:", error);
     return errorResponse(500, "internal_error");

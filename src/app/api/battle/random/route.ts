@@ -16,6 +16,7 @@ import {
   type CandidateCard,
 } from "@/lib/battle/rules";
 import {
+  checkRateLimit,
   commitBattle,
   completeAttempt,
   failAttempt,
@@ -32,6 +33,11 @@ const COMBAT_VARIANCE = 0.2;
 const RULES_VERSION = "v1";
 const MAX_NOT_HELD_REROLLS = 3;
 const MAX_UNVERIFIABLE_REROLLS = 2;
+// Independent of the daily attack-cap: a failed search or an exhausted
+// re-roll budget spends no battle allowance but still does real upstream and
+// database work (U9, "Implementation-Time Unknowns": exact figures).
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_MAX_REQUESTS = 10;
 
 interface RandomBattleBody extends SignedRequestBody {
   attackerCardKey: string;
@@ -79,6 +85,13 @@ export async function POST(request: NextRequest) {
         break;
     }
     const { wallet, nonce, generation } = auth;
+
+    const withinBudget = await checkRateLimit(`random:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
+    if (!withinBudget) {
+      await failAttempt(nonce, generation, { error: "rate_limited" }, 429, true);
+      return errorResponse(429, "rate_limited");
+    }
+
     const { contractAddress, tokenId } = splitCardKey(body.attackerCardKey);
 
     // R2/R4: fresh ownership, before any matchmaking work.
@@ -134,15 +147,27 @@ export async function POST(request: NextRequest) {
     const poolRows = await fetchMatchmakingCandidatePool(wallet);
     const pool = poolRows.map(toCandidateCard);
 
-    const excludedCardKeys = new Set<string>();
+    // Keyed by wallet+cardKey, not cardKey alone -- the same NFT can be held
+    // by several wallets, each with its own progress row, so excluding one
+    // wallet's copy must never also exclude every other wallet's copy of the
+    // same card_key from the rest of this request's re-roll loop.
+    const excludedCandidates = new Set<string>();
     let notHeldRerolls = 0;
     let unverifiableRerolls = 0;
+    // Whether ANY exclusion this run was for genuine upstream uncertainty,
+    // not confirmed absence -- if so, an exhausted pool is a temporary
+    // outage, never a true no-match.
+    let hadUnverifiableExclusion = false;
     let defenderRow: CandidatePoolRow | undefined;
     let defenderCard: CandidateCard | null = null;
 
     for (;;) {
-      const match = findMatch(attackerStrength, pool, new Date(), excludedCardKeys);
+      const match = findMatch(attackerStrength, pool, new Date(), excludedCandidates);
       if (!match) {
+        if (hadUnverifiableExclusion) {
+          await failAttempt(nonce, generation, { error: "ownership_unverifiable" }, 503, true);
+          return errorResponse(503, "ownership_unverifiable");
+        }
         await completeAttempt(nonce, generation, { outcome: "no_match" }, 200);
         return NextResponse.json({ outcome: "no_match" }, { status: 200 });
       }
@@ -152,20 +177,25 @@ export async function POST(request: NextRequest) {
 
       if (defenderOwnership.status === "held") {
         defenderCard = match.card;
-        defenderRow = poolRows.find((r) => r.card_key === match.card.cardKey);
+        defenderRow = poolRows.find((r) => r.card_key === match.card.cardKey && r.wallet === match.wallet);
         break;
       }
       if (defenderOwnership.status === "not_held") {
-        excludedCardKeys.add(match.card.cardKey);
+        excludedCandidates.add(`${match.wallet}:${match.card.cardKey}`);
         notHeldRerolls += 1;
         if (notHeldRerolls > MAX_NOT_HELD_REROLLS) {
+          if (hadUnverifiableExclusion) {
+            await failAttempt(nonce, generation, { error: "ownership_unverifiable" }, 503, true);
+            return errorResponse(503, "ownership_unverifiable");
+          }
           await completeAttempt(nonce, generation, { outcome: "no_match" }, 200);
           return NextResponse.json({ outcome: "no_match" }, { status: 200 });
         }
         continue;
       }
       // unverifiable: exclude and retry, bounded separately -- never treated as confirmed-absent.
-      excludedCardKeys.add(match.card.cardKey);
+      excludedCandidates.add(`${match.wallet}:${match.card.cardKey}`);
+      hadUnverifiableExclusion = true;
       unverifiableRerolls += 1;
       if (unverifiableRerolls > MAX_UNVERIFIABLE_REROLLS) {
         await failAttempt(nonce, generation, { error: "ownership_unverifiable" }, 503, true);
@@ -175,6 +205,28 @@ export async function POST(request: NextRequest) {
     if (!defenderCard || !defenderRow) {
       await failAttempt(nonce, generation, { error: "internal_matchmaking_error" }, 500, false);
       return errorResponse(500, "internal_matchmaking_error");
+    }
+
+    // R2/R4 again, immediately before commit: the initial checks (and any
+    // re-roll searching) happened potentially many upstream round trips ago.
+    const attackerReverify = await verifyOwnership(wallet, contractAddress, tokenId);
+    if (attackerReverify.status === "not_held") {
+      await failAttempt(nonce, generation, { error: "attacker_card_not_held" }, 409, false);
+      return errorResponse(409, "attacker_card_not_held");
+    }
+    if (attackerReverify.status === "unverifiable") {
+      await failAttempt(nonce, generation, { error: "ownership_unverifiable" }, 503, true);
+      return errorResponse(503, "ownership_unverifiable");
+    }
+    const { contractAddress: defenderContract, tokenId: defenderTokenId } = splitCardKey(defenderCard.cardKey);
+    const defenderReverify = await verifyOwnership(defenderCard.wallet, defenderContract, defenderTokenId);
+    if (defenderReverify.status === "not_held") {
+      await failAttempt(nonce, generation, { error: "defender_card_not_held" }, 409, false);
+      return errorResponse(409, "defender_card_not_held");
+    }
+    if (defenderReverify.status === "unverifiable") {
+      await failAttempt(nonce, generation, { error: "ownership_unverifiable" }, 503, true);
+      return errorResponse(503, "ownership_unverifiable");
     }
 
     const defenderStats = effectiveStats(defenderCard.seed, defenderCard.level);
@@ -220,20 +272,10 @@ export async function POST(request: NextRequest) {
       inputs: { attackerStats, defenderStats, combat },
     });
 
-    if (!commitResult.committed) {
-      return errorResponse(409, commitResult.rejectionReason ?? "commit_rejected");
-    }
-
-    return NextResponse.json(
-      {
-        outcome,
-        winner: winnerWallet === wallet ? "attacker" : winnerWallet ? "defender" : null,
-        xpAwarded: outcome === "win" ? award : 0,
-        winnerNewXp: commitResult.winnerNewXp,
-        loserRecoveryUntil: commitResult.loserRecoveryUntil,
-      },
-      { status: 200 },
-    );
+    // Forward exactly what commit_battle built and persisted -- a first
+    // attempt and a later replay of this same nonce must always agree, and
+    // this is the one place that response is constructed.
+    return NextResponse.json(commitResult.response, { status: commitResult.statusCode });
   } catch (error) {
     console.error("Error in random battle route:", error);
     return errorResponse(500, "internal_error");

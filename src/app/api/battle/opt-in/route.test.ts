@@ -58,6 +58,10 @@ async function cleanupWallet(wallet: string) {
   await sql`DELETE FROM battle_attempts WHERE wallet = ${wallet}`;
   await sql`DELETE FROM wallet_card_progress WHERE wallet = ${wallet}`;
   await sql`DELETE FROM wallets WHERE address = ${wallet}`;
+  // Every test in this file shares one wallet (fixed derivation path) -- reset
+  // its rate-limit bucket too, so a fast rerun of this file never accumulates
+  // toward the route's per-wallet budget across runs.
+  await sql`DELETE FROM rate_limits WHERE bucket_key = ${`optin:${wallet}`}`;
 }
 
 test("POST /api/battle/opt-in: opting in with real holdings materializes progress rows and sets opted_in", async () => {
@@ -125,6 +129,67 @@ test("POST /api/battle/opt-in: flipping the signed boolean fails verification", 
     const response = await POST(postRequest({ ...body, optedIn: false }));
     assert.equal(response.status, 401);
   } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("participation: a completed opt-in replay cannot undo a later opt-out", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  try {
+    const enable = await buildSignedBody(signer, publicKey, address, "opt-in", [true]);
+    await withObjktStub(async () => ({ token_holder: [] }), async () => {
+      assert.equal((await POST(postRequest({ ...enable, optedIn: true }))).status, 200);
+    });
+    const disable = await buildSignedBody(signer, publicKey, address, "opt-in", [false]);
+    assert.equal((await POST(postRequest({ ...disable, optedIn: false }))).status, 200);
+    assert.deepEqual(await (await POST(postRequest({ ...enable, optedIn: true }))).json(), { optedIn: true });
+    const [row] = await getSql()`SELECT opted_in FROM wallets WHERE address = ${address}`;
+    assert.equal(row.opted_in, false);
+  } finally { await cleanupWallet(address); }
+});
+
+test("participation: concurrent opt-out invalidates a snapshot before opt-in settlement", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  try {
+    const enable = await buildSignedBody(signer, publicKey, address, "opt-in", [true]);
+    const disable = await buildSignedBody(signer, publicKey, address, "opt-in", [false]);
+    await withObjktStub(async () => {
+      assert.equal((await POST(postRequest({ ...disable, optedIn: false }))).status, 200);
+      return { token_holder: [{ quantity: 1, token: { fa_contract: "KT1Race", token_id: "1", supply: 5, description: "" } }] };
+    }, async () => {
+      const response = await POST(postRequest({ ...enable, optedIn: true }));
+      assert.equal(response.status, 409);
+    });
+    const sql = getSql();
+    const [row] = await sql`SELECT opted_in FROM wallets WHERE address = ${address}`;
+    assert.equal(row.opted_in, false);
+    assert.equal((await sql`SELECT * FROM wallet_holdings WHERE wallet = ${address}`).length, 0);
+    assert.equal((await sql`SELECT * FROM wallet_card_progress WHERE wallet = ${address}`).length, 0);
+    const [attempt] = await sql`SELECT status, status_code FROM battle_attempts WHERE nonce = ${enable.envelope.mac}`;
+    assert.equal(attempt.status, "failed");
+    assert.equal(attempt.status_code, 409);
+  } finally { await cleanupWallet(address); }
+});
+
+test("participation: a failure saving the response rolls back participation and promotion", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  try {
+    // A CHECK constraint supplies a real failure after promotion and opted_in update.
+    await sql`ALTER TABLE battle_attempts ADD CONSTRAINT review_reject_participation_completion CHECK (status != 'completed' OR action != 'opt-in')`;
+    const enable = await buildSignedBody(signer, publicKey, address, "opt-in", [true]);
+    await withObjktStub(async () => ({ token_holder: [{ quantity: 1, token: { fa_contract: "KT1Rollback", token_id: "1", supply: 5, description: "" } }] }), async () => {
+      assert.equal((await POST(postRequest({ ...enable, optedIn: true }))).status, 500);
+    });
+    const [wallet] = await sql`SELECT opted_in, holdings_generation FROM wallets WHERE address = ${address}`;
+    assert.equal(wallet.opted_in, false);
+    assert.equal(wallet.holdings_generation, 0);
+    assert.equal((await sql`SELECT * FROM wallet_holdings WHERE wallet = ${address}`).length, 0);
+    assert.equal((await sql`SELECT * FROM wallet_card_progress WHERE wallet = ${address}`).length, 0);
+    const [attempt] = await sql`SELECT status FROM battle_attempts WHERE nonce = ${enable.envelope.mac}`;
+    assert.equal(attempt.status, "pending");
+  } finally {
+    await sql`ALTER TABLE battle_attempts DROP CONSTRAINT IF EXISTS review_reject_participation_completion`;
     await cleanupWallet(address);
   }
 });

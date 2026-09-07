@@ -16,6 +16,7 @@ import {
   type CandidateCard,
 } from "@/lib/battle/rules";
 import {
+  checkRateLimit,
   commitBattle,
   failAttempt,
   fetchMatchmakingCandidatePool,
@@ -27,6 +28,8 @@ export const maxDuration = 20;
 
 const COMBAT_VARIANCE = 0.2;
 const RULES_VERSION = "v1";
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_MAX_REQUESTS = 10;
 
 interface ChallengeBody extends SignedRequestBody {
   attackerCardKey: string;
@@ -75,6 +78,12 @@ export async function POST(request: NextRequest) {
         break;
     }
     const { wallet, nonce, generation } = auth;
+
+    const withinBudget = await checkRateLimit(`challenge:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
+    if (!withinBudget) {
+      await failAttempt(nonce, generation, { error: "rate_limited" }, 429, true);
+      return errorResponse(429, "rate_limited");
+    }
 
     // R6: a wallet can never challenge itself.
     if (wallet === body.defenderWallet) {
@@ -161,6 +170,31 @@ export async function POST(request: NextRequest) {
       return errorResponse(503, "ownership_unverifiable");
     }
 
+    // R2/R4 again, immediately before commit: time has passed since the
+    // initial checks above (upstream calls, database round trips).
+    const attackerReverify = await verifyOwnership(wallet, contractAddress, tokenId);
+    if (attackerReverify.status === "not_held") {
+      await failAttempt(nonce, generation, { error: "attacker_card_not_held" }, 409, false);
+      return errorResponse(409, "attacker_card_not_held");
+    }
+    if (attackerReverify.status === "unverifiable") {
+      await failAttempt(nonce, generation, { error: "ownership_unverifiable" }, 503, true);
+      return errorResponse(503, "ownership_unverifiable");
+    }
+    const defenderReverify = await verifyOwnership(
+      defenderCard.wallet,
+      defenderCardIdentity.contractAddress,
+      defenderCardIdentity.tokenId,
+    );
+    if (defenderReverify.status === "not_held") {
+      await failAttempt(nonce, generation, { error: "defender_card_not_held" }, 409, false);
+      return errorResponse(409, "defender_card_not_held");
+    }
+    if (defenderReverify.status === "unverifiable") {
+      await failAttempt(nonce, generation, { error: "ownership_unverifiable" }, 503, true);
+      return errorResponse(503, "ownership_unverifiable");
+    }
+
     const defenderStats = effectiveStats(defenderCard.seed, defenderCard.level);
     const rngSeed = randomInt(0, 2 ** 31).toString();
     const combat = resolveBattle(attackerStats, defenderStats, COMBAT_VARIANCE, mulberry32(Number(rngSeed)));
@@ -204,20 +238,7 @@ export async function POST(request: NextRequest) {
       inputs: { attackerStats, defenderStats, combat },
     });
 
-    if (!commitResult.committed) {
-      return errorResponse(409, commitResult.rejectionReason ?? "commit_rejected");
-    }
-
-    return NextResponse.json(
-      {
-        outcome,
-        winner: winnerWallet === wallet ? "attacker" : winnerWallet ? "defender" : null,
-        xpAwarded: outcome === "win" ? award : 0,
-        winnerNewXp: commitResult.winnerNewXp,
-        loserRecoveryUntil: commitResult.loserRecoveryUntil,
-      },
-      { status: 200 },
-    );
+    return NextResponse.json(commitResult.response, { status: commitResult.statusCode });
   } catch (error) {
     console.error("Error in challenge route:", error);
     return errorResponse(500, "internal_error");

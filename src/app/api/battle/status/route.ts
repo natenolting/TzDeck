@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp } from "@/lib/battle/requestAuth";
 import { effectiveStats, levelForXp } from "@/lib/battle/rules";
-import { fetchAllProgressForWallet, fetchWallet } from "@/lib/battle/store";
+import { checkRateLimit, fetchAllProgressForWallet, fetchWallet } from "@/lib/battle/store";
 
 // Public wallet game status can be read without a write signature; internal
 // attempt signatures, leases, and worker tokens are never returned here.
 export const maxDuration = 10;
 
 const NO_STORE_CACHE_CONTROL = "no-store";
+// No wallet identity to key on (unauthenticated) -- IP-keyed, independent of
+// Vercel's own shared /api WAF budget (U9/U10, "Implementation-Time Unknowns").
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_MAX_REQUESTS = 30;
 
 function effectiveCount(count: number, resetAt: string, now: Date): number {
   return new Date(resetAt) <= now ? 0 : count;
@@ -17,6 +22,11 @@ export async function GET(request: NextRequest) {
   const address = searchParams.get("address");
   if (!address) {
     return NextResponse.json({ error: "address_required" }, { status: 400 });
+  }
+
+  const withinBudget = await checkRateLimit(`status:${getClientIp(request)}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
+  if (!withinBudget) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   try {
