@@ -367,6 +367,86 @@ export async function fetchMatchmakingCandidatePool(attackerWallet: string): Pro
   `;
 }
 
+// ---------------------------------------------------------------------------
+// U8: the battle commit itself. A thin wrapper around the commit_battle
+// plpgsql function (migrations/0003_commit_battle.sql) -- all eligibility
+// logic, locking, and rollback-on-rejection lives in that function; this is
+// just parameter marshaling.
+// ---------------------------------------------------------------------------
+
+export interface CommitBattleParams {
+  nonce: string;
+  generation: string;
+  attackerWallet: string;
+  attackerCardKey: string;
+  /** null means "expected absent" -- a first-use commit-time upsert. */
+  attackerExpectedVersion: string | null;
+  attackerSeedEditions: number;
+  attackerSeedDescriptionLength: number;
+  attackerSeedSource: string;
+  defenderWallet: string;
+  defenderCardKey: string;
+  defenderExpectedVersion: string;
+  outcome: "win" | "draw";
+  winnerWallet: string | null;
+  winnerCardKey: string | null;
+  loserWallet: string | null;
+  loserCardKey: string | null;
+  loserRecoveryReason: "offensive" | "defensive" | null;
+  baseXpAward: number;
+  rulesVersion: string;
+  rngSeed: string;
+  inputs: unknown;
+}
+
+export interface CommitBattleResult {
+  committed: boolean;
+  rejectionReason: string | null;
+  winnerNewXp: string | null;
+  loserRecoveryUntil: string | null;
+}
+
+export async function commitBattle(params: CommitBattleParams): Promise<CommitBattleResult> {
+  const sql = getSql();
+  const rows = await sql<{
+    committed: boolean;
+    rejection_reason: string | null;
+    winner_new_xp: string | null;
+    loser_recovery_until: string | null;
+  }>`
+    SELECT * FROM commit_battle(
+      ${params.nonce},
+      ${params.generation}::bigint,
+      ${params.attackerWallet},
+      ${params.attackerCardKey},
+      ${params.attackerExpectedVersion}::bigint,
+      ${params.attackerSeedEditions},
+      ${params.attackerSeedDescriptionLength},
+      ${params.attackerSeedSource},
+      ${params.defenderWallet},
+      ${params.defenderCardKey},
+      ${params.defenderExpectedVersion}::bigint,
+      ${params.outcome},
+      ${params.winnerWallet},
+      ${params.winnerCardKey},
+      ${params.loserWallet},
+      ${params.loserCardKey},
+      ${params.loserRecoveryReason},
+      ${params.baseXpAward},
+      ${params.rulesVersion},
+      ${params.rngSeed},
+      ${JSON.stringify(params.inputs)}::jsonb
+    )
+  `;
+  const row = rows[0];
+  return {
+    committed: row.committed,
+    rejectionReason: row.rejection_reason,
+    winnerNewXp: row.winner_new_xp,
+    loserRecoveryUntil: row.loser_recovery_until,
+  };
+}
+
 /** Only a fully-traversed (status = 'complete') snapshot may be promoted. */
 export async function promoteHoldingsSnapshot(syncId: string): Promise<PromotionResult> {
   const sql = getSql();
