@@ -98,3 +98,85 @@ export function effectiveStats(seed: BaseSeed, level: number): { power: number; 
   const base = baseStatsFromSeed(seed);
   return applyLevel(base.power, base.hp, level);
 }
+
+// ---------------------------------------------------------------------------
+// U5: combat resolution -- round-by-round simultaneous damage exchange, ported
+// directly from the prototype's `resolveBattleWithVariance`, plus the new
+// R14 overkill-margin tiebreak (genuinely new code, no prior empirical
+// validation -- see scripts/validate-battle-tiebreak.ts for U5's own
+// acceptance run against the origin's proposed success targets).
+// ---------------------------------------------------------------------------
+
+export type Rng = () => number;
+
+/** Deterministic PRNG, ported from the prototype, for fully reproducible tests. */
+export function mulberry32(seed: number): Rng {
+  let s = seed >>> 0;
+  return function rng() {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export type BattleOutcome = "A" | "B" | "draw";
+
+export interface BattleResult {
+  rounds: number;
+  outcome: BattleOutcome;
+  finalHpA: number;
+  finalHpB: number;
+  /** Damage each side dealt in the deciding (final) round -- what the R14 tiebreak compares. */
+  roundDamageA: number;
+  roundDamageB: number;
+}
+
+const MAX_ROUNDS_SAFETY = 1000;
+
+export function resolveBattle(
+  attackerStats: { power: number; hp: number },
+  defenderStats: { power: number; hp: number },
+  variancePct: number,
+  rng?: Rng,
+): BattleResult {
+  const roll = rng || Math.random;
+  let hpA = attackerStats.hp;
+  let hpB = defenderStats.hp;
+  let rounds = 0;
+  let roundDamageA = 0;
+  let roundDamageB = 0;
+
+  while (hpA > 0 && hpB > 0 && rounds < MAX_ROUNDS_SAFETY) {
+    rounds += 1;
+    const swingA = 1 + (roll() * 2 - 1) * variancePct;
+    const swingB = 1 + (roll() * 2 - 1) * variancePct;
+    roundDamageA = Math.max(0, attackerStats.power * swingA);
+    roundDamageB = Math.max(0, defenderStats.power * swingB);
+    hpB -= roundDamageA;
+    hpA -= roundDamageB;
+  }
+
+  let outcome: BattleOutcome;
+  if (hpA <= 0 && hpB <= 0) {
+    // R14: whichever side dealt more damage in the deciding round wins.
+    // Only an exact numeric tie in that round's damage is a true draw.
+    if (roundDamageA === roundDamageB) outcome = "draw";
+    else outcome = roundDamageA > roundDamageB ? "A" : "B";
+  } else if (hpB <= 0) {
+    outcome = "A";
+  } else if (hpA <= 0) {
+    outcome = "B";
+  } else {
+    outcome = "draw"; // safety-cap fallback; shouldn't normally trigger
+  }
+
+  return {
+    rounds,
+    outcome,
+    finalHpA: Math.max(0, Math.round(hpA)),
+    finalHpB: Math.max(0, Math.round(hpB)),
+    roundDamageA,
+    roundDamageB,
+  };
+}

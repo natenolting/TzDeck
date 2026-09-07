@@ -10,7 +10,8 @@
     "test": "tsx --test src/lib/*.test.ts src/lib/battle/*.test.ts src/context/*.test.ts src/hooks/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts src/app/api/battle/*/*.test.ts",
     "calibrate:rarity": "tsx scripts/calibrate-rarity.ts",
     "check:diversity": "tsx scripts/check-pack-diversity.ts",
-    "migrate": "tsx scripts/migrate.ts"
+    "migrate": "tsx scripts/migrate.ts",
+    "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts"
   },
   "engines": {
     "node": "24.x"

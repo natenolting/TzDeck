@@ -7,8 +7,10 @@ import {
   deriveBaseSeed,
   effectiveStats,
   hpFromTierAndDescription,
+  mulberry32,
   normalizeDescriptionLength,
   powerFromEditions,
+  resolveBattle,
 } from "./rules";
 
 test("powerFromEditions: a 1-of-1 gets the highest Power", () => {
@@ -80,4 +82,39 @@ test("applyLevel: Level 1 is the unscaled baseline", () => {
   const { power, hp } = applyLevel(50, 100, 1);
   assert.equal(power, 50);
   assert.equal(hp, 100);
+});
+
+test("resolveBattle: one side's HP reaches 0 first -- the surviving side wins, no tiebreak invoked", () => {
+  const result = resolveBattle({ power: 20, hp: 100 }, { power: 5, hp: 20 }, 0);
+  assert.equal(result.outcome, "A");
+  assert.equal(result.finalHpB, 0);
+  assert.ok(result.finalHpA > 0);
+});
+
+test("resolveBattle: both sides reach 0 the same round with unequal round damage -- higher-damage side wins", () => {
+  const result = resolveBattle({ power: 12, hp: 20 }, { power: 8, hp: 36 }, 0);
+  assert.equal(result.rounds, 3);
+  assert.equal(result.roundDamageA, 12);
+  assert.equal(result.roundDamageB, 8);
+  assert.equal(result.outcome, "A", "the side that dealt more damage in the deciding round wins");
+});
+
+test("resolveBattle: both sides reach 0 the same round with exactly equal round damage -- true draw", () => {
+  const result = resolveBattle({ power: 10, hp: 30 }, { power: 10, hp: 30 }, 0);
+  assert.equal(result.roundDamageA, result.roundDamageB);
+  assert.equal(result.outcome, "draw");
+});
+
+test("resolveBattle: identical stat inputs at 0% variance still draw (the tiebreak doesn't invent an asymmetry)", () => {
+  const stats = { power: 31, hp: 77 };
+  const result = resolveBattle(stats, { ...stats }, 0);
+  assert.equal(result.outcome, "draw");
+});
+
+test("resolveBattle: seeded-RNG runs at a specific seed reproduce bit-identical results", () => {
+  const attacker = { power: 30, hp: 80 };
+  const defender = { power: 28, hp: 85 };
+  const first = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
+  const second = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
+  assert.deepEqual(first, second);
 });
