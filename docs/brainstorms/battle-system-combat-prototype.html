@@ -176,6 +176,100 @@
 </section>
 
 <section>
+  <h2>Bounded damage variance — revised combat design</h2>
+  <div class="scenario-desc">
+    Deterministic combat (0% variance) produced the near-zero first-win rate above. This tests the revised
+    design: each round, both sides' Power gets an independent random swing before damage applies, still fully
+    automated (no player input mid-battle). Compares &plusmn;0% (deterministic baseline), &plusmn;10%, &plusmn;20%,
+    and &plusmn;30% across four questions: do equal-strength cards split their rematches roughly evenly, what's
+    the overall draw rate, how many attempts does a new Common need before its first win (using R15's matching
+    by Power, unchanged), and does a clearly stronger card still win reliably.
+  </div>
+  <button onclick="runVarianceComparison()">Run variance comparison (&plusmn;0% / &plusmn;10% / &plusmn;20% / &plusmn;30%)</button>
+  <div class="result-panel" id="variance-result">Click above to run the comparison — this takes a few seconds.</div>
+
+  <div class="scenario-desc" style="margin-top:16px;">
+    Reproducibility check for the "server saves the seed + combat-rules version, retries return the original
+    result" part of the design: same seed replayed twice should be bit-for-bit identical; a different seed should
+    (almost always) differ.
+  </div>
+  <button onclick="runSeedReplayDemo()">Replay the same battle with the same seed twice</button>
+  <div class="result-panel" id="seed-result">Click above to run the reproducibility check.</div>
+</section>
+
+<section>
+  <h2>Variance + combined Power&times;HP matchmaking, together</h2>
+  <div class="scenario-desc">
+    Isolating Power-only matching (above) confirmed the design's known HP mismatch. This tests whether pairing
+    variance with combined Power&times;HP matching (instead of Power alone) fixes new-player accessibility, using
+    the corrected reporting: leads with the percentage <strong>still without a win</strong> after 30 completed
+    battles (not an average that quietly excludes players who never won), separates identical-stat rematches from
+    similar-strength-but-different-split rematches, reports short and long fights separately, and reports
+    matchmaking search failures (opponent availability) as its own number, distinct from completed battles.
+  </div>
+  <button onclick="runCombinedComparison()">Run combined comparison (&plusmn;0% / &plusmn;10% / &plusmn;20% / &plusmn;30%)</button>
+  <div class="result-panel" id="combined-result">Click above to run — this takes several seconds.</div>
+</section>
+
+<section>
+  <h2>Variance + estimated-win-probability matchmaking</h2>
+  <div class="scenario-desc">
+    Neither static-stat matching method (Power alone, or Power&times;HP) hit the "first win within ~5 battles"
+    target. This tests matching by <strong>simulated win probability</strong> instead: for each candidate card,
+    roll out several quick battles under the real combat rules (same variance the actual match will use) and pick
+    whichever candidate lands closest to a 50/50 estimated outcome. The fixed-pair rows (equal-strength, gap tests,
+    draw rate) from the comparison above don't depend on matchmaking at all, so they're unchanged — only the New
+    Common progression and opponent-availability numbers can differ here.
+  </div>
+  <button onclick="runWinProbabilityComparison()">Run win-probability matching comparison (&plusmn;0% / &plusmn;10% / &plusmn;20% / &plusmn;30%)</button>
+  <div class="result-panel" id="winprob-result">Click above to run — this is the most expensive simulation here, may take up to 10-15 seconds.</div>
+</section>
+
+<section>
+  <h2>Controlled A/B: Power&times;HP vs. win-probability matching</h2>
+  <div class="scenario-desc">
+    A properly paired comparison at a single fixed variance (&plusmn;20%, chosen from earlier results): both
+    matching methods see the <strong>identical</strong> attacker and identical sequence of candidate pools per
+    trial (seeded, not independently randomized), across four populations — beginner-heavy launch, mixed levels,
+    established players with few newcomers, and a small population. Every pool also gets a planted "control"
+    opponent near-cloned from the attacker, so we can check whether the matcher actually finds a genuinely fair
+    option when one demonstrably exists. Whatever gets selected is independently re-evaluated with far more
+    rollouts than the matcher itself used (decoupling "how good was the pick" from "how noisy was the picking
+    process"). Both methods can now decline a poor match rather than being forced to accept one.
+  </div>
+  <button onclick="runControlledComparison()">Run controlled A/B comparison (4 populations)</button>
+  <div class="result-panel" id="controlled-result">Click above to run — this takes roughly 10-20 seconds.</div>
+</section>
+
+<section>
+  <h2>Higher variance on near-clone matchups specifically</h2>
+  <div class="scenario-desc">
+    Both matching methods above heavily selected near-clone (control-pool-style) opponents, and those matchups
+    drew 76-94% of the time even at &plusmn;20% — so the bottleneck may be the combat model, not which matching
+    method finds the closest opponent. This pushes variance well past the earlier &plusmn;30% ceiling on three
+    representative near-clone pairs: stats that round to an exact tie (the realistic control-pool case), a small
+    but real stat gap (not just rounding noise), and a longer exact tie (6 rounds vs. 3), to see whether draws
+    ever become a minority outcome, and at what cost to predictability.
+  </div>
+  <button onclick="runNearCloneVarianceSweep()">Run near-clone variance sweep (&plusmn;0% through &plusmn;150%)</button>
+  <div class="result-panel" id="nearclone-result">Click above to run.</div>
+</section>
+
+<section>
+  <h2>Fight-length lever: rescale HP instead of raising variance</h2>
+  <div class="scenario-desc">
+    The realistic exact-tie case needed &plusmn;50%+ variance to get draws below majority, and a 6-round fight at
+    &plusmn;20% did far better than a 3-round fight at the same variance. This tests stretching fight length
+    directly — scaling HP up relative to Power (a formula/tuning change, not more randomness) — at the
+    <em>moderate</em> variance levels (&plusmn;0/10/20/30%) that felt reasonable before, to see whether longer
+    fights let low variance do what high variance was doing before. Tested on both the exact-tie pair and the
+    small-real-gap pair, to see whether elongating fights also changes the higher-Power-wins-more bias.
+  </div>
+  <button onclick="runFightLengthLever()">Run fight-length lever test</button>
+  <div class="result-panel" id="fightlength-result">Click above to run.</div>
+</section>
+
+<section>
   <h2>Guided walkthroughs</h2>
   <div class="tabs" id="tab-bar"></div>
   <div id="scenario-body"></div>
@@ -264,9 +358,52 @@ const BattleSim = (() => {
     return { roundsToKillA, roundsToKillB, outcome };
   }
 
+  // Seedable RNG (mulberry32) — lets the server store {seed, combatRulesVersion}
+  // and replay a battle deterministically later, per the revised combat design.
+  function mulberry32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const COMBAT_RULES_VERSION = "v2-bounded-variance";
+
+  // Revised combat resolution: each round, both sides' Power is perturbed by
+  // an independent random swing in [-variancePct, +variancePct] and applied
+  // simultaneously as damage. variancePct = 0 reproduces the original R13
+  // deterministic behavior exactly. Simulates round-by-round (rather than
+  // computing rounds-to-kill analytically) because damage is no longer fixed.
+  const MAX_ROUNDS_SAFETY = 1000;
+  function resolveBattleWithVariance(cardA, cardB, variancePct, rng) {
+    const roll = rng || Math.random;
+    let hpA = cardA.hp;
+    let hpB = cardB.hp;
+    let rounds = 0;
+    while (hpA > 0 && hpB > 0 && rounds < MAX_ROUNDS_SAFETY) {
+      rounds += 1;
+      const swingA = 1 + (roll() * 2 - 1) * variancePct;
+      const swingB = 1 + (roll() * 2 - 1) * variancePct;
+      hpB -= Math.max(0, cardA.power * swingA);
+      hpA -= Math.max(0, cardB.power * swingB);
+    }
+    let outcome;
+    if (hpA <= 0 && hpB <= 0) outcome = "draw";
+    else if (hpB <= 0) outcome = "A";
+    else if (hpA <= 0) outcome = "B";
+    else outcome = "draw"; // safety-cap fallback; shouldn't normally trigger
+    return { rounds, outcome, finalHpA: Math.max(0, Math.round(hpA)), finalHpB: Math.max(0, Math.round(hpB)) };
+  }
+
   // --- Random population generation for aggregate sims ---
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-  function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function pick(arr, rng) {
+    const roll = rng || Math.random;
+    return arr[Math.floor(roll() * arr.length)];
+  }
 
   const TIER_EDITION_SAMPLE_RANGES = {
     legendary: [1, 1],
@@ -294,12 +431,12 @@ const BattleSim = (() => {
       .sort((a, b) => Math.abs(a.power - attackerCard.power) - Math.abs(b.power - attackerCard.power))[0];
   }
 
-  function findMatch(attackerCard, wallets, bandStart = 10, bandStep = 10, maxBand = 200) {
+  function findMatch(attackerCard, wallets, bandStart = 10, bandStep = 10, maxBand = 200, rng) {
     const candidates = wallets.map(w => bestFittingCard(attackerCard, w));
     let band = bandStart;
     while (band <= maxBand) {
       const inBand = candidates.filter(c => Math.abs(c.power - attackerCard.power) <= band);
-      if (inBand.length > 0) return pick(inBand);
+      if (inBand.length > 0) return pick(inBand, rng);
       band += bandStep;
     }
     return null; // "No eligible opponent available" (R15)
@@ -315,14 +452,14 @@ const BattleSim = (() => {
       .slice()
       .sort((a, b) => Math.abs(strengthScore(a) - target) - Math.abs(strengthScore(b) - target))[0];
   }
-  function findMatchByStrength(attackerCard, wallets, bandStartPct = 0.1, bandStepPct = 0.1, maxBandPct = 3) {
+  function findMatchByStrength(attackerCard, wallets, bandStartPct = 0.1, bandStepPct = 0.1, maxBandPct = 3, rng) {
     const candidates = wallets.map(w => bestFittingCardByStrength(attackerCard, w));
     const target = strengthScore(attackerCard);
     let bandPct = bandStartPct;
     while (bandPct <= maxBandPct) {
       const band = target * bandPct;
       const inBand = candidates.filter(c => Math.abs(strengthScore(c) - target) <= band);
-      if (inBand.length > 0) return pick(inBand);
+      if (inBand.length > 0) return pick(inBand, rng);
       bandPct += bandStepPct;
     }
     return null;
@@ -338,10 +475,93 @@ const BattleSim = (() => {
     return wallets;
   }
 
+  // --- Third matching method: estimate the attacker's actual win
+  // probability against each candidate by rolling out several battles under
+  // the real combat rules (resolveBattleWithVariance, same variance the
+  // real match will use), rather than inferring "closeness" from any static
+  // stat proxy. Picks whichever candidate's estimated WIN rate (draws do
+  // NOT count as partial credit -- a draw is exactly as useless as a loss
+  // for progression, since neither awards XP) is closest to 50%. An earlier
+  // version credited draws as 0.5, which made a *guaranteed tie* score as
+  // the single fairest possible match -- actively steering matchmaking
+  // toward permanent draws instead of winnable fights. Fixed here.
+  function estimateWinProbability(attackerCard, opponentCard, variance, rollouts) {
+    let wins = 0;
+    for (let i = 0; i < rollouts; i += 1) {
+      const r = resolveBattleWithVariance(attackerCard, opponentCard, variance);
+      if (r.outcome === "A") wins += 1;
+    }
+    return wins / rollouts;
+  }
+
+  function bestFittingCardByWinProbability(attackerCard, walletCards, variance, rollouts) {
+    return walletCards
+      .map((card) => ({ card, prob: estimateWinProbability(attackerCard, card, variance, rollouts) }))
+      .sort((a, b) => Math.abs(a.prob - 0.5) - Math.abs(b.prob - 0.5))[0];
+  }
+
+  // maxDeviation lets the search DECLINE rather than force a poor match:
+  // if even the closest candidate's estimated win rate is farther than
+  // maxDeviation from 50%, return null. Default (0.5, the max possible
+  // deviation) preserves the old always-accept behavior for earlier tests.
+  function findMatchByWinProbability(attackerCard, wallets, variance, rollouts, maxDeviation = 0.5) {
+    if (wallets.length === 0) return null;
+    const best = wallets
+      .map((w) => bestFittingCardByWinProbability(attackerCard, w, variance, rollouts))
+      .sort((a, b) => Math.abs(a.prob - 0.5) - Math.abs(b.prob - 0.5))[0];
+    if (!best || Math.abs(best.prob - 0.5) > maxDeviation) return null;
+    return best;
+  }
+
+  // --- Seeded population generation, for the controlled A/B comparison:
+  // both matching methods must see the EXACT same attacker and the EXACT
+  // same sequence of candidate pools, so any difference in outcome is
+  // attributable to the matching method, not to random sampling luck.
+  function randomCardSeeded(rng, levelSampler) {
+    const tiers = Object.keys(TIER_EDITION_SAMPLE_RANGES);
+    const tier = tiers[Math.floor(rng() * tiers.length)];
+    const [lo, hi] = TIER_EDITION_SAMPLE_RANGES[tier];
+    const editions = lo + Math.floor(rng() * (hi - lo + 1));
+    const descriptionLength = Math.floor(rng() * 601);
+    const level = levelSampler(rng);
+    return makeCard({ editions, descriptionLength, level, label: `${tier} L${level}` });
+  }
+
+  function generateWalletPoolSeeded(rng, count, cardsPerWallet, levelSampler) {
+    const wallets = [];
+    for (let i = 0; i < count; i += 1) {
+      const cards = [];
+      for (let j = 0; j < cardsPerWallet; j += 1) cards.push(randomCardSeeded(rng, levelSampler));
+      wallets.push(cards);
+    }
+    return wallets;
+  }
+
+  // A "known comparable opponent" -- a near-clone of the attacker (same
+  // level exactly, editions/description within +-5%) -- planted into the
+  // pool so we can check whether the matcher actually finds a genuinely
+  // fair option when one demonstrably exists, independent of whether the
+  // surrounding wild population happens to contain one.
+  function makeControlOpponent(attackerCard, rng) {
+    const jitter = () => 1 + (rng() * 0.1 - 0.05);
+    const editions = Math.max(1, Math.round(attackerCard.editions * jitter()));
+    const descriptionLength = Math.max(0, Math.round(attackerCard.descriptionLength * jitter()));
+    return makeCard({ editions, descriptionLength, level: attackerCard.level, label: "Control-comparable" });
+  }
+
+  const LEVEL_SAMPLERS = {
+    beginnerHeavy: (rng) => (rng() < 0.8 ? 1 + Math.floor(rng() * 4) : 5 + Math.floor(rng() * 16)),
+    mixed: (rng) => 1 + Math.floor(rng() * 20),
+    establishedFewNewcomers: (rng) => (rng() < 0.8 ? 10 + Math.floor(rng() * 11) : 1 + Math.floor(rng() * 5)),
+  };
+
   return {
     tierFromEditions, powerFromEditions, hpFromTierAndDescription, applyLevel,
     makeCard, resolveBattle, randomCard, bestFittingCard, findMatch, generateWalletPool,
     bestFittingCardByStrength, findMatchByStrength,
+    mulberry32, resolveBattleWithVariance, COMBAT_RULES_VERSION,
+    estimateWinProbability, bestFittingCardByWinProbability, findMatchByWinProbability,
+    randomCardSeeded, generateWalletPoolSeeded, makeControlOpponent, LEVEL_SAMPLERS,
   };
 })();
 
@@ -459,6 +679,558 @@ function runFirstWinSimulation(n, useCombinedStrength) {
   out += `  Draws:          ${pct(draws)} (${draws.toLocaleString()})\n`;
   out += `  New card loses: ${pct(losses)} (${losses.toLocaleString()})\n`;
   document.getElementById("agg-result").textContent = out;
+}
+
+function runVarianceComparison() {
+  const variances = [0, 0.10, 0.20, 0.30];
+  const SYMMETRY_TRIALS = 4000;
+  const DRAW_RATE_TRIALS = 4000;
+  const STRONG_WEAK_TRIALS = 4000;
+  const NEW_PLAYERS = 150;
+  const MAX_ATTEMPTS = 30;
+  const WALLET_POOL_SIZE = 60;
+
+  const rows = variances.map((variance) => {
+    // Metric 1: equal-strength symmetry -- can each side of an identical
+    // matchup actually win, not just draw forever.
+    const twinA = BattleSim.makeCard({ editions: 500, descriptionLength: 100, level: 5, label: "Twin A" });
+    const twinB = BattleSim.makeCard({ editions: 500, descriptionLength: 100, level: 5, label: "Twin B" });
+    let eqAWins = 0, eqBWins = 0, eqDraws = 0;
+    for (let i = 0; i < SYMMETRY_TRIALS; i += 1) {
+      const r = BattleSim.resolveBattleWithVariance(twinA, twinB, variance);
+      if (r.outcome === "A") eqAWins += 1; else if (r.outcome === "B") eqBWins += 1; else eqDraws += 1;
+    }
+
+    // Metric 2: overall draw rate across a random population.
+    let draws = 0;
+    for (let i = 0; i < DRAW_RATE_TRIALS; i += 1) {
+      const a = BattleSim.randomCard();
+      const b = BattleSim.randomCard();
+      const r = BattleSim.resolveBattleWithVariance(a, b, variance);
+      if (r.outcome === "draw") draws += 1;
+    }
+
+    // Metric 3: attempts until first win for a new Common, matching by
+    // Power only (R15 as currently written) -- unchanged from the earlier
+    // finding, isolating variance as the only new variable.
+    let totalAttemptsForWinners = 0, winners = 0, neverWon = 0;
+    for (let p = 0; p < NEW_PLAYERS; p += 1) {
+      const attacker = BattleSim.makeCard({ editions: randIntTop(101, 5000), descriptionLength: randIntTop(0, 300), level: 1, label: "New Common" });
+      let attempts = 0, won = false;
+      while (attempts < MAX_ATTEMPTS && !won) {
+        const wallets = BattleSim.generateWalletPool(WALLET_POOL_SIZE, 3);
+        const opponent = BattleSim.findMatch(attacker, wallets);
+        if (!opponent) continue; // a failed search costs no allowance (R15) -- doesn't count as an attempt
+        attempts += 1;
+        const r = BattleSim.resolveBattleWithVariance(attacker, opponent, variance);
+        if (r.outcome === "A") won = true;
+      }
+      if (won) { totalAttemptsForWinners += attempts; winners += 1; }
+      else neverWon += 1;
+    }
+    const avgAttempts = winners > 0 ? (totalAttemptsForWinners / winners).toFixed(1) : "n/a";
+
+    // Metric 4: does a clearly stronger card still win reliably.
+    const strong = BattleSim.makeCard({ editions: 1, descriptionLength: 500, level: 15, label: "Strong (Legendary L15)" });
+    const weak = BattleSim.makeCard({ editions: 3000, descriptionLength: 20, level: 1, label: "Weak (Common L1)" });
+    let strongWins = 0, weakWins = 0, strongDraws = 0;
+    for (let i = 0; i < STRONG_WEAK_TRIALS; i += 1) {
+      const r = BattleSim.resolveBattleWithVariance(strong, weak, variance);
+      if (r.outcome === "A") strongWins += 1; else if (r.outcome === "B") weakWins += 1; else strongDraws += 1;
+    }
+
+    return {
+      variance,
+      eqAWinPct: (eqAWins / SYMMETRY_TRIALS * 100).toFixed(1),
+      eqBWinPct: (eqBWins / SYMMETRY_TRIALS * 100).toFixed(1),
+      eqDrawPct: (eqDraws / SYMMETRY_TRIALS * 100).toFixed(1),
+      drawPct: (draws / DRAW_RATE_TRIALS * 100).toFixed(1),
+      avgAttempts,
+      neverWonPct: (neverWon / NEW_PLAYERS * 100).toFixed(1),
+      strongWinPct: (strongWins / STRONG_WEAK_TRIALS * 100).toFixed(1),
+      weakWinPct: (weakWins / STRONG_WEAK_TRIALS * 100).toFixed(1),
+      strongDrawPct: (strongDraws / STRONG_WEAK_TRIALS * 100).toFixed(1),
+    };
+  });
+
+  let html = `<table><thead><tr>
+    <th>Variance</th>
+    <th>Equal-strength split (A / B / draw)</th>
+    <th>Overall draw rate</th>
+    <th>New Common: avg attempts to 1st win (never-won %)</th>
+    <th>Strong-vs-weak: strong win / weak win / draw</th>
+  </tr></thead><tbody>`;
+  for (const row of rows) {
+    html += `<tr>
+      <td>&plusmn;${(row.variance * 100).toFixed(0)}%</td>
+      <td>${row.eqAWinPct}% / ${row.eqBWinPct}% / ${row.eqDrawPct}%</td>
+      <td>${row.drawPct}%</td>
+      <td>${row.avgAttempts} (${row.neverWonPct}% never won within ${MAX_ATTEMPTS})</td>
+      <td>${row.strongWinPct}% / ${row.weakWinPct}% / ${row.strongDrawPct}%</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  html += `<p style="margin-top:10px;color:var(--text-dim);font-size:0.82rem;">
+    Equal-strength trials: ${SYMMETRY_TRIALS.toLocaleString()}. Draw-rate trials: ${DRAW_RATE_TRIALS.toLocaleString()}.
+    New-player simulations: ${NEW_PLAYERS} (capped at ${MAX_ATTEMPTS} attempts each, ${WALLET_POOL_SIZE}-wallet pool
+    for speed). Strong-vs-weak trials: ${STRONG_WEAK_TRIALS.toLocaleString()}. Matching stays Power-only (R15
+    unchanged) throughout — variance is the only variable being tested here.
+  </p>`;
+  document.getElementById("variance-result").innerHTML = html;
+}
+
+function runSeedReplayDemo() {
+  const a = BattleSim.makeCard({ editions: 40, descriptionLength: 150, level: 3, label: "Card A" });
+  const b = BattleSim.makeCard({ editions: 80, descriptionLength: 90, level: 3, label: "Card B" });
+  const seed = 424242;
+  const r1 = BattleSim.resolveBattleWithVariance(a, b, 0.20, BattleSim.mulberry32(seed));
+  const r2 = BattleSim.resolveBattleWithVariance(a, b, 0.20, BattleSim.mulberry32(seed));
+  const r3 = BattleSim.resolveBattleWithVariance(a, b, 0.20, BattleSim.mulberry32(seed + 1));
+  const identical = JSON.stringify(r1) === JSON.stringify(r2);
+  const different = JSON.stringify(r1) !== JSON.stringify(r3);
+  let out = `combat-rules version: ${BattleSim.COMBAT_RULES_VERSION}\n\n`;
+  out += `Seed ${seed}, run 1: outcome=${r1.outcome}, rounds=${r1.rounds}, final HP A/B=${r1.finalHpA}/${r1.finalHpB}\n`;
+  out += `Seed ${seed}, run 2: outcome=${r2.outcome}, rounds=${r2.rounds}, final HP A/B=${r2.finalHpA}/${r2.finalHpB}\n`;
+  out += `Seed ${seed + 1}, run 3: outcome=${r3.outcome}, rounds=${r3.rounds}, final HP A/B=${r3.finalHpA}/${r3.finalHpB}\n\n`;
+  out += identical
+    ? "PASS — same seed reproduced an identical result (retries would return this same battle).\n"
+    : "FAIL — same seed produced different results; the RNG usage isn't deterministic as written.\n";
+  out += different
+    ? "PASS — a different seed produced a different result (as expected)."
+    : "NOTE — the different seed happened to land on the same outcome this time; re-run to confirm it's not a bug.";
+  document.getElementById("seed-result").textContent = out;
+}
+
+// seed is optional but should always be passed for any result that gets
+// quoted outside this file -- without it, the table is not reproducible
+// (each click samples fresh from Math.random).
+function tallyPair(cardA, cardB, variance, trials, seed) {
+  const rng = seed !== undefined ? BattleSim.mulberry32(seed) : undefined;
+  let aWins = 0, bWins = 0, draws = 0;
+  for (let i = 0; i < trials; i += 1) {
+    const r = BattleSim.resolveBattleWithVariance(cardA, cardB, variance, rng);
+    if (r.outcome === "A") aWins += 1; else if (r.outcome === "B") bWins += 1; else draws += 1;
+  }
+  return { aWins, bWins, draws, trials, seed };
+}
+function pctTriple(t) {
+  return `${(t.aWins / t.trials * 100).toFixed(1)}% / ${(t.bWins / t.trials * 100).toFixed(1)}% / ${(t.draws / t.trials * 100).toFixed(1)}%`;
+}
+
+function runCombinedComparison() {
+  const variances = [0, 0.10, 0.20, 0.30];
+  const EQ_TRIALS = 3000;
+  const DRAW_RATE_TRIALS = 3000;
+  const SW_TRIALS = 3000;
+  const NEW_PLAYERS = 200;
+  const MAX_COMPLETED = 30;
+  const MAX_RAW_SEARCHES = 300; // safety cap per simulated player
+  const WALLET_POOL_SIZE = 50;
+
+  // Fixed pairs, reused across all trials and all variance levels so only
+  // variance changes between rows.
+  const twinsShort = [
+    BattleSim.makeCard({ editions: 500, descriptionLength: 100, level: 5, label: "Twin A" }),
+    BattleSim.makeCard({ editions: 500, descriptionLength: 100, level: 5, label: "Twin B" }),
+  ];
+  const twinsLong = [
+    // Synthetic extreme: editions this high push Power toward its floor,
+    // which is the only way to lengthen a mirror match under these formulas
+    // -- Power and HP baselines are structurally correlated (see write-up).
+    BattleSim.makeCard({ editions: 1e15, descriptionLength: 600, level: 1, label: "Twin A (long)" }),
+    BattleSim.makeCard({ editions: 1e15, descriptionLength: 600, level: 1, label: "Twin B (long)" }),
+  ];
+  // NOTE: this pair is NOT equal Power*HP product (2800 vs 2407, ~16% apart)
+  // -- it differs in split AND magnitude. Do not read its results as an
+  // equal-strength comparison; see equalProduct below for that.
+  const differentSplit = [
+    BattleSim.makeCard({ editions: 101, descriptionLength: 0, level: 1, label: "High-Power/Low-HP (unequal product)" }),
+    BattleSim.makeCard({ editions: 5000, descriptionLength: 600, level: 1, label: "Low-Power/High-HP (unequal product)" }),
+  ];
+  // Genuinely equal Power*HP product (2400 both), opposite split -- the
+  // actual test of whether percentage-based variance favors high-Power
+  // builds independent of overall strength.
+  const equalProduct = [
+    { ...BattleSim.makeCard({ editions: 1, descriptionLength: 0, level: 1, label: "High-Power/Low-HP (equal product)" }), power: 40, hp: 60 },
+    { ...BattleSim.makeCard({ editions: 1, descriptionLength: 0, level: 1, label: "Low-Power/High-HP (equal product)" }), power: 20, hp: 120 },
+  ];
+  const bigGap = [
+    BattleSim.makeCard({ editions: 1, descriptionLength: 500, level: 15, label: "Legendary L15" }),
+    BattleSim.makeCard({ editions: 3000, descriptionLength: 20, level: 1, label: "Common L1" }),
+  ];
+  const moderateGap = [
+    BattleSim.makeCard({ editions: 15, descriptionLength: 300, level: 8, label: "Rare L8" }),
+    BattleSim.makeCard({ editions: 60, descriptionLength: 150, level: 3, label: "Uncommon L3" }),
+  ];
+
+  const SEED_BASE = 90210; // fixed -- every table below is reproducible from this
+  const shortRounds = BattleSim.resolveBattleWithVariance(twinsShort[0], twinsShort[1], 0).rounds;
+  const longRounds = BattleSim.resolveBattleWithVariance(twinsLong[0], twinsLong[1], 0).rounds;
+  const splitRoundsAB = Math.ceil(differentSplit[1].hp / differentSplit[0].power);
+  const splitRoundsBA = Math.ceil(differentSplit[0].hp / differentSplit[1].power);
+  const equalProductRoundsAB = Math.ceil(equalProduct[1].hp / equalProduct[0].power);
+  const equalProductRoundsBA = Math.ceil(equalProduct[0].hp / equalProduct[1].power);
+
+  let html = "";
+  for (const variance of variances) {
+    const eqShort = tallyPair(twinsShort[0], twinsShort[1], variance, EQ_TRIALS, SEED_BASE + 1);
+    const eqLong = tallyPair(twinsLong[0], twinsLong[1], variance, EQ_TRIALS, SEED_BASE + 2);
+    const split = tallyPair(differentSplit[0], differentSplit[1], variance, EQ_TRIALS, SEED_BASE + 3);
+    const equalProductResult = tallyPair(equalProduct[0], equalProduct[1], variance, EQ_TRIALS, SEED_BASE + 4);
+    const bigGapResult = tallyPair(bigGap[0], bigGap[1], variance, SW_TRIALS, SEED_BASE + 5);
+    const moderateGapResult = tallyPair(moderateGap[0], moderateGap[1], variance, SW_TRIALS, SEED_BASE + 6);
+
+    let draws = 0;
+    const drawRng = BattleSim.mulberry32(SEED_BASE + 7 + Math.round(variance * 1000));
+    for (let i = 0; i < DRAW_RATE_TRIALS; i += 1) {
+      const a = BattleSim.randomCardSeeded(drawRng, BattleSim.LEVEL_SAMPLERS.mixed);
+      const b = BattleSim.randomCardSeeded(drawRng, BattleSim.LEVEL_SAMPLERS.mixed);
+      const r = BattleSim.resolveBattleWithVariance(a, b, variance, drawRng);
+      if (r.outcome === "draw") draws += 1;
+    }
+
+    // New Common progression using combined Power*HP matching this time.
+    // Seeded: attacker + wallet-pool generation and the battle outcome all
+    // draw from one per-variance rng, so this whole loop is reproducible.
+    // (findMatchByStrength's internal tie-break among exactly-equidistant
+    // candidates still uses Math.random -- a near-zero-probability event
+    // given continuous real-valued distances, not a material source of
+    // variation in practice.)
+    const progressionRng = BattleSim.mulberry32(SEED_BASE + 8000 + Math.round(variance * 1000));
+    let winBy5 = 0, winBy10 = 0, winBy30 = 0, neverWon = 0;
+    let totalSearchCalls = 0, totalCompletedBattles = 0;
+    for (let p = 0; p < NEW_PLAYERS; p += 1) {
+      const attacker = BattleSim.makeCard({
+        editions: 101 + Math.floor(progressionRng() * 4900),
+        descriptionLength: Math.floor(progressionRng() * 301),
+        level: 1,
+        label: "New Common",
+      });
+      let completed = 0, rawSearches = 0, firstWinAt = null;
+      while (completed < MAX_COMPLETED && firstWinAt === null && rawSearches < MAX_RAW_SEARCHES) {
+        rawSearches += 1;
+        const wallets = BattleSim.generateWalletPoolSeeded(progressionRng, WALLET_POOL_SIZE, 3, BattleSim.LEVEL_SAMPLERS.mixed);
+        const opponent = BattleSim.findMatchByStrength(attacker, wallets, 0.1, 0.1, 3, progressionRng);
+        if (!opponent) continue; // failed search: doesn't consume a completed battle
+        completed += 1;
+        const r = BattleSim.resolveBattleWithVariance(attacker, opponent, variance, progressionRng);
+        if (r.outcome === "A") firstWinAt = completed;
+      }
+      totalSearchCalls += rawSearches;
+      totalCompletedBattles += completed;
+      if (firstWinAt !== null) {
+        if (firstWinAt <= 5) winBy5 += 1;
+        if (firstWinAt <= 10) winBy10 += 1;
+        winBy30 += 1;
+      } else {
+        neverWon += 1;
+      }
+    }
+    const noOpponentRate = totalSearchCalls > 0 ? ((totalSearchCalls - totalCompletedBattles) / totalSearchCalls * 100).toFixed(1) : "n/a";
+
+    html += `<div class="card-panel" style="min-width:100%;margin-bottom:14px;">
+      <h3>&plusmn;${(variance * 100).toFixed(0)}% damage variance</h3>
+      <table>
+        <tr><td>Equal-strength, identical (short, ${shortRounds} rounds deterministic)</td><td>${pctTriple(eqShort)}</td></tr>
+        <tr><td>Equal-strength, identical (long, ${longRounds} rounds deterministic)</td><td>${pctTriple(eqLong)}</td></tr>
+        <tr><td>Different split, UNEQUAL product (Pow${differentSplit[0].power}/HP${differentSplit[0].hp}=${differentSplit[0].power * differentSplit[0].hp} vs Pow${differentSplit[1].power}/HP${differentSplit[1].hp}=${differentSplit[1].power * differentSplit[1].hp}; ${splitRoundsAB}/${splitRoundsBA} rounds det.)</td><td>${pctTriple(split)}</td></tr>
+        <tr><td>Different split, EQUAL product (Pow${equalProduct[0].power}/HP${equalProduct[0].hp}=${equalProduct[0].power * equalProduct[0].hp} vs Pow${equalProduct[1].power}/HP${equalProduct[1].hp}=${equalProduct[1].power * equalProduct[1].hp}; ${equalProductRoundsAB}/${equalProductRoundsBA} rounds det.)</td><td>${pctTriple(equalProductResult)}</td></tr>
+        <tr><td>Overall draw rate (random population)</td><td>${(draws / DRAW_RATE_TRIALS * 100).toFixed(1)}%</td></tr>
+        <tr><td>Big level/tier gap (Legendary L15 vs Common L1)</td><td>${pctTriple(bigGapResult)}</td></tr>
+        <tr><td>Moderate gap (Rare L8 vs Uncommon L3)</td><td>${pctTriple(moderateGapResult)}</td></tr>
+        <tr><td><strong>New Common: still without a win after 30 completed battles</strong></td><td><strong>${(neverWon / NEW_PLAYERS * 100).toFixed(1)}%</strong></td></tr>
+        <tr><td>New Common: won within 5 completed battles</td><td>${(winBy5 / NEW_PLAYERS * 100).toFixed(1)}%</td></tr>
+        <tr><td>New Common: won within 10 completed battles</td><td>${(winBy10 / NEW_PLAYERS * 100).toFixed(1)}%</td></tr>
+        <tr><td>New Common: won within 30 completed battles</td><td>${(winBy30 / NEW_PLAYERS * 100).toFixed(1)}%</td></tr>
+        <tr><td>Opponent availability: searches that found nobody</td><td>${noOpponentRate}% (${totalSearchCalls.toLocaleString()} searches → ${totalCompletedBattles.toLocaleString()} completed battles)</td></tr>
+      </table>
+    </div>`;
+  }
+
+  html += `<p style="color:var(--text-dim);font-size:0.82rem;">
+    All rows use combined Power&times;HP matching (not Power-only). Every row here is seeded (base seed
+    ${SEED_BASE}) and fully reproducible: ${EQ_TRIALS.toLocaleString()} trials each for equal-strength/split rows,
+    ${SW_TRIALS.toLocaleString()} for gap rows, ${DRAW_RATE_TRIALS.toLocaleString()} for draw rate, and New Common
+    progression (${NEW_PLAYERS} simulated players, capped at ${MAX_COMPLETED} completed battles each) draws its
+    attacker, wallet pools, matching tie-breaks, and battle outcomes from the same per-variance seed. "Long" twins
+    use a synthetic extreme edition count (10^15) to approach this formula set's structural ceiling on fight length.
+  </p>`;
+  document.getElementById("combined-result").innerHTML = html;
+}
+
+function runWinProbabilityComparison() {
+  const variances = [0, 0.10, 0.20, 0.30];
+  const NEW_PLAYERS = 100;
+  const MAX_COMPLETED = 20; // lower than the other methods' 30 -- this method is much more expensive per search
+  const MAX_RAW_SEARCHES = 200;
+  const WALLET_POOL_SIZE = 20; // smaller pool -- each candidate now costs `rollouts` mini-battles to evaluate
+  const ROLLOUTS = 12;
+
+  let html = "";
+  for (const variance of variances) {
+    let winBy5 = 0, winBy10 = 0, winBy20 = 0, neverWon = 0;
+    let totalSearchCalls = 0, totalCompletedBattles = 0;
+    let probDeviationSum = 0, probDeviationCount = 0;
+
+    for (let p = 0; p < NEW_PLAYERS; p += 1) {
+      const attacker = BattleSim.makeCard({ editions: randIntTop(101, 5000), descriptionLength: randIntTop(0, 300), level: 1, label: "New Common" });
+      let completed = 0, rawSearches = 0, firstWinAt = null;
+      while (completed < MAX_COMPLETED && firstWinAt === null && rawSearches < MAX_RAW_SEARCHES) {
+        rawSearches += 1;
+        const wallets = BattleSim.generateWalletPool(WALLET_POOL_SIZE, 3);
+        const match = BattleSim.findMatchByWinProbability(attacker, wallets, variance, ROLLOUTS);
+        if (!match) continue;
+        completed += 1;
+        probDeviationSum += Math.abs(match.prob - 0.5);
+        probDeviationCount += 1;
+        const r = BattleSim.resolveBattleWithVariance(attacker, match.card, variance);
+        if (r.outcome === "A") firstWinAt = completed;
+      }
+      totalSearchCalls += rawSearches;
+      totalCompletedBattles += completed;
+      if (firstWinAt !== null) {
+        if (firstWinAt <= 5) winBy5 += 1;
+        if (firstWinAt <= 10) winBy10 += 1;
+        winBy20 += 1;
+      } else {
+        neverWon += 1;
+      }
+    }
+    const noOpponentRate = totalSearchCalls > 0 ? ((totalSearchCalls - totalCompletedBattles) / totalSearchCalls * 100).toFixed(1) : "n/a";
+    const avgProbDeviation = probDeviationCount > 0 ? (probDeviationSum / probDeviationCount * 100).toFixed(1) : "n/a";
+
+    html += `<div class="card-panel" style="min-width:100%;margin-bottom:14px;">
+      <h3>&plusmn;${(variance * 100).toFixed(0)}% damage variance</h3>
+      <table>
+        <tr><td><strong>New Common: still without a win after ${MAX_COMPLETED} completed battles</strong></td><td><strong>${(neverWon / NEW_PLAYERS * 100).toFixed(1)}%</strong></td></tr>
+        <tr><td>New Common: won within 5 completed battles</td><td>${(winBy5 / NEW_PLAYERS * 100).toFixed(1)}%</td></tr>
+        <tr><td>New Common: won within 10 completed battles</td><td>${(winBy10 / NEW_PLAYERS * 100).toFixed(1)}%</td></tr>
+        <tr><td>New Common: won within ${MAX_COMPLETED} completed battles</td><td>${(winBy20 / NEW_PLAYERS * 100).toFixed(1)}%</td></tr>
+        <tr><td>Opponent availability: searches that found nobody</td><td>${noOpponentRate}% (${totalSearchCalls.toLocaleString()} searches → ${totalCompletedBattles.toLocaleString()} completed battles)</td></tr>
+        <tr><td>Avg. deviation of matched opponent's estimated win-probability from 50%</td><td>&plusmn;${avgProbDeviation} points</td></tr>
+      </table>
+    </div>`;
+  }
+
+  html += `<p style="color:var(--text-dim);font-size:0.82rem;">
+    ${NEW_PLAYERS} simulated new players per variance level, capped at ${MAX_COMPLETED} completed battles each
+    (lower cap than the other methods -- this matching method is far more expensive per search: every candidate
+    costs ${ROLLOUTS} rollout battles to evaluate, over a ${WALLET_POOL_SIZE}-wallet pool). Fixed-pair rows
+    (equal-strength, gap tests, draw rate) are identical to the comparison above regardless of matching method --
+    not repeated here.
+  </p>`;
+  document.getElementById("winprob-result").innerHTML = html;
+}
+
+function runControlledComparison() {
+  const VARIANCE = 0.20; // single fixed level, held identical across both methods and all populations
+  const ATTACKERS_PER_POP = 30;
+  const MAX_COMPLETED = 5;
+  const MAX_POOLS_PER_ATTACKER = 12; // pre-generated sequence, shared by both methods
+  const CONTROL_POOL_SIZE = 4;
+  const MATCH_ROLLOUTS = 8; // matcher's own (noisy) estimate, used to pick
+  const VALIDATION_ROLLOUTS = 200; // independent, higher-fidelity re-check of whatever got picked
+  const POWER_HP_MAX_BAND_PCT = 0.5; // decline if best candidate's strength deviates >50%
+  const WIN_PROB_MAX_DEVIATION = 0.30; // decline if best candidate's estimated win rate is outside 20-80%
+  const BASE_SEED = 20260906;
+
+  const populations = [
+    { label: "Beginner-heavy launch", walletCount: 30, levelSampler: BattleSim.LEVEL_SAMPLERS.beginnerHeavy },
+    { label: "Mixed levels", walletCount: 30, levelSampler: BattleSim.LEVEL_SAMPLERS.mixed },
+    { label: "Established, few newcomers", walletCount: 30, levelSampler: BattleSim.LEVEL_SAMPLERS.establishedFewNewcomers },
+    { label: "Small population", walletCount: 8, levelSampler: BattleSim.LEVEL_SAMPLERS.mixed },
+  ];
+
+  function freshAcc() {
+    return {
+      searchesTried: 0, declined: 0, completedTotal: 0, controlUsed: 0,
+      winWithin5: 0, realWins: 0, realDraws: 0, realLosses: 0,
+      validatedWinSum: 0, validatedDrawSum: 0, validatedLossSum: 0,
+    };
+  }
+
+  function runOneAttacker(attacker, poolSequence, method, acc) {
+    let completed = 0, firstWinAt = null;
+    for (let s = 0; s < poolSequence.length && completed < MAX_COMPLETED; s += 1) {
+      acc.searchesTried += 1;
+      const wallets = poolSequence[s];
+      // findMatchByStrength returns a raw card; findMatchByWinProbability
+      // returns { card, prob } -- normalize to the card either way.
+      const matchResult = method === "powerHp"
+        ? BattleSim.findMatchByStrength(attacker, wallets, 0.1, 0.1, POWER_HP_MAX_BAND_PCT)
+        : BattleSim.findMatchByWinProbability(attacker, wallets, VARIANCE, MATCH_ROLLOUTS, WIN_PROB_MAX_DEVIATION);
+      if (!matchResult) { acc.declined += 1; continue; }
+      const card = method === "powerHp" ? matchResult : matchResult.card;
+      completed += 1;
+      acc.completedTotal += 1;
+      if (card.label === "Control-comparable") acc.controlUsed += 1;
+
+      let vWins = 0, vDraws = 0, vLosses = 0;
+      for (let v = 0; v < VALIDATION_ROLLOUTS; v += 1) {
+        const r = BattleSim.resolveBattleWithVariance(attacker, card, VARIANCE);
+        if (r.outcome === "A") vWins += 1; else if (r.outcome === "draw") vDraws += 1; else vLosses += 1;
+      }
+      acc.validatedWinSum += vWins / VALIDATION_ROLLOUTS;
+      acc.validatedDrawSum += vDraws / VALIDATION_ROLLOUTS;
+      acc.validatedLossSum += vLosses / VALIDATION_ROLLOUTS;
+
+      const real = BattleSim.resolveBattleWithVariance(attacker, card, VARIANCE);
+      if (real.outcome === "A") { acc.realWins += 1; if (firstWinAt === null) firstWinAt = completed; }
+      else if (real.outcome === "draw") acc.realDraws += 1;
+      else acc.realLosses += 1;
+    }
+    if (firstWinAt !== null) acc.winWithin5 += 1;
+  }
+
+  function row(label, powerHpVal, winProbVal) {
+    return `<tr><td>${label}</td><td>${powerHpVal}</td><td>${winProbVal}</td></tr>`;
+  }
+  function pct(n, d) { return d > 0 ? (n / d * 100).toFixed(1) + "%" : "n/a"; }
+
+  let html = `<p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:14px;">
+    Fixed at &plusmn;${(VARIANCE * 100).toFixed(0)}% variance. ${ATTACKERS_PER_POP} attackers per population, each
+    given the identical attacker card and identical sequence of ${MAX_POOLS_PER_ATTACKER} candidate pools
+    (seeded) under both methods, capped at ${MAX_COMPLETED} completed battles. Every pool includes
+    ${CONTROL_POOL_SIZE} planted control opponents near-cloned from the attacker.
+  </p>`;
+
+  for (const pop of populations) {
+    const accPowerHp = freshAcc();
+    const accWinProb = freshAcc();
+
+    for (let i = 0; i < ATTACKERS_PER_POP; i += 1) {
+      const seed = BASE_SEED + populations.indexOf(pop) * 1000000 + i;
+      const rng = BattleSim.mulberry32(seed);
+      const attacker = BattleSim.makeCard({
+        editions: 101 + Math.floor(rng() * 4900),
+        descriptionLength: Math.floor(rng() * 301),
+        level: 1,
+        label: "New Common",
+      });
+
+      const poolSequence = [];
+      for (let s = 0; s < MAX_POOLS_PER_ATTACKER; s += 1) {
+        const wild = BattleSim.generateWalletPoolSeeded(rng, pop.walletCount, 3, pop.levelSampler);
+        const control = [];
+        for (let c = 0; c < CONTROL_POOL_SIZE; c += 1) control.push([BattleSim.makeControlOpponent(attacker, rng)]);
+        poolSequence.push(wild.concat(control));
+      }
+
+      runOneAttacker(attacker, poolSequence, "powerHp", accPowerHp);
+      runOneAttacker(attacker, poolSequence, "winProb", accWinProb);
+    }
+
+    html += `<div class="card-panel" style="min-width:100%;margin-bottom:14px;">
+      <h3>${pop.label} (${pop.walletCount} wallets)</h3>
+      <table>
+        <tr><th></th><th>Power&times;HP</th><th>Win-probability</th></tr>
+        ${row(
+          "Validated win / draw / loss (mean, " + VALIDATION_ROLLOUTS + " rollouts/match)",
+          `${pct(accPowerHp.validatedWinSum, accPowerHp.completedTotal)} / ${pct(accPowerHp.validatedDrawSum, accPowerHp.completedTotal)} / ${pct(accPowerHp.validatedLossSum, accPowerHp.completedTotal)}`,
+          `${pct(accWinProb.validatedWinSum, accWinProb.completedTotal)} / ${pct(accWinProb.validatedDrawSum, accWinProb.completedTotal)} / ${pct(accWinProb.validatedLossSum, accWinProb.completedTotal)}`
+        )}
+        ${row("<strong>Won within 5 completed battles</strong>", `<strong>${pct(accPowerHp.winWithin5, ATTACKERS_PER_POP)}</strong>`, `<strong>${pct(accWinProb.winWithin5, ATTACKERS_PER_POP)}</strong>`)}
+        ${row("Declined: no suitable opponent (of searches tried)", pct(accPowerHp.declined, accPowerHp.searchesTried), pct(accWinProb.declined, accWinProb.searchesTried))}
+        ${row("Matches that used a control-pool opponent", pct(accPowerHp.controlUsed, accPowerHp.completedTotal), pct(accWinProb.controlUsed, accWinProb.completedTotal))}
+      </table>
+    </div>`;
+  }
+
+  document.getElementById("controlled-result").innerHTML = html;
+}
+
+function runNearCloneVarianceSweep() {
+  const variances = [0, 0.20, 0.30, 0.40, 0.50, 0.75, 1.0, 1.5];
+  const TRIALS = 5000;
+
+  // Three representative near-clone pairs, all fixed (not regenerated per
+  // trial) so only variance changes between rows.
+  const pairs = [
+    {
+      label: "Exact tie (realistic control-pool case: stats round identical)",
+      a: BattleSim.makeCard({ editions: 2000, descriptionLength: 150, level: 1, label: "A" }),
+      b: BattleSim.makeCard({ editions: 2000, descriptionLength: 150, level: 1, label: "B" }),
+    },
+    {
+      label: "Real gap, NOT equal product (not just rounding noise, but B's product is ~18% higher)",
+      a: BattleSim.makeCard({ editions: 2000, descriptionLength: 150, level: 1, label: "A" }),
+      b: BattleSim.makeCard({ editions: 300, descriptionLength: 180, level: 1, label: "B" }),
+    },
+    {
+      label: "Long exact tie (6 rounds vs. the others' 3)",
+      a: BattleSim.makeCard({ editions: 1e15, descriptionLength: 600, level: 1, label: "A" }),
+      b: BattleSim.makeCard({ editions: 1e15, descriptionLength: 600, level: 1, label: "B" }),
+    },
+  ];
+
+  const SEED_BASE = 13579; // fixed -- every cell below is reproducible from this
+  const detRounds = pairs.map((p) => BattleSim.resolveBattleWithVariance(p.a, p.b, 0).rounds);
+
+  let html = `<div style="overflow-x:auto;"><table><thead><tr>
+    <th>Variance</th>
+    ${pairs.map((p, i) => `<th>${p.label}<br><span style="color:var(--text-dim);font-weight:400;">(A stats: Pow ${p.a.power}/HP ${p.a.hp}=${p.a.power * p.a.hp}; B stats: Pow ${p.b.power}/HP ${p.b.hp}=${p.b.power * p.b.hp}; ${detRounds[i]} rounds deterministic)</span></th>`).join("")}
+  </tr></thead><tbody>`;
+
+  for (const variance of variances) {
+    html += `<tr><td>&plusmn;${(variance * 100).toFixed(0)}%</td>`;
+    pairs.forEach((p, i) => {
+      const t = tallyPair(p.a, p.b, variance, TRIALS, SEED_BASE + i * 1000 + Math.round(variance * 1000));
+      html += `<td>${pctTriple(t)}</td>`;
+    });
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  html += `<p style="margin-top:10px;color:var(--text-dim);font-size:0.82rem;">${TRIALS.toLocaleString()} trials per cell, seeded (base seed ${SEED_BASE}) and fully reproducible. Columns show A-win / B-win / draw. Product (Power&times;HP) shown per card so equal vs. unequal strength is explicit, not implied by the label.</p>`;
+  document.getElementById("nearclone-result").innerHTML = html;
+}
+
+function runFightLengthLever() {
+  const scales = [1, 2, 3, 4, 6];
+  const variances = [0, 0.10, 0.20, 0.30];
+  const TRIALS = 5000;
+
+  // HP scaled up relative to Power -- a formula/tuning change (longer
+  // fights), not added randomness. Power is untouched.
+  function scaledPair(baseA, baseB, scale) {
+    return [
+      { ...baseA, hp: Math.round(baseA.hp * scale) },
+      { ...baseB, hp: Math.round(baseB.hp * scale) },
+    ];
+  }
+
+  const baseExactTie = [
+    BattleSim.makeCard({ editions: 2000, descriptionLength: 150, level: 1, label: "A" }),
+    BattleSim.makeCard({ editions: 2000, descriptionLength: 150, level: 1, label: "B" }),
+  ];
+  const baseSmallGap = [
+    BattleSim.makeCard({ editions: 2000, descriptionLength: 150, level: 1, label: "A" }),
+    BattleSim.makeCard({ editions: 300, descriptionLength: 180, level: 1, label: "B" }),
+  ];
+
+  const SEED_BASE = 24680; // fixed -- every cell below is reproducible from this
+
+  function renderTable(title, base, tableSeedOffset) {
+    let html = `<h3 style="margin-top:18px;">${title}</h3><div style="overflow-x:auto;"><table><thead><tr><th>HP scale</th>`;
+    html += variances.map((v) => `<th>&plusmn;${(v * 100).toFixed(0)}%</th>`).join("");
+    html += `</tr></thead><tbody>`;
+    for (const scale of scales) {
+      const [a, b] = scaledPair(base[0], base[1], scale);
+      const rounds = BattleSim.resolveBattleWithVariance(a, b, 0).rounds;
+      html += `<tr><td>${scale}&times; (Pow ${a.power}/HP ${a.hp}=${a.power * a.hp} vs Pow ${b.power}/HP ${b.hp}=${b.power * b.hp}, ${rounds} rounds det.)</td>`;
+      variances.forEach((variance, vi) => {
+        const t = tallyPair(a, b, variance, TRIALS, SEED_BASE + tableSeedOffset + scale * 100 + vi);
+        html += `<td>${pctTriple(t)}</td>`;
+      });
+      html += `</tr>`;
+    }
+    html += `</tbody></table></div>`;
+    return html;
+  }
+
+  let html = renderTable("Exact tie, HP scaled (product stays equal at every scale)", baseExactTie, 0);
+  html += renderTable("Real gap, HP scaled (B's product stays ~18% higher than A's at every scale)", baseSmallGap, 10000);
+  html += `<p style="margin-top:10px;color:var(--text-dim);font-size:0.82rem;">${TRIALS.toLocaleString()} trials per cell, seeded (base seed ${SEED_BASE}) and fully reproducible. Columns show A-win / B-win / draw. Only HP is scaled -- Power (and therefore the per-round damage each side deals) is unchanged, so each pair's relative product gap is preserved across scales, only the absolute magnitude grows.</p>`;
+  document.getElementById("fightlength-result").innerHTML = html;
 }
 
 // --- Guided walkthrough scenarios ---
