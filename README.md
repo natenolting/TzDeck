@@ -30,7 +30,7 @@ The top two tiers require market corroboration for scarcity; the lower tiers use
 
 Booster-pack contents are randomized from active OBJKT listings, but the rarity assigned to each selected card is deterministic. Cards in **My Deck** are classified by edition supply alone because wallet holdings do not include a listing price. As a result, the same NFT can have a different displayed rarity in a booster pack if its listing price raises it into a higher tier.
 
-The deck-only supply ladder is Rare for a 1 of 1, Uncommon for editions of 25 or fewer, and Common for larger editions.
+The deck-only supply ladder is Legendary for a 1 of 1, Epic for editions of 5 or fewer, Rare for editions of 10 or fewer, Uncommon for editions of 25 or fewer, and Common for larger editions -- the same five-tier scale used by My Deck's battle system (see below).
 
 These thresholds were calibrated against 500 active OBJKT listings sampled deterministically across the marketplace's listing-ID range. The measured distribution was 1.6% Legendary, 4.8% Epic, 24.0% Rare, 55.6% Uncommon, and 14.0% Common. Re-run `npm run calibrate:rarity` to verify the live catalogue remains within the design targets.
 

@@ -75,7 +75,11 @@ test("rarity legend matches calculateRarity boundaries", () => {
 });
 
 test("calculateSupplyRarity grades wallet holdings without listing prices", () => {
-  assert.equal(calculateSupplyRarity(1), "rare");
+  assert.equal(calculateSupplyRarity(1), "legendary");
+  assert.equal(calculateSupplyRarity(5), "epic");
+  assert.equal(calculateSupplyRarity(6), "rare");
+  assert.equal(calculateSupplyRarity(10), "rare");
+  assert.equal(calculateSupplyRarity(11), "uncommon");
   assert.equal(calculateSupplyRarity(25), "uncommon");
   assert.equal(calculateSupplyRarity(26), "common");
   assert.equal(calculateSupplyRarity(undefined), "common");

@@ -12,6 +12,10 @@ export const RARITY_THRESHOLDS = {
   scarceTierPrice: 180,
   rareEditions: 1,
   rarePrice: 110,
+  // Edition-only "rare" breakpoint for calculateSupplyRarity's 5-tier ladder --
+  // distinct from rareEditions above, which is a price-inclusive threshold.
+  // Placeholder value (Open Questions: exact epic/legendary edition thresholds).
+  supplyRareEditions: 10,
   uncommonEditions: 25,
   uncommonPrice: 5,
 } as const;
@@ -191,7 +195,11 @@ export function calculateRarity(editions?: number, priceXtz?: number): CardRarit
 }
 
 export function calculateSupplyRarity(editions?: number): CardRarity {
-  if (editions === 1) return "rare";
+  if (editions === 1) return "legendary";
+  if (editions !== undefined
+    && editions <= RARITY_THRESHOLDS.epicEditions) return "epic";
+  if (editions !== undefined
+    && editions <= RARITY_THRESHOLDS.supplyRareEditions) return "rare";
   if (editions !== undefined
     && editions <= RARITY_THRESHOLDS.uncommonEditions) return "uncommon";
   return "common";
