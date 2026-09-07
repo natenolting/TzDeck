@@ -337,6 +337,25 @@ export interface PromotionResult {
 // Technical Decisions); all banding/widening/selection happens in rules.ts.
 // ---------------------------------------------------------------------------
 
+export interface ProgressRow {
+  wallet: string;
+  card_key: string;
+  xp: string;
+  seed_editions: number;
+  seed_description_length: number;
+  recovery_until: string | null;
+  recovery_reason: string | null;
+  progress_version: string;
+}
+
+export async function fetchProgress(wallet: string, cardKey: string): Promise<ProgressRow | null> {
+  const sql = getSql();
+  const rows = await sql<ProgressRow>`
+    SELECT * FROM wallet_card_progress WHERE wallet = ${wallet} AND card_key = ${cardKey}
+  `;
+  return rows[0] ?? null;
+}
+
 export interface CandidatePoolRow {
   wallet: string;
   card_key: string;
@@ -344,6 +363,7 @@ export interface CandidatePoolRow {
   seed_description_length: number;
   xp: string;
   recovery_until: string | null;
+  progress_version: string;
   defense_count: number;
   defense_reset_at: string;
 }
@@ -358,6 +378,7 @@ export async function fetchMatchmakingCandidatePool(attackerWallet: string): Pro
       p.seed_description_length,
       p.xp,
       p.recovery_until,
+      p.progress_version,
       w.defense_count,
       w.defense_reset_at
     FROM wallet_card_progress p
