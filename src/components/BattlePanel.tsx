@@ -35,6 +35,7 @@ interface BattleResult {
 type PanelState =
   | { kind: "idle" }
   | { kind: "awaiting_signature" }
+  | { kind: "syncing" }
   | { kind: "declined" }
   | { kind: "unsupported_wallet" }
   | { kind: "result"; result: BattleResult; wasOverkillTiebreak: boolean }
@@ -44,6 +45,14 @@ type PanelState =
 
 const ATTACK_CAP_MAX = 20;
 const DEFENSE_CAP_MAX = 20;
+
+// Large wallets need more than MAX_PAGES_PER_INVOCATION pages of holdings
+// synced (opt-in/route.ts), so the server returns 202 and expects the same
+// signed request resubmitted to resume from its stored cursor. Bounded like
+// MAX_NOT_HELD_REROLLS in random/route.ts so a persistently-202 server can't
+// hang the UI forever.
+const OPT_IN_SYNC_MAX_ATTEMPTS = 50;
+const OPT_IN_SYNC_POLL_DELAY_MS = 300;
 
 interface BattlePanelProps {
   card: NFTCardType;
@@ -109,17 +118,36 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
     setPanelState({ kind: "awaiting_signature" });
     try {
       const signed = await signChallenge("opt-in", [nextOptedIn]);
-      setPanelState({ kind: "idle" });
-      const response = await fetch("/api/battle/opt-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...signed, claimedAddress: signed.address, optedIn: nextOptedIn }),
-      });
-      if (!response.ok && response.status !== 202) {
+      // The signed envelope carries a nonce the server uses to resume this
+      // exact attempt -- re-signing would mint a new nonce and restart a
+      // large wallet's holdings sync from scratch, so the same signed body
+      // is resubmitted on every 202 rather than re-prompting the wallet.
+      const requestBody = JSON.stringify({ ...signed, claimedAddress: signed.address, optedIn: nextOptedIn });
+      const postOptIn = () =>
+        fetch("/api/battle/opt-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: requestBody,
+        });
+
+      setPanelState({ kind: "syncing" });
+      let response = await postOptIn();
+      let attempts = 0;
+      while (response.status === 202) {
+        attempts += 1;
+        if (attempts > OPT_IN_SYNC_MAX_ATTEMPTS) {
+          setPanelState({ kind: "error", message: "Opt-in sync is taking too long. Please try again." });
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, OPT_IN_SYNC_POLL_DELAY_MS));
+        response = await postOptIn();
+      }
+      if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         setPanelState({ kind: "error", message: body.error || "Failed to update opt-in status." });
         return;
       }
+      setPanelState({ kind: "idle" });
       await refreshStatus();
     } catch (error) {
       if (error instanceof UnsupportedWalletTypeError) {
@@ -212,10 +240,10 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
             <span className="text-xs text-text-secondary">Defend against other wallets</span>
             <button
               onClick={toggleOptIn}
-              disabled={panelState.kind === "awaiting_signature"}
+              disabled={panelState.kind === "awaiting_signature" || panelState.kind === "syncing"}
               className={`button-secondary px-3 py-1.5 text-xs font-semibold ${status?.optedIn ? "text-accent" : ""}`}
             >
-              {status?.optedIn ? "Opted in" : "Opt in"}
+              {panelState.kind === "syncing" ? "Syncing your holdings…" : status?.optedIn ? "Opted in" : "Opt in"}
             </button>
           </div>
           {status?.optedIn && atDefenseCap && (
@@ -277,6 +305,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                 onClick={startBattle}
                 disabled={
                   panelState.kind === "awaiting_signature" ||
+                  panelState.kind === "syncing" ||
                   (mode === "challenge" && (!targetWallet || targetWallet === address))
                 }
                 className="button-primary w-full px-4 py-2.5 text-xs font-semibold"
