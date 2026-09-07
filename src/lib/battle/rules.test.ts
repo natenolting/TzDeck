@@ -248,8 +248,18 @@ test("findMatch: re-roll excludes a confirmed-stale card and finds the next-clos
   const firstMatch = findMatch(attackerStrength, [staleCard, fallbackCard], NOW);
   assert.ok(firstMatch);
 
-  const rerolled = findMatch(attackerStrength, [staleCard, fallbackCard], NOW, new Set([staleCard.cardKey]));
+  const rerolled = findMatch(attackerStrength, [staleCard, fallbackCard], NOW, new Set([`${staleCard.wallet}:${staleCard.cardKey}`]));
   assert.equal(rerolled?.card.cardKey, fallbackCard.cardKey, "excluding the stale card should surface the remaining candidate");
+});
+
+test("findMatch: excluding one wallet's card must not exclude a different wallet's copy of the same card key", () => {
+  const seed = deriveBaseSeed(50, "");
+  const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed }));
+  const walletACard = makeCandidate({ wallet: "tz1WalletA", cardKey: "KT1:1", seed });
+  const walletBCard = makeCandidate({ wallet: "tz1WalletB", cardKey: "KT1:1", seed }); // same card_key, different owner
+
+  const rerolled = findMatch(attackerStrength, [walletACard, walletBCard], NOW, new Set([`${walletACard.wallet}:${walletACard.cardKey}`]));
+  assert.equal(rerolled?.wallet, "tz1WalletB", "wallet B's copy of the same card_key must still be a candidate");
 });
 
 test("findMatch: a wallet that has never opted in never appears -- enforced by store.ts's query, not this function's own filtering", () => {

@@ -300,19 +300,22 @@ export interface MatchResult {
 
 /**
  * Reduces the pool to one candidate per wallet, then searches within a band
- * on the Power x HP product, widening progressively. `excludedCardKeys` lets
- * a caller re-roll past a candidate that just failed fresh ownership
- * verification (F1) without re-deriving the whole pool.
+ * on the Power x HP product, widening progressively. `excludedCandidates`
+ * lets a caller re-roll past a specific wallet's card that just failed fresh
+ * ownership verification (F1) without re-deriving the whole pool -- keyed by
+ * `wallet:cardKey`, not `cardKey` alone, since the same NFT contract/token
+ * can be held by several wallets and excluding one wallet's copy must never
+ * exclude every other wallet's copy of that same card.
  */
 export function findMatch(
   attackerStrength: number,
   pool: CandidateCard[],
   now: Date,
-  excludedCardKeys: ReadonlySet<string> = new Set(),
+  excludedCandidates: ReadonlySet<string> = new Set(),
 ): MatchResult | null {
   const byWallet = new Map<string, CandidateCard[]>();
   for (const card of pool) {
-    if (excludedCardKeys.has(card.cardKey)) continue;
+    if (excludedCandidates.has(`${card.wallet}:${card.cardKey}`)) continue;
     const existing = byWallet.get(card.wallet);
     if (existing) existing.push(card);
     else byWallet.set(card.wallet, [card]);
