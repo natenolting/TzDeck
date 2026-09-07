@@ -107,6 +107,11 @@ export function bytesToSign(envelope: NonceEnvelope, action: string, params: Rea
 
 export type VerifyResult =
   | { ok: true; wallet: string; nonce: string }
+  // The envelope was authentic and the signature checked out, but its
+  // freshness window has passed -- never valid for claiming a NEW attempt,
+  // but the wallet/nonce it carries are trustworthy enough to look up
+  // whatever a prior request already recorded under that same nonce.
+  | { ok: false; reason: "expired"; wallet: string; nonce: string }
   | {
       ok: false;
       reason:
@@ -130,9 +135,18 @@ export function verifySignedAction(params: {
   claimedAddress: string;
   action: string;
   actionParams: ReadonlyArray<string | number | boolean>;
+  /** Test seam only -- production callers rely on the default (Date.now()). */
+  now?: number;
 }): VerifyResult {
-  const envelopeCheck = verifyEnvelope(params.envelope);
-  if (!envelopeCheck.ok) return { ok: false, reason: "envelope_invalid" };
+  const envelopeCheck = verifyEnvelope(params.envelope, params.now);
+  // A forged or not-yet-valid envelope is rejected outright -- nothing after
+  // this point can be trusted. An EXPIRED envelope (freshness only) still
+  // has a genuine MAC, so it's allowed to fall through to the normal
+  // signature/address checks below; only the final verdict is downgraded.
+  if (!envelopeCheck.ok && envelopeCheck.reason !== "expired") {
+    return { ok: false, reason: "envelope_invalid" };
+  }
+  const expired = !envelopeCheck.ok;
 
   if (!isImplicitAccountPublicKey(params.publicKey)) {
     return { ok: false, reason: "unsupported_wallet_type" };
@@ -161,5 +175,7 @@ export function verifySignedAction(params: {
   }
   if (!signatureValid) return { ok: false, reason: "signature_invalid" };
 
-  return { ok: true, wallet: derived, nonce: nonceFromEnvelope(params.envelope) };
+  const nonce = nonceFromEnvelope(params.envelope);
+  if (expired) return { ok: false, reason: "expired", wallet: derived, nonce };
+  return { ok: true, wallet: derived, nonce };
 }

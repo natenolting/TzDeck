@@ -1,5 +1,5 @@
 import { computeParamHash, verifySignedAction, type NonceEnvelope } from "./auth";
-import { claimOrLookupAttempt, reclaimAttempt, type AttemptRow } from "./store";
+import { claimOrLookupAttempt, lookupAttemptByNonce, reclaimAttempt, type AttemptRow } from "./store";
 
 export interface SignedRequestBody {
   envelope: NonceEnvelope;
@@ -24,6 +24,8 @@ export async function authenticateAndClaim(
   body: SignedRequestBody,
   action: string,
   actionParams: ReadonlyArray<string | number | boolean>,
+  /** Test seam only -- production callers rely on the default (Date.now()). */
+  now?: number,
 ): Promise<AuthenticateAndClaimResult> {
   const verifyResult = verifySignedAction({
     envelope: body.envelope,
@@ -32,8 +34,27 @@ export async function authenticateAndClaim(
     claimedAddress: body.claimedAddress,
     action,
     actionParams,
+    now,
   });
   if (!verifyResult.ok) {
+    if (verifyResult.reason === "expired") {
+      // Signature and address checked out; only the envelope's freshness
+      // window has passed. That's fine for replaying an already-terminal
+      // result (the whole point of retry_until outliving the 5-minute
+      // freshness window), but never for claiming a brand-new attempt.
+      const identity = { wallet: verifyResult.wallet, action, paramHash: computeParamHash(actionParams) };
+      const existing = await lookupAttemptByNonce(verifyResult.nonce);
+      const isMatchingTerminal =
+        existing &&
+        existing.wallet === identity.wallet &&
+        existing.action === identity.action &&
+        existing.param_hash === identity.paramHash &&
+        (existing.status === "completed" || (existing.status === "failed" && !existing.retryable));
+      if (isMatchingTerminal) {
+        return { outcome: "terminal", row: existing };
+      }
+      return { outcome: "rejected", status: 401, reason: "nonce_expired" };
+    }
     return { outcome: "rejected", status: 401, reason: verifyResult.reason };
   }
 
@@ -64,6 +85,13 @@ export async function authenticateAndClaim(
       throw new Error(`unhandled claim kind: ${JSON.stringify(exhaustive)}`);
     }
   }
+}
+
+/** Best-effort caller IP, for rate-limiting the unauthenticated routes that have no wallet identity yet. */
+export function getClientIp(request: { headers: { get(name: string): string | null } }): string {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) return forwardedFor.split(",")[0].trim();
+  return request.headers.get("x-real-ip") ?? "unknown";
 }
 
 /** Splits "KT1Contract:123" into its contract address and token id. */

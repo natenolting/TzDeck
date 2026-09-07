@@ -109,6 +109,47 @@ test("verifyEnvelope: a tampered MAC is rejected distinctly from expiry", () => 
   if (!check.ok) assert.equal(check.reason, "mac_mismatch");
 });
 
+test("verifySignedAction: an expired-but-authentic envelope still verifies signature/address, returning the wallet+nonce for replay lookup", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const envelope = issueNonce();
+  const params = ["KT1Contract:1"];
+  const signature = await signAction(signer, envelope, "random", params);
+  const farFuture = envelope.timestamp + 10 * 60 * 1000; // past the 5-minute freshness window
+
+  const result = verifySignedAction({
+    envelope,
+    publicKey,
+    signature,
+    claimedAddress: address,
+    action: "random",
+    actionParams: params,
+    now: farFuture,
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.reason, "expired");
+    if (result.reason === "expired") {
+      assert.equal(result.wallet, address);
+      assert.equal(result.nonce, envelope.mac);
+    }
+  }
+});
+
+test("verifySignedAction: a tampered MAC is rejected outright, even if it would otherwise also look expired", () => {
+  const envelope = issueNonce();
+  const tampered: NonceEnvelope = { ...envelope, mac: "0".repeat(envelope.mac.length) };
+  const result = verifySignedAction({
+    envelope: tampered,
+    publicKey: "edpkIrrelevant",
+    signature: "edsigIrrelevant",
+    claimedAddress: "tz1Irrelevant0000000000000000000000",
+    action: "random",
+    actionParams: [],
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, "envelope_invalid");
+});
+
 test("verifySignedAction: signature valid but doesn't match the derived address is rejected", async () => {
   const { signer, publicKey } = await testSigner();
   const envelope = issueNonce();
