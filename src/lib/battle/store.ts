@@ -146,10 +146,20 @@ export async function claimOrLookupAttempt(
   if (row.wallet !== identity.wallet || row.action !== identity.action || row.param_hash !== identity.paramHash) {
     return { kind: "identity_mismatch", row };
   }
-  if (row.status === "completed" || row.status === "failed") {
+  // A `failed` row marked retryable is NOT terminal -- it must still reach
+  // reclaimAttempt (via the "in_progress" branch below), or a transient
+  // failure (upstream timeout, rate limit) could never be retried.
+  if (row.status === "completed" || (row.status === "failed" && !row.retryable)) {
     return { kind: "terminal", row };
   }
   return { kind: "in_progress", row };
+}
+
+/** Read-only lookup by nonce, for replaying a terminal result without reclaiming or mutating anything. */
+export async function lookupAttemptByNonce(nonce: string): Promise<AttemptRow | null> {
+  const sql = getSql();
+  const rows = await sql<AttemptRow>`SELECT * FROM battle_attempts WHERE nonce = ${nonce}`;
+  return rows[0] ?? null;
 }
 
 /**
@@ -292,54 +302,33 @@ export async function startOrResumeHoldingsSync(
   return inserted[0];
 }
 
-/** Appends a page's cards, deduplicated by card key (first-seen wins), and advances the cursor. */
+export interface StagePageResult {
+  ok: boolean;
+  /** true if a newer worker generation already owns this sync -- this call's page was dropped, not applied. */
+  stale: boolean;
+}
+
+/**
+ * Appends a page's cards (deduplicated by card key, first-seen wins),
+ * advances the cursor, and optionally marks the sync complete -- all inside
+ * one plpgsql call (migrations/0006_holdings_sync_fencing.sql), fenced on
+ * `p_generation` so a worker whose lease was reclaimed by a newer generation
+ * can never overwrite pages the newer worker already staged.
+ */
 export async function stageHoldingsPage(
   syncId: string,
+  generation: string,
   newCards: StagedCard[],
   nextCursor: string | null,
-): Promise<void> {
+  complete: boolean,
+): Promise<StagePageResult> {
   const sql = getSql();
-  const rows = await sql<{ staged_cards: StagedCard[] }>`
-    SELECT staged_cards FROM holdings_syncs WHERE sync_id = ${syncId}
+  const rows = await sql<{ ok: boolean; stale: boolean }>`
+    SELECT * FROM stage_holdings_page(
+      ${syncId}, ${generation}::bigint, ${JSON.stringify(newCards)}::jsonb, ${nextCursor}, ${complete}
+    )
   `;
-  const existingCards = rows[0]?.staged_cards ?? [];
-  const seenKeys = new Set(existingCards.map((c) => c.cardKey));
-  const merged = [...existingCards];
-  for (const card of newCards) {
-    if (!seenKeys.has(card.cardKey)) {
-      merged.push(card);
-      seenKeys.add(card.cardKey);
-    }
-  }
-
-  await sql`
-    UPDATE holdings_syncs
-    SET staged_cards = ${JSON.stringify(merged)}::jsonb, cursor = ${nextCursor}, updated_at = now()
-    WHERE sync_id = ${syncId}
-  `;
-}
-
-/** Opting out: immediate, and bumps holdings_generation to invalidate any in-flight opt-in sync. */
-export async function optOut(wallet: string): Promise<void> {
-  const sql = getSql();
-  await sql`
-    INSERT INTO wallets (address, opted_in, holdings_generation) VALUES (${wallet}, false, 1)
-    ON CONFLICT (address) DO UPDATE SET opted_in = false, holdings_generation = wallets.holdings_generation + 1
-  `;
-}
-
-/** Flips opted_in after a successful promotion -- promotion itself doesn't touch this flag. */
-export async function setOptedIn(wallet: string, optedIn: boolean): Promise<void> {
-  const sql = getSql();
-  await sql`
-    INSERT INTO wallets (address, opted_in) VALUES (${wallet}, ${optedIn})
-    ON CONFLICT (address) DO UPDATE SET opted_in = ${optedIn}
-  `;
-}
-
-export async function markHoldingsSyncComplete(syncId: string): Promise<void> {
-  const sql = getSql();
-  await sql`UPDATE holdings_syncs SET status = 'complete', updated_at = now() WHERE sync_id = ${syncId}`;
+  return rows[0];
 }
 
 export interface PromotionResult {
@@ -472,20 +461,14 @@ export interface CommitBattleParams {
 }
 
 export interface CommitBattleResult {
-  committed: boolean;
-  rejectionReason: string | null;
-  winnerNewXp: string | null;
-  loserRecoveryUntil: string | null;
+  /** The exact payload persisted to battle_attempts.response -- a first attempt and a later replay are byte-identical. */
+  response: unknown;
+  statusCode: number;
 }
 
 export async function commitBattle(params: CommitBattleParams): Promise<CommitBattleResult> {
   const sql = getSql();
-  const rows = await sql<{
-    committed: boolean;
-    rejection_reason: string | null;
-    winner_new_xp: string | null;
-    loser_recovery_until: string | null;
-  }>`
+  const rows = await sql<{ response: unknown; status_code: number }>`
     SELECT * FROM commit_battle(
       ${params.nonce},
       ${params.generation}::bigint,
@@ -511,12 +494,22 @@ export async function commitBattle(params: CommitBattleParams): Promise<CommitBa
     )
   `;
   const row = rows[0];
-  return {
-    committed: row.committed,
-    rejectionReason: row.rejection_reason,
-    winnerNewXp: row.winner_new_xp,
-    loserRecoveryUntil: row.loser_recovery_until,
-  };
+  return { response: row.response, statusCode: row.status_code };
+}
+
+/**
+ * Application-layer request budget, independent of the daily attack/defense
+ * caps -- Vercel's own WAF rate-limit rule is IP-keyed and shared across all
+ * of /api (project memory), so a single wallet or caller within that budget
+ * still needs its own narrower fence (U9/U10). One atomic DB call
+ * (migrations/0007_rate_limits.sql); the window resets in place.
+ */
+export async function checkRateLimit(key: string, windowSeconds: number, maxRequests: number): Promise<boolean> {
+  const sql = getSql();
+  const rows = await sql<{ check_rate_limit: boolean }>`
+    SELECT check_rate_limit(${key}, ${windowSeconds}, ${maxRequests}) AS check_rate_limit
+  `;
+  return rows[0].check_rate_limit;
 }
 
 /** Only a fully-traversed (status = 'complete') snapshot may be promoted. */
@@ -537,4 +530,26 @@ export async function promoteHoldingsSnapshot(syncId: string): Promise<Promotion
     )
   `;
   return { promoted: rows[0].promoted, newGeneration: rows[0].new_generation };
+}
+
+export async function commitParticipation(
+  nonce: string, generation: string, wallet: string, paramHash: string,
+  optedIn: boolean, syncId: string | null,
+): Promise<{ response: unknown; status_code: number }> {
+  const sql = getSql();
+  const [result] = await sql<{ response: unknown; status_code: number }>`
+    SELECT * FROM commit_participation(${nonce}, ${generation}::bigint, ${wallet}, ${paramHash}, ${optedIn}, ${syncId})
+  `;
+  return result;
+}
+
+/** Refresh's atomic promote+complete -- never touches wallets.opted_in, unlike commitParticipation. */
+export async function commitHoldingsRefresh(
+  nonce: string, generation: string, wallet: string, paramHash: string, syncId: string,
+): Promise<{ response: unknown; status_code: number }> {
+  const sql = getSql();
+  const [result] = await sql<{ response: unknown; status_code: number }>`
+    SELECT * FROM commit_holdings_refresh(${nonce}, ${generation}::bigint, ${wallet}, ${paramHash}, ${syncId})
+  `;
+  return result;
 }

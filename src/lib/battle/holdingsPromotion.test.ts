@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 
 import {
   getSql,
-  markHoldingsSyncComplete,
   promoteHoldingsSnapshot,
   stageHoldingsPage,
   startOrResumeHoldingsSync,
@@ -55,8 +54,7 @@ test("holdings promotion: a complete snapshot materializes progress rows and act
     const syncId = randomUUID();
     await seedAttempt(`nonce-${syncId}`);
     await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "0", 0);
-    await stageHoldingsPage(syncId, [card("KT1A:1"), card("KT1B:2")], null);
-    await markHoldingsSyncComplete(syncId);
+    await stageHoldingsPage(syncId, "0", [card("KT1A:1"), card("KT1B:2")], null, true);
 
     const result = await promoteHoldingsSnapshot(syncId);
     assert.equal(result.promoted, true);
@@ -87,8 +85,7 @@ test("holdings promotion: never overwrites an already-leveled card's seed, xp, o
     await seedAttempt(`nonce-${syncId}`);
     await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "0", 0);
     // Re-materialization sees the same card, but with different (fresher, larger) supply data.
-    await stageHoldingsPage(syncId, [card("KT1A:1", 999)], null);
-    await markHoldingsSyncComplete(syncId);
+    await stageHoldingsPage(syncId, "0", [card("KT1A:1", 999)], null, true);
     await promoteHoldingsSnapshot(syncId);
 
     const rows = await sql<{ xp: string; seed_editions: number; progress_version: string }>`
@@ -110,8 +107,7 @@ test("holdings promotion: rejects as stale when the wallet's holdings_generation
     const syncId = randomUUID();
     await seedAttempt(`nonce-${syncId}`);
     await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "0", 0);
-    await stageHoldingsPage(syncId, [card("KT1A:1")], null);
-    await markHoldingsSyncComplete(syncId);
+    await stageHoldingsPage(syncId, "0", [card("KT1A:1")], null, true);
 
     // A competing opt-out (or another sync) bumps the generation before this one promotes.
     await sql`UPDATE wallets SET holdings_generation = holdings_generation + 1 WHERE address = ${TEST_WALLET}`;
@@ -133,7 +129,7 @@ test("holdings promotion: refuses to promote an incomplete sync", async () => {
     const syncId = randomUUID();
     await seedAttempt(`nonce-${syncId}`);
     await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "0", 0);
-    await stageHoldingsPage(syncId, [card("KT1A:1")], "50"); // never marked complete
+    await stageHoldingsPage(syncId, "0", [card("KT1A:1")], "50", false); // never marked complete
     await assert.rejects(() => promoteHoldingsSnapshot(syncId));
   } finally {
     await cleanup();
@@ -147,8 +143,8 @@ test("holdings staging: deduplicates by card key across pages, first-seen wins",
     const syncId = randomUUID();
     await seedAttempt(`nonce-${syncId}`);
     await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "0", 0);
-    await stageHoldingsPage(syncId, [card("KT1A:1", 5)], "page1");
-    await stageHoldingsPage(syncId, [card("KT1A:1", 999), card("KT1B:2", 5)], null); // duplicate KT1A:1
+    await stageHoldingsPage(syncId, "0", [card("KT1A:1", 5)], "page1", false);
+    await stageHoldingsPage(syncId, "0", [card("KT1A:1", 999), card("KT1B:2", 5)], null, true); // duplicate KT1A:1
 
     const sql = getSql();
     const rows = await sql<{ staged_cards: StagedCard[] }>`SELECT staged_cards FROM holdings_syncs WHERE sync_id = ${syncId}`;
@@ -167,11 +163,36 @@ test("holdings sync: resuming an existing sync id returns the same row rather th
     const syncId = randomUUID();
     await seedAttempt(`nonce-${syncId}`);
     const first = await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "0", 0);
-    await stageHoldingsPage(syncId, [card("KT1A:1")], "checkpoint-1");
+    await stageHoldingsPage(syncId, "0", [card("KT1A:1")], "checkpoint-1", false);
 
     const resumed = await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "1", 0);
     assert.equal(resumed.sync_id, first.sync_id);
     assert.equal(resumed.cursor, "checkpoint-1", "resuming must see the prior page's checkpoint, not restart from page one");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("holdings staging: a superseded worker generation's page write is dropped, not applied", async () => {
+  await cleanup();
+  try {
+    await seedWallet();
+    const syncId = randomUUID();
+    await seedAttempt(`nonce-${syncId}`);
+    await startOrResumeHoldingsSync(syncId, TEST_WALLET, `nonce-${syncId}`, "0", 0);
+    // A newer worker (generation 1, e.g. after a lease reclaim) takes over and stages a page.
+    await stageHoldingsPage(syncId, "1", [card("KT1A:1")], "checkpoint-1", false);
+
+    // The old generation-0 worker, unaware it was superseded, tries to stage its own page.
+    const staleWrite = await stageHoldingsPage(syncId, "0", [card("KT1B:2")], "checkpoint-old", false);
+    assert.equal(staleWrite.stale, true, "a call from an older generation than the sync's current worker_generation must be rejected");
+
+    const sql = getSql();
+    const [row] = await sql<{ staged_cards: StagedCard[]; cursor: string | null }>`
+      SELECT staged_cards, cursor FROM holdings_syncs WHERE sync_id = ${syncId}
+    `;
+    assert.deepEqual(row.staged_cards.map((c) => c.cardKey), ["KT1A:1"], "the stale write must not have been applied");
+    assert.equal(row.cursor, "checkpoint-1", "the stale write's cursor must not have overwritten the newer generation's checkpoint");
   } finally {
     await cleanup();
   }

@@ -9,6 +9,7 @@ import {
   getSql,
   type AttemptIdentity,
   type CommitBattleParams,
+  type CommitBattleResult,
 } from "./store";
 
 const ATTACKER = "tz1CommitBattleAttacker00000000000000";
@@ -72,6 +73,14 @@ function baseParams(overrides: Partial<CommitBattleParams> & Pick<CommitBattlePa
   };
 }
 
+function isCommitted(result: CommitBattleResult): boolean {
+  return result.statusCode === 200;
+}
+
+function errorOf(result: CommitBattleResult): string | undefined {
+  return (result.response as { error?: string })?.error;
+}
+
 test("decay parity: SQL's inline decay formula matches rules.ts's decayScaledAward for a range of counts", async () => {
   const sql = getSql();
   for (const decayCount of [0, 1, 2, 3, 5, 10, 20]) {
@@ -92,9 +101,11 @@ test("commit_battle: a win commits XP to the winner, recovery to the loser, cap 
     const { nonce, generation } = await claimFreshAttempt(ATTACKER);
 
     const result = await commitBattle(baseParams({ nonce, generation }));
-    assert.equal(result.committed, true);
-    assert.equal(Number(result.winnerNewXp), 100);
-    assert.ok(result.loserRecoveryUntil);
+    assert.equal(isCommitted(result), true);
+    const response = result.response as { winner: string; xpAwarded: number; winnerNewXp: string; loserRecoveryUntil: string };
+    assert.equal(response.winner, "attacker");
+    assert.equal(Number(response.winnerNewXp), 100);
+    assert.ok(response.loserRecoveryUntil);
 
     const [attackerWalletRow] = await sql<{ attack_count: number }>`SELECT attack_count FROM wallets WHERE address = ${ATTACKER}`;
     assert.equal(attackerWalletRow.attack_count, 1);
@@ -116,8 +127,12 @@ test("commit_battle: a win commits XP to the winner, recovery to the loser, cap 
     const log = await sql`SELECT * FROM battle_log WHERE attempt_nonce = ${nonce}`;
     assert.equal(log.length, 1);
 
-    const attempt = await sql<{ status: string }>`SELECT status FROM battle_attempts WHERE nonce = ${nonce}`;
+    const attempt = await sql<{ status: string; response: unknown; status_code: number }>`
+      SELECT status, response, status_code FROM battle_attempts WHERE nonce = ${nonce}
+    `;
     assert.equal(attempt[0].status, "completed");
+    assert.equal(attempt[0].status_code, 200);
+    assert.deepEqual(attempt[0].response, result.response, "the persisted response must be byte-identical to what the route received");
   } finally {
     await cleanup();
   }
@@ -144,7 +159,8 @@ test("commit_battle: a draw commits cap usage and version bumps to both sides bu
         loserRecoveryReason: null,
       }),
     );
-    assert.equal(result.committed, true);
+    assert.equal(isCommitted(result), true);
+    assert.equal((result.response as { winner: string | null }).winner, null);
 
     const [attackerProgress] = await sql<{ xp: string; recovery_until: string | null; progress_version: string }>`
       SELECT xp, recovery_until, progress_version FROM wallet_card_progress WHERE wallet = ${ATTACKER} AND card_key = 'KT1A:1'
@@ -163,18 +179,17 @@ test("commit_battle: a draw commits cap usage and version bumps to both sides bu
 });
 
 test("commit_battle: a wallet already at its defense cap can still attack (role-specific eligibility)", async () => {
-  const sql = getSql();
   await cleanup();
   try {
     await seedWallets();
-    await sql`UPDATE wallets SET defense_count = 20, defense_reset_at = now() + interval '1 day' WHERE address = ${ATTACKER}`;
+    await getSql()`UPDATE wallets SET defense_count = 20, defense_reset_at = now() + interval '1 day' WHERE address = ${ATTACKER}`;
     // ATTACKER is maxed on DEFENSE, but is attacking here -- should not be blocked.
     await seedProgress(ATTACKER, "KT1A:1");
     await seedProgress(DEFENDER, "KT1B:1");
     const { nonce, generation } = await claimFreshAttempt(ATTACKER);
 
     const result = await commitBattle(baseParams({ nonce, generation }));
-    assert.equal(result.committed, true, "a defense-capped wallet must still be able to attack");
+    assert.equal(isCommitted(result), true, "a defense-capped wallet must still be able to attack");
   } finally {
     await cleanup();
   }
@@ -191,8 +206,9 @@ test("commit_battle: a defender opting out between the pre-check and this commit
     const { nonce, generation } = await claimFreshAttempt(ATTACKER);
 
     const result = await commitBattle(baseParams({ nonce, generation }));
-    assert.equal(result.committed, false);
-    assert.equal(result.rejectionReason, "defender_opted_out");
+    assert.equal(isCommitted(result), false);
+    assert.equal(result.statusCode, 409);
+    assert.equal(errorOf(result), "defender_opted_out");
   } finally {
     await cleanup();
   }
@@ -208,8 +224,8 @@ test("commit_battle: the partial-write bug a follow-up review found -- a failed 
     const { nonce, generation } = await claimFreshAttempt(ATTACKER);
 
     const result = await commitBattle(baseParams({ nonce, generation, defenderExpectedVersion: "0" }));
-    assert.equal(result.committed, false);
-    assert.equal(result.rejectionReason, "stale_defender_version");
+    assert.equal(isCommitted(result), false);
+    assert.equal(errorOf(result), "stale_defender_version");
 
     const [attackerProgress] = await sql<{ xp: string; progress_version: string }>`
       SELECT xp, progress_version FROM wallet_card_progress WHERE wallet = ${ATTACKER} AND card_key = 'KT1A:1'
@@ -223,8 +239,9 @@ test("commit_battle: the partial-write bug a follow-up review found -- a failed 
     const log = await sql`SELECT * FROM battle_log WHERE attempt_nonce = ${nonce}`;
     assert.equal(log.length, 0);
 
-    const attempt = await sql<{ status: string }>`SELECT status FROM battle_attempts WHERE nonce = ${nonce}`;
+    const attempt = await sql<{ status: string; status_code: number }>`SELECT status, status_code FROM battle_attempts WHERE nonce = ${nonce}`;
     assert.equal(attempt[0].status, "failed");
+    assert.equal(attempt[0].status_code, 409, "the rejection's status code must be persisted, not default to 200 on replay");
   } finally {
     await cleanup();
   }
@@ -244,7 +261,7 @@ test("commit_battle: two concurrent requests using the same pre-fetched combat o
       commitBattle(baseParams({ nonce: second.nonce, generation: second.generation })),
     ]);
 
-    const outcomes = [resultA.committed, resultB.committed].sort();
+    const outcomes = [isCommitted(resultA), isCommitted(resultB)].sort();
     assert.deepEqual(outcomes, [false, true], "exactly one of the two concurrent commits should succeed");
   } finally {
     await cleanup();
@@ -267,13 +284,75 @@ test("commit_battle: an attacker who never opted in initializes both rows and ba
     const result = await commitBattle(
       baseParams({ nonce, generation: claimed.row.generation, attackerExpectedVersion: null }),
     );
-    assert.equal(result.committed, true);
+    assert.equal(isCommitted(result), true);
 
     const [attackerWalletRow] = await sql<{ opted_in: boolean }>`SELECT opted_in FROM wallets WHERE address = ${ATTACKER}`;
     assert.equal(attackerWalletRow.opted_in, false, "attacking must not implicitly opt a wallet into defense");
 
     const [attackerProgress] = await sql<{ xp: string }>`SELECT xp FROM wallet_card_progress WHERE wallet = ${ATTACKER} AND card_key = 'KT1A:1'`;
     assert.equal(Number(attackerProgress.xp), 100, "the commit-time upsert should have initialized and then credited this row");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("commit_battle: a concurrent opt-in materialization racing the same first-use row is rejected, not silently accepted", async () => {
+  const sql = getSql();
+  await cleanup();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${DEFENDER}, true)`;
+    await seedProgress(DEFENDER, "KT1B:1");
+    const nonce = randomUUID();
+    const identity: AttemptIdentity = { wallet: ATTACKER, action: "random", paramHash: "test" };
+    const claimed = await claimOrLookupAttempt(nonce, identity, new Date());
+    assert.equal(claimed.kind, "claimed");
+    if (claimed.kind !== "claimed") return;
+
+    // Simulate a concurrent opt-in holdings-sync promotion materializing this
+    // exact row (version 0) with DIFFERENT seed data, moments before commit_battle's own insert.
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${ATTACKER}, false) ON CONFLICT DO NOTHING`;
+    await sql`
+      INSERT INTO wallet_card_progress (wallet, card_key, seed_editions, seed_description_length, seed_source, progress_version)
+      VALUES (${ATTACKER}, 'KT1A:1', 999, 999, 'holdings-sync', 0)
+    `;
+
+    const result = await commitBattle(
+      baseParams({ nonce, generation: claimed.row.generation, attackerExpectedVersion: null }),
+    );
+    assert.equal(isCommitted(result), false);
+    assert.equal(result.statusCode, 409);
+    assert.equal(errorOf(result), "conflicting_first_use_materialization");
+
+    const [attackerProgress] = await sql<{ seed_editions: number; xp: string }>`
+      SELECT seed_editions, xp FROM wallet_card_progress WHERE wallet = ${ATTACKER} AND card_key = 'KT1A:1'
+    `;
+    assert.equal(attackerProgress.seed_editions, 999, "the concurrently-materialized row must be untouched, not overwritten with this call's own seed");
+    assert.equal(Number(attackerProgress.xp), 0, "no XP must have been credited against unverified stats");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("commit_battle: an attempt whose lease/retry window already closed is rejected as expired, and marked retryable", async () => {
+  const sql = getSql();
+  await cleanup();
+  try {
+    await seedWallets();
+    await seedProgress(ATTACKER, "KT1A:1");
+    await seedProgress(DEFENDER, "KT1B:1");
+    const { nonce, generation } = await claimFreshAttempt(ATTACKER);
+    await sql`UPDATE battle_attempts SET lease_expires_at = now() - interval '1 second' WHERE nonce = ${nonce}`;
+
+    const result = await commitBattle(baseParams({ nonce, generation }));
+    assert.equal(isCommitted(result), false);
+    assert.equal(result.statusCode, 503);
+    assert.equal(errorOf(result), "attempt_expired");
+
+    const attempt = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${nonce}`;
+    assert.equal(attempt[0].retryable, true, "an expired-window rejection is operational, not a business rule -- must be retryable");
+
+    const log = await sql`SELECT * FROM battle_log WHERE attempt_nonce = ${nonce}`;
+    assert.equal(log.length, 0);
   } finally {
     await cleanup();
   }
@@ -313,8 +392,8 @@ test("commit_battle: two concurrent battles with reversed attacker/defender role
 
     // No deadlock error should have propagated -- both calls returned a real
     // result (committed or a clean stale-version rejection), never hung or thrown.
-    assert.equal(typeof resultAB.committed, "boolean");
-    assert.equal(typeof resultBA.committed, "boolean");
+    assert.equal(typeof resultAB.statusCode, "number");
+    assert.equal(typeof resultBA.statusCode, "number");
   } finally {
     await cleanup();
   }
@@ -330,8 +409,8 @@ test("commit_battle: a self-challenge is rejected", async () => {
     const result = await commitBattle(
       baseParams({ nonce, generation, defenderWallet: ATTACKER, defenderCardKey: "KT1A:2", winnerWallet: ATTACKER, loserWallet: ATTACKER }),
     );
-    assert.equal(result.committed, false);
-    assert.equal(result.rejectionReason, "self_challenge");
+    assert.equal(isCommitted(result), false);
+    assert.equal(errorOf(result), "self_challenge");
   } finally {
     await cleanup();
   }
@@ -350,15 +429,15 @@ test("commit_battle: a duplicate request with the same nonce is never re-run aga
     // Calling commit_battle again with the same nonce+generation should be a
     // no-op from this function's own perspective too, since the attempt is
     // no longer 'pending' -- defense in depth behind the app-layer ledger check.
-    const rows = await sql<{ committed: boolean; rejection_reason: string | null }>`
+    const rows = await sql<{ response: { error?: string }; status_code: number }>`
       SELECT * FROM commit_battle(
         ${nonce}, ${generation}::bigint, ${ATTACKER}, 'KT1A:1', ${"1"}::bigint, 5, 50, 'test',
         ${DEFENDER}, 'KT1B:1', ${"1"}::bigint, 'win', ${ATTACKER}, 'KT1A:1', ${DEFENDER}, 'KT1B:1', 'defensive',
         100, 'v1', 'seed', '{}'::jsonb
       )
     `;
-    assert.equal(rows[0].committed, false);
-    assert.equal(rows[0].rejection_reason, "attempt_not_claimable");
+    assert.equal(rows[0].status_code, 409);
+    assert.equal(rows[0].response.error, "attempt_not_claimable");
 
     const progress = await sql<{ xp: string }>`SELECT xp FROM wallet_card_progress WHERE wallet = ${ATTACKER} AND card_key = 'KT1A:1'`;
     assert.equal(Number(progress[0].xp), 100, "no double-XP from the second invocation attempt");

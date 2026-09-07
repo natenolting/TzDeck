@@ -9,6 +9,7 @@ import {
   releaseLeaseForContinuation,
   completeAttempt,
   failAttempt,
+  checkRateLimit,
   type AttemptIdentity,
 } from "./store";
 
@@ -299,5 +300,22 @@ test("U1b: reclaim fails once the retry deadline has passed", async (t) => {
     assert.equal(reclaimed, null, "an attempt past its retry deadline must not be reclaimable");
   } finally {
     await clearAttempt(nonce);
+  }
+});
+
+test("checkRateLimit: allows up to the max within a window, then blocks, then resets on the next window", async (t) => {
+  const key = `ratelimit-${t.name}-${Date.now()}`;
+  const sql = getSql();
+  try {
+    for (let i = 0; i < 3; i += 1) {
+      assert.equal(await checkRateLimit(key, 60, 3), true, `request ${i + 1} of 3 should be within budget`);
+    }
+    assert.equal(await checkRateLimit(key, 60, 3), false, "the 4th request in the same window must be rejected");
+
+    // Simulate the window having already elapsed.
+    await sql`UPDATE rate_limits SET window_started_at = now() - interval '61 seconds' WHERE bucket_key = ${key}`;
+    assert.equal(await checkRateLimit(key, 60, 3), true, "a new window must reset the count, not carry the old one forward");
+  } finally {
+    await sql`DELETE FROM rate_limits WHERE bucket_key = ${key}`;
   }
 });
