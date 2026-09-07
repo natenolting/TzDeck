@@ -238,3 +238,116 @@ export function levelForXp(xp: number): number {
 export function xpWithinLevel(xp: number): number {
   return xp - xpThresholdForLevel(levelForXp(xp));
 }
+
+// ---------------------------------------------------------------------------
+// U7: matchmaking -- candidate pool reduction and Power x HP band search.
+// Pure math only; store.ts's query returns the full eligible pool (no
+// product-based SQL filter, since stats are derived from base_seed on read,
+// not a stored sortable column).
+// ---------------------------------------------------------------------------
+
+export interface CandidateCard {
+  wallet: string;
+  cardKey: string;
+  seed: BaseSeed;
+  level: number;
+  recoveryUntil: Date | null;
+  defenseCount: number;
+  defenseResetAt: Date;
+}
+
+const DEFENSE_CAP_MAX = 20; // tuning placeholder (Open Questions: exact daily cap values)
+
+/** combined Power x HP -- the matchmaking similarity metric (R15/R16, Key Technical Decisions). */
+export function strength(power: number, hp: number): number {
+  return power * hp;
+}
+
+export function candidateStrength(card: CandidateCard): number {
+  const stats = effectiveStats(card.seed, card.level);
+  return strength(stats.power, stats.hp);
+}
+
+function isCurrentlyEligible(card: CandidateCard, now: Date): boolean {
+  if (card.recoveryUntil && card.recoveryUntil > now) return false;
+  const effectiveDefenseCount = card.defenseResetAt <= now ? 0 : card.defenseCount;
+  return effectiveDefenseCount < DEFENSE_CAP_MAX;
+}
+
+/** Whichever of a wallet's eligible cards has the closest Power x HP product to the attacker's -- not necessarily its strongest card. */
+export function bestFittingCardForWallet(
+  attackerStrength: number,
+  walletCards: CandidateCard[],
+  now: Date,
+): CandidateCard | null {
+  const eligible = walletCards.filter((c) => isCurrentlyEligible(c, now));
+  if (eligible.length === 0) return null;
+  return eligible.reduce((closest, candidate) =>
+    Math.abs(candidateStrength(candidate) - attackerStrength) < Math.abs(candidateStrength(closest) - attackerStrength)
+      ? candidate
+      : closest,
+  );
+}
+
+// Progressive band-widening steps, as a fraction of the attacker's own
+// strength (Open Questions: exact strength-band width and widening schedule).
+const BAND_WIDENING_STEPS = [0.1, 0.25, 0.5, 1.0, 2.0];
+
+export interface MatchResult {
+  wallet: string;
+  card: CandidateCard;
+}
+
+/**
+ * Reduces the pool to one candidate per wallet, then searches within a band
+ * on the Power x HP product, widening progressively. `excludedCardKeys` lets
+ * a caller re-roll past a candidate that just failed fresh ownership
+ * verification (F1) without re-deriving the whole pool.
+ */
+export function findMatch(
+  attackerStrength: number,
+  pool: CandidateCard[],
+  now: Date,
+  excludedCardKeys: ReadonlySet<string> = new Set(),
+): MatchResult | null {
+  const byWallet = new Map<string, CandidateCard[]>();
+  for (const card of pool) {
+    if (excludedCardKeys.has(card.cardKey)) continue;
+    const existing = byWallet.get(card.wallet);
+    if (existing) existing.push(card);
+    else byWallet.set(card.wallet, [card]);
+  }
+
+  const perWalletBest: MatchResult[] = [];
+  for (const [wallet, cards] of byWallet) {
+    const best = bestFittingCardForWallet(attackerStrength, cards, now);
+    if (best) perWalletBest.push({ wallet, card: best });
+  }
+  if (perWalletBest.length === 0) return null;
+
+  for (const bandWidth of BAND_WIDENING_STEPS) {
+    const lower = attackerStrength * (1 - bandWidth);
+    const upper = attackerStrength * (1 + bandWidth);
+    const withinBand = perWalletBest.filter(
+      ({ card }) => candidateStrength(card) >= lower && candidateStrength(card) <= upper,
+    );
+    if (withinBand.length > 0) {
+      return withinBand.reduce((closest, candidate) =>
+        Math.abs(candidateStrength(candidate.card) - attackerStrength) <
+        Math.abs(candidateStrength(closest.card) - attackerStrength)
+          ? candidate
+          : closest,
+      );
+    }
+  }
+  return null; // widest band still has no candidate
+}
+
+/** F2: reuses the same closest-card selection, scoped to a single named wallet's cards. */
+export function bestCardForChallenge(
+  attackerStrength: number,
+  targetWalletCards: CandidateCard[],
+  now: Date,
+): CandidateCard | null {
+  return bestFittingCardForWallet(attackerStrength, targetWalletCards, now);
+}

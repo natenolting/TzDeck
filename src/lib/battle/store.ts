@@ -329,6 +329,44 @@ export interface PromotionResult {
   newGeneration: number;
 }
 
+// ---------------------------------------------------------------------------
+// U7: matchmaking candidate pool. This file only fetches the raw eligible
+// rows -- opted-in wallets' actively-held cards, excluding the attacker's
+// own wallet. It does NOT filter or sort by Power x HP product (that's
+// derived from base_seed on read, not a stored sortable column -- Key
+// Technical Decisions); all banding/widening/selection happens in rules.ts.
+// ---------------------------------------------------------------------------
+
+export interface CandidatePoolRow {
+  wallet: string;
+  card_key: string;
+  seed_editions: number;
+  seed_description_length: number;
+  xp: string;
+  recovery_until: string | null;
+  defense_count: number;
+  defense_reset_at: string;
+}
+
+export async function fetchMatchmakingCandidatePool(attackerWallet: string): Promise<CandidatePoolRow[]> {
+  const sql = getSql();
+  return sql<CandidatePoolRow>`
+    SELECT
+      p.wallet,
+      p.card_key,
+      p.seed_editions,
+      p.seed_description_length,
+      p.xp,
+      p.recovery_until,
+      w.defense_count,
+      w.defense_reset_at
+    FROM wallet_card_progress p
+    JOIN wallet_holdings h ON h.wallet = p.wallet AND h.card_key = p.card_key
+    JOIN wallets w ON w.address = p.wallet
+    WHERE w.opted_in = true AND w.address != ${attackerWallet}
+  `;
+}
+
 /** Only a fully-traversed (status = 'complete') snapshot may be promoted. */
 export async function promoteHoldingsSnapshot(syncId: string): Promise<PromotionResult> {
   const sql = getSql();

@@ -5,9 +5,12 @@ import {
   applyLevel,
   baseStatsFromSeed,
   baseXpAward,
+  bestCardForChallenge,
+  candidateStrength,
   decayScaledAward,
   deriveBaseSeed,
   effectiveStats,
+  findMatch,
   hpFromTierAndDescription,
   levelForXp,
   mulberry32,
@@ -16,7 +19,22 @@ import {
   resolveBattle,
   xpThresholdForLevel,
   xpWithinLevel,
+  type CandidateCard,
 } from "./rules";
+
+const FAR_FUTURE = new Date("2100-01-01");
+const NOW = new Date("2026-01-01");
+
+function makeCandidate(overrides: Partial<CandidateCard> & Pick<CandidateCard, "wallet" | "cardKey">): CandidateCard {
+  return {
+    seed: deriveBaseSeed(50, "a description"),
+    level: 1,
+    recoveryUntil: null,
+    defenseCount: 0,
+    defenseResetAt: FAR_FUTURE,
+    ...overrides,
+  };
+}
 
 test("powerFromEditions: a 1-of-1 gets the highest Power", () => {
   assert.equal(powerFromEditions(1), 100);
@@ -165,4 +183,92 @@ test("restoring a previously-saved Level 5 progress record and applying a subseq
   const afterWin = restoredXp + decayScaledAward(baseXpAward("uncommon", 3), 0);
   assert.equal(levelForXp(afterWin), 5, "should still be Level 5, not reset to Level 1");
   assert.ok(afterWin > restoredXp);
+});
+
+test("findMatch: a wallet holding a Level 1 and Level 20 card is represented by whichever has the closer Power x HP product", () => {
+  const seed = deriveBaseSeed(50, "a description");
+  const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed, level: 3 }));
+
+  const level1Card = makeCandidate({ wallet: "tz1Wallet", cardKey: "KT1:1", seed, level: 1 });
+  const level20Card = makeCandidate({ wallet: "tz1Wallet", cardKey: "KT1:2", seed, level: 20 });
+  const pool = [level1Card, level20Card];
+
+  const match = findMatch(attackerStrength, pool, NOW);
+  assert.ok(match);
+  // Since both share a seed, the closer level (both closer than level 20) should win, not necessarily the lower one.
+  assert.equal(
+    Math.abs(candidateStrength(match!.card) - attackerStrength) <=
+      Math.abs(candidateStrength(level20Card) - attackerStrength),
+    true,
+  );
+});
+
+test("findMatch: no candidate within the widest band fails with no match", () => {
+  const attackerStrength = 1; // absurdly low; even the widest band (up to 3x) stays tiny
+  const pool = [makeCandidate({ wallet: "tz1Wallet", cardKey: "KT1:1" })]; // real strength is in the thousands
+  const match = findMatch(attackerStrength, pool, NOW);
+  assert.equal(match, null);
+});
+
+test("findMatch: a recovering card is excluded from its wallet's candidacy", () => {
+  const seed = deriveBaseSeed(50, "");
+  const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed }));
+  const recovering = makeCandidate({
+    wallet: "tz1Wallet",
+    cardKey: "KT1:1",
+    seed,
+    recoveryUntil: new Date(NOW.getTime() + 60_000),
+  });
+
+  const match = findMatch(attackerStrength, [recovering], NOW);
+  assert.equal(match, null, "the only candidate is recovering, so no match should be found");
+});
+
+test("findMatch: a card past its defense-cap reset time is eligible again without a write", () => {
+  const seed = deriveBaseSeed(50, "");
+  const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed }));
+  const pastResetCard = makeCandidate({
+    wallet: "tz1Wallet",
+    cardKey: "KT1:1",
+    seed,
+    defenseCount: 999, // would be over any reasonable cap if not reset
+    defenseResetAt: new Date(NOW.getTime() - 1000), // already in the past
+  });
+
+  const match = findMatch(attackerStrength, [pastResetCard], NOW);
+  assert.ok(match, "a card whose defense_reset_at has passed should read as an effective count of zero");
+});
+
+test("findMatch: re-roll excludes a confirmed-stale card and finds the next-closest candidate", () => {
+  const seed = deriveBaseSeed(50, "");
+  const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed }));
+  const staleCard = makeCandidate({ wallet: "tz1WalletA", cardKey: "KT1:1", seed });
+  const fallbackCard = makeCandidate({ wallet: "tz1WalletB", cardKey: "KT1:2", seed });
+
+  const firstMatch = findMatch(attackerStrength, [staleCard, fallbackCard], NOW);
+  assert.ok(firstMatch);
+
+  const rerolled = findMatch(attackerStrength, [staleCard, fallbackCard], NOW, new Set([staleCard.cardKey]));
+  assert.equal(rerolled?.card.cardKey, fallbackCard.cardKey, "excluding the stale card should surface the remaining candidate");
+});
+
+test("findMatch: a wallet that has never opted in never appears -- enforced by store.ts's query, not this function's own filtering", () => {
+  // Documented here rather than tested in isolation: findMatch operates on
+  // whatever pool it's given, and fetchMatchmakingCandidatePool (store.ts)
+  // is what excludes non-opted-in wallets and the attacker's own wallet via
+  // its WHERE clause -- there is no separate opted-in flag on CandidateCard
+  // to filter on at this layer.
+  assert.equal(typeof findMatch, "function");
+});
+
+test("bestCardForChallenge: F2 reuses the same closest-card selection for a single named wallet", () => {
+  const seed = deriveBaseSeed(50, "");
+  const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed, level: 5 }));
+  const targetCards = [
+    makeCandidate({ wallet: "tz1Target", cardKey: "KT1:1", seed, level: 1 }),
+    makeCandidate({ wallet: "tz1Target", cardKey: "KT1:2", seed, level: 5 }),
+  ];
+
+  const best = bestCardForChallenge(attackerStrength, targetCards, NOW);
+  assert.equal(best?.cardKey, "KT1:2", "the closer-level card should be selected");
 });
