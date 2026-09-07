@@ -243,3 +243,108 @@ export async function failAttempt(
   `;
   return rows.length > 0;
 }
+
+// ---------------------------------------------------------------------------
+// U4c: staged, resumable holdings snapshots. Staging writes are serialized by
+// the attempt's own lease (only one worker holds it at a time), so no extra
+// DB-level locking is needed there; promotion touches shared cross-cutting
+// tables and runs through the real plpgsql function above.
+// ---------------------------------------------------------------------------
+
+export interface StagedCard {
+  cardKey: string;
+  contractAddress: string;
+  tokenId: string;
+  seed: { editions: number; descriptionLength: number };
+  source: string;
+}
+
+export interface HoldingsSyncRow {
+  sync_id: string;
+  wallet: string;
+  attempt_nonce: string;
+  worker_generation: string;
+  captured_holdings_generation: number;
+  cursor: string | null;
+  status: "in_progress" | "complete" | "stale";
+  staged_cards: StagedCard[];
+}
+
+/** Starts a fresh sync, or resumes one already staged under this exact attempt nonce. */
+export async function startOrResumeHoldingsSync(
+  syncId: string,
+  wallet: string,
+  attemptNonce: string,
+  workerGeneration: string,
+  capturedHoldingsGeneration: number,
+): Promise<HoldingsSyncRow> {
+  const sql = getSql();
+  const existing = await sql<HoldingsSyncRow>`
+    SELECT * FROM holdings_syncs WHERE sync_id = ${syncId}
+  `;
+  if (existing.length > 0) return existing[0];
+
+  const inserted = await sql<HoldingsSyncRow>`
+    INSERT INTO holdings_syncs (sync_id, wallet, attempt_nonce, worker_generation, captured_holdings_generation, staged_cards)
+    VALUES (${syncId}, ${wallet}, ${attemptNonce}, ${workerGeneration}, ${capturedHoldingsGeneration}, '[]'::jsonb)
+    RETURNING *
+  `;
+  return inserted[0];
+}
+
+/** Appends a page's cards, deduplicated by card key (first-seen wins), and advances the cursor. */
+export async function stageHoldingsPage(
+  syncId: string,
+  newCards: StagedCard[],
+  nextCursor: string | null,
+): Promise<void> {
+  const sql = getSql();
+  const rows = await sql<{ staged_cards: StagedCard[] }>`
+    SELECT staged_cards FROM holdings_syncs WHERE sync_id = ${syncId}
+  `;
+  const existingCards = rows[0]?.staged_cards ?? [];
+  const seenKeys = new Set(existingCards.map((c) => c.cardKey));
+  const merged = [...existingCards];
+  for (const card of newCards) {
+    if (!seenKeys.has(card.cardKey)) {
+      merged.push(card);
+      seenKeys.add(card.cardKey);
+    }
+  }
+
+  await sql`
+    UPDATE holdings_syncs
+    SET staged_cards = ${JSON.stringify(merged)}::jsonb, cursor = ${nextCursor}, updated_at = now()
+    WHERE sync_id = ${syncId}
+  `;
+}
+
+export async function markHoldingsSyncComplete(syncId: string): Promise<void> {
+  const sql = getSql();
+  await sql`UPDATE holdings_syncs SET status = 'complete', updated_at = now() WHERE sync_id = ${syncId}`;
+}
+
+export interface PromotionResult {
+  promoted: boolean;
+  newGeneration: number;
+}
+
+/** Only a fully-traversed (status = 'complete') snapshot may be promoted. */
+export async function promoteHoldingsSnapshot(syncId: string): Promise<PromotionResult> {
+  const sql = getSql();
+  const syncRows = await sql<HoldingsSyncRow>`SELECT * FROM holdings_syncs WHERE sync_id = ${syncId}`;
+  const sync = syncRows[0];
+  if (!sync) throw new Error(`holdings sync not found: ${syncId}`);
+  if (sync.status !== "complete") {
+    throw new Error(`cannot promote an incomplete holdings sync: ${syncId}`);
+  }
+
+  const rows = await sql<{ promoted: boolean; new_generation: number }>`
+    SELECT * FROM promote_holdings_snapshot(
+      ${sync.wallet},
+      ${sync.captured_holdings_generation},
+      ${JSON.stringify(sync.staged_cards)}::jsonb
+    )
+  `;
+  return { promoted: rows[0].promoted, newGeneration: rows[0].new_generation };
+}
