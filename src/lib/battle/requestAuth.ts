@@ -1,5 +1,5 @@
 import { computeParamHash, verifySignedAction, type NonceEnvelope } from "./auth";
-import { claimOrLookupAttempt, type AttemptRow } from "./store";
+import { claimOrLookupAttempt, reclaimAttempt, type AttemptRow } from "./store";
 
 export interface SignedRequestBody {
   envelope: NonceEnvelope;
@@ -45,8 +45,16 @@ export async function authenticateAndClaim(
       return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: claim.row.generation };
     case "terminal":
       return { outcome: "terminal", row: claim.row };
-    case "in_progress":
+    case "in_progress": {
+      // The lease may have expired (a prior worker released it for bounded
+      // continuation, or crashed) -- attempt a reclaim before reporting
+      // in-flight. If the lease is still genuinely live, this is a no-op.
+      const reclaimed = await reclaimAttempt(verifyResult.nonce, identity);
+      if (reclaimed) {
+        return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation };
+      }
       return { outcome: "in_progress" };
+    }
     case "identity_mismatch":
       return { outcome: "rejected", status: 401, reason: "identity_mismatch" };
     case "expired":
