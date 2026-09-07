@@ -180,3 +180,61 @@ export function resolveBattle(
     roundDamageB,
   };
 }
+
+// ---------------------------------------------------------------------------
+// U6: XP award and leveling. No prototype precedent (the simulator only
+// covered combat/matching) -- new design, structure fixed per the origin's
+// rationale (scales with opponent strength, decreasing marginal reward for
+// weaker opponents), exact curve is a tuning placeholder.
+// ---------------------------------------------------------------------------
+
+const RARITY_XP_WEIGHT: Record<CardRarity, number> = {
+  common: 1,
+  uncommon: 1.5,
+  rare: 2.25,
+  epic: 3.5,
+  legendary: 5,
+};
+
+const BASE_XP_AWARD = 100;
+const XP_PER_OPPONENT_LEVEL = 0.1;
+
+/** XP for defeating a given opponent, before the R20 anti-farming decay multiplier. */
+export function baseXpAward(opponentTier: CardRarity, opponentLevel: number): number {
+  const weight = RARITY_XP_WEIGHT[opponentTier];
+  return Math.round(BASE_XP_AWARD * weight * (1 + (opponentLevel - 1) * XP_PER_OPPONENT_LEVEL));
+}
+
+const DECAY_RATE = 0.5;
+const DECAY_FLOOR_MULTIPLIER = 0.1;
+
+/**
+ * R20's anti-farming multiplier, as a pure function of the current rolling
+ * win count for this (winner, loser) pair -- U8's commit function computes
+ * `decayCount` from `battle_log` inside the same locked transaction and
+ * calls the equivalent of this formula in SQL; this export exists as the
+ * shared reference implementation the SQL must match (parity fixtures).
+ */
+export function decayScaledAward(baseAward: number, decayCount: number): number {
+  const multiplier = Math.max(DECAY_FLOOR_MULTIPLIER, Math.pow(DECAY_RATE, decayCount));
+  return Math.max(1, Math.round(baseAward * multiplier));
+}
+
+/** xp is a lifetime cumulative total (Key Technical Decisions); level is always re-derived from it. */
+export function xpThresholdForLevel(level: number): number {
+  if (level <= 1) return 0;
+  return Math.round((100 * (level - 1) * level) / 2);
+}
+
+export function levelForXp(xp: number): number {
+  let level = 1;
+  while (xpThresholdForLevel(level + 1) <= xp) {
+    level += 1;
+  }
+  return level;
+}
+
+/** XP earned within the current level, for display -- never stored separately. */
+export function xpWithinLevel(xp: number): number {
+  return xp - xpThresholdForLevel(levelForXp(xp));
+}

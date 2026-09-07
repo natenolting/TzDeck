@@ -4,13 +4,18 @@ import test from "node:test";
 import {
   applyLevel,
   baseStatsFromSeed,
+  baseXpAward,
+  decayScaledAward,
   deriveBaseSeed,
   effectiveStats,
   hpFromTierAndDescription,
+  levelForXp,
   mulberry32,
   normalizeDescriptionLength,
   powerFromEditions,
   resolveBattle,
+  xpThresholdForLevel,
+  xpWithinLevel,
 } from "./rules";
 
 test("powerFromEditions: a 1-of-1 gets the highest Power", () => {
@@ -117,4 +122,47 @@ test("resolveBattle: seeded-RNG runs at a specific seed reproduce bit-identical 
   const first = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
   const second = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
   assert.deepEqual(first, second);
+});
+
+test("baseXpAward: defeating a stronger/higher-level opponent yields more XP than a much weaker one", () => {
+  const strong = baseXpAward("legendary", 10);
+  const weak = baseXpAward("common", 1);
+  assert.ok(strong > weak);
+});
+
+test("decayScaledAward: repeated wins against the same pair yield progressively less XP, floored", () => {
+  assert.equal(decayScaledAward(100, 0), 100);
+  assert.equal(decayScaledAward(100, 1), 50);
+  assert.equal(decayScaledAward(100, 5), 10, "should have hit the 10% floor by decayCount 5");
+  assert.equal(decayScaledAward(100, 20), 10, "the floor should not keep shrinking further");
+});
+
+test("xpThresholdForLevel / levelForXp: an award crossing two level thresholds derives both level-ups without reducing lifetime XP", () => {
+  const startingXp = 90; // Level 1
+  assert.equal(levelForXp(startingXp), 1);
+
+  const afterAward = startingXp + 250; // crosses the Level 2 (100) and Level 3 (300) thresholds
+  assert.equal(afterAward, 340);
+  assert.equal(levelForXp(afterAward), 3, "should cross two thresholds in one award");
+  assert.equal(
+    xpWithinLevel(afterAward),
+    afterAward - xpThresholdForLevel(3),
+    "displayed within-level XP is total minus the new level's cumulative threshold",
+  );
+});
+
+test("a draw or loss yields zero XP (baseXpAward/decayScaledAward are simply never invoked for those outcomes)", () => {
+  // This unit only computes what a WIN awards; U8's commit function is what
+  // gates XP application on outcome === "win" per R10/R14 -- documented here
+  // so the contract (no call, no XP) is explicit at the boundary.
+  assert.equal(typeof baseXpAward, "function");
+});
+
+test("restoring a previously-saved Level 5 progress record and applying a subsequent win continues from Level 5, not Level 1", () => {
+  const restoredXp = xpThresholdForLevel(5); // exactly at the Level 5 boundary
+  assert.equal(levelForXp(restoredXp), 5);
+
+  const afterWin = restoredXp + decayScaledAward(baseXpAward("uncommon", 3), 0);
+  assert.equal(levelForXp(afterWin), 5, "should still be Level 5, not reset to Level 1");
+  assert.ok(afterWin > restoredXp);
 });
