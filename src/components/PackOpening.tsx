@@ -141,7 +141,7 @@ export default function PackOpening({
   );
 
   return (
-    <div className="relative w-full max-w-6xl mx-auto overflow-hidden py-6">
+    <div className="relative w-full max-w-6xl mx-auto py-6">
       <AnimatePresence mode="wait">
         {/* ================= IDLE STATE: SEALED PACK ================= */}
         {packState === "idle" && (
@@ -247,23 +247,28 @@ export default function PackOpening({
         {packState === "opening" && (
           <motion.div
             key="opening-burst"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1.1, opacity: 1 }}
-            exit={{ scale: 1.4, opacity: 0 }}
-            className="flex flex-col items-center justify-center py-20 text-center"
+            // Contain the burst's exit scale without clipping revealed card rings and glows.
+            className="overflow-hidden"
           >
             <motion.div
-              animate={{ rotate: [0, -10, 10, -5, 5, 0], scale: [1, 1.15, 1] }}
-              transition={{ duration: 0.6 }}
-              className="flex items-center gap-4 text-7xl font-black text-accent-hover"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1.1, opacity: 1 }}
+              exit={{ scale: 1.4, opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20 text-center"
             >
-              <SparklesIcon className="h-10 w-10" />
-              <span>ꜩ</span>
-              <SparklesIcon className="h-10 w-10" />
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -5, 5, 0], scale: [1, 1.15, 1] }}
+                transition={{ duration: 0.6 }}
+                className="flex items-center gap-4 text-7xl font-black text-accent-hover"
+              >
+                <SparklesIcon className="h-10 w-10" />
+                <span>ꜩ</span>
+                <SparklesIcon className="h-10 w-10" />
+              </motion.div>
+              <h3 className="mt-4 text-2xl font-bold text-text-primary tracking-wide animate-pulse">
+                Ripping Open Pack...
+              </h3>
             </motion.div>
-            <h3 className="mt-4 text-2xl font-bold text-text-primary tracking-wide animate-pulse">
-              Ripping Open Pack...
-            </h3>
           </motion.div>
         )}
 
