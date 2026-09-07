@@ -319,6 +319,24 @@ export async function stageHoldingsPage(
   `;
 }
 
+/** Opting out: immediate, and bumps holdings_generation to invalidate any in-flight opt-in sync. */
+export async function optOut(wallet: string): Promise<void> {
+  const sql = getSql();
+  await sql`
+    INSERT INTO wallets (address, opted_in, holdings_generation) VALUES (${wallet}, false, 1)
+    ON CONFLICT (address) DO UPDATE SET opted_in = false, holdings_generation = wallets.holdings_generation + 1
+  `;
+}
+
+/** Flips opted_in after a successful promotion -- promotion itself doesn't touch this flag. */
+export async function setOptedIn(wallet: string, optedIn: boolean): Promise<void> {
+  const sql = getSql();
+  await sql`
+    INSERT INTO wallets (address, opted_in) VALUES (${wallet}, ${optedIn})
+    ON CONFLICT (address) DO UPDATE SET opted_in = ${optedIn}
+  `;
+}
+
 export async function markHoldingsSyncComplete(syncId: string): Promise<void> {
   const sql = getSql();
   await sql`UPDATE holdings_syncs SET status = 'complete', updated_at = now() WHERE sync_id = ${syncId}`;
@@ -346,6 +364,39 @@ export interface ProgressRow {
   recovery_until: string | null;
   recovery_reason: string | null;
   progress_version: string;
+}
+
+export interface WalletRow {
+  address: string;
+  opted_in: boolean;
+  attack_count: number;
+  attack_reset_at: string;
+  defense_count: number;
+  defense_reset_at: string;
+  holdings_generation: number;
+  holdings_refreshed_at: string | null;
+}
+
+export async function fetchWallet(wallet: string): Promise<WalletRow | null> {
+  const sql = getSql();
+  const rows = await sql<WalletRow>`SELECT * FROM wallets WHERE address = ${wallet}`;
+  return rows[0] ?? null;
+}
+
+/** Ensures a wallets row exists (opted_in=false, zero caps) without disturbing an existing one. */
+export async function ensureWalletExists(wallet: string): Promise<WalletRow> {
+  const sql = getSql();
+  const rows = await sql<WalletRow>`
+    INSERT INTO wallets (address) VALUES (${wallet})
+    ON CONFLICT (address) DO UPDATE SET address = wallets.address
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+export async function fetchAllProgressForWallet(wallet: string): Promise<ProgressRow[]> {
+  const sql = getSql();
+  return sql<ProgressRow>`SELECT * FROM wallet_card_progress WHERE wallet = ${wallet} ORDER BY card_key`;
 }
 
 export async function fetchProgress(wallet: string, cardKey: string): Promise<ProgressRow | null> {
