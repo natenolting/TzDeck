@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
+import BattlePanel from "./BattlePanel";
 import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
 
 interface DeckGridProps {
@@ -69,6 +70,7 @@ export default function DeckGrid({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
+  const [battleCard, setBattleCard] = useState<NFTCardType | null>(null);
 
   // Filters and Sorting
   const [searchQuery, setSearchQuery] = useState("");
@@ -266,17 +268,36 @@ export default function DeckGrid({
             const cardKey = getCardKey(token);
             const isWish = wishlistIds.has(cardKey);
             return (
-              <NFTCard
-                key={cardKey}
-                card={token}
-                showCollectButton={true}
-                isWishlisted={isWish}
-                detailCards={filteredTokens}
-                detailWishlistIds={wishlistIds}
-                onToggleWishlist={onWishlistToggle}
-              />
+              <div key={cardKey} className="relative">
+                <NFTCard
+                  card={token}
+                  showCollectButton={true}
+                  isWishlisted={isWish}
+                  detailCards={filteredTokens}
+                  detailWishlistIds={wishlistIds}
+                  onToggleWishlist={onWishlistToggle}
+                />
+                <button
+                  type="button"
+                  onClick={() => setBattleCard(token)}
+                  className="button-secondary absolute bottom-3 right-3 px-2.5 py-1 text-[11px] font-semibold"
+                >
+                  Battle
+                </button>
+              </div>
             );
           })}
+        </div>
+      )}
+
+      {battleCard && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setBattleCard(null)}
+        >
+          <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <BattlePanel card={battleCard} onClose={() => setBattleCard(null)} />
+          </div>
         </div>
       )}
     </div>
