@@ -250,7 +250,11 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
           <SwordsIcon className="h-4 w-4 shrink-0" />
           <span className="truncate">Battle — {card.name}</span>
         </h3>
-        <button onClick={onClose} aria-label="Close battle panel" className="button-secondary h-8 w-8 shrink-0 text-xs">
+        <button
+          onClick={onClose}
+          aria-label="Close battle panel"
+          className="button-secondary h-10 w-10 min-h-10 shrink-0 rounded-full p-0 text-xs"
+        >
           ✕
         </button>
       </div>
