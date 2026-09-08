@@ -255,7 +255,12 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
         <p className="mt-4 text-xs text-text-tertiary">Loading battle status…</p>
       ) : (
         <>
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-border-default bg-surface-2 px-3 py-2">
+          <p className="mt-3 text-xs text-text-tertiary">
+            Battle other wallets&apos; cards for XP and levels. Opting in lets other players challenge you back —
+            winning as a defender earns XP too, and a defensive loss recovers faster than an offensive one.
+          </p>
+
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-border-default bg-surface-2 px-3 py-2">
             <span className="text-xs text-text-secondary">Defend against other wallets</span>
             <button
               onClick={toggleOptIn}
@@ -265,9 +270,15 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
               {panelState.kind === "syncing" ? "Syncing your holdings…" : status?.optedIn ? "Opted in" : "Opt in"}
             </button>
           </div>
-          {status?.optedIn && atDefenseCap && (
+          {status?.optedIn ? (
+            atDefenseCap && (
+              <p className="mt-1 text-xs text-text-tertiary">
+                You&apos;ve reached today&apos;s defense limit — other wallets can&apos;t match against you until it resets.
+              </p>
+            )
+          ) : (
             <p className="mt-1 text-xs text-text-tertiary">
-              You&apos;ve reached today&apos;s defense limit — other wallets can&apos;t match against you until it resets.
+              You can still attack without opting in — but your own cards stay invisible as opponents until you do.
             </p>
           )}
 
@@ -312,6 +323,11 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   Challenge Wallet
                 </button>
               </div>
+              <p className="text-xs text-text-tertiary">
+                {mode === "random"
+                  ? "Automatically matched against a similar-strength opponent."
+                  : "Target one specific wallet's best-matching card instead."}
+              </p>
 
               {mode === "challenge" && (
                 <input
