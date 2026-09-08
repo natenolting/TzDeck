@@ -268,23 +268,16 @@ export default function DeckGrid({
             const cardKey = getCardKey(token);
             const isWish = wishlistIds.has(cardKey);
             return (
-              <div key={cardKey} className="relative">
-                <NFTCard
-                  card={token}
-                  showCollectButton={true}
-                  isWishlisted={isWish}
-                  detailCards={filteredTokens}
-                  detailWishlistIds={wishlistIds}
-                  onToggleWishlist={onWishlistToggle}
-                />
-                <button
-                  type="button"
-                  onClick={() => setBattleCard(token)}
-                  className="button-secondary absolute bottom-3 right-3 px-2.5 py-1 text-[11px] font-semibold"
-                >
-                  Battle
-                </button>
-              </div>
+              <NFTCard
+                key={cardKey}
+                card={token}
+                showCollectButton={true}
+                isWishlisted={isWish}
+                detailCards={filteredTokens}
+                detailWishlistIds={wishlistIds}
+                onToggleWishlist={onWishlistToggle}
+                onBattle={setBattleCard}
+              />
             );
           })}
         </div>

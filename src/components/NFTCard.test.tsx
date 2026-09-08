@@ -341,3 +341,33 @@ test("card pointer movement updates foil position through CSS variables", async 
   assert.equal(cardElement.style.getPropertyValue("--foil-x"), "25%");
   assert.equal(cardElement.style.getPropertyValue("--foil-y"), "50%");
 });
+
+test("a battle control sits with the wishlist button and calls onBattle", async () => {
+  const { render, screen, userEvent, NFTCard } = await loadTestHarness();
+  const user = userEvent.setup({ document });
+  let battled: NFTCardType | undefined;
+  render(
+    <NFTCard
+      card={card}
+      onToggleWishlist={() => undefined}
+      onBattle={(selectedCard) => {
+        battled = selectedCard;
+      }}
+    />,
+  );
+
+  const battleButton = screen.getByRole("button", { name: `Battle with ${card.name}` });
+  const wishlistButton = screen.getByRole("button", { name: "Add to wishlist" });
+  assert.equal(battleButton.nextElementSibling, wishlistButton);
+  await user.click(battleButton);
+  assert.equal(battled, card);
+  assert.equal(screen.queryByRole("dialog"), null);
+});
+
+test("cards omit the battle control when onBattle is not passed", async () => {
+  const { render, screen, NFTCard } = await loadTestHarness();
+  render(<NFTCard card={card} onToggleWishlist={() => undefined} />);
+
+  assert.equal(screen.queryByRole("button", { name: `Battle with ${card.name}` }), null);
+  assert.ok(screen.getByRole("button", { name: "Add to wishlist" }));
+});

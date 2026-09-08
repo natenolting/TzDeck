@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import NFTDetailsModal from "./NFTDetailsModal";
 import { RARITY_CONFIG } from "./rarityStyles";
-import { ExternalLinkIcon, HeartIcon, ImageOffIcon } from "./icons";
+import { ExternalLinkIcon, HeartIcon, ImageOffIcon, SwordsIcon } from "./icons";
 
 interface NFTCardProps {
   card: NFTCardType;
@@ -20,6 +20,7 @@ interface NFTCardProps {
   detailCards?: NFTCardType[];
   detailWishlistIds?: Set<string>;
   onToggleWishlist?: (card: NFTCardType) => void;
+  onBattle?: (card: NFTCardType) => void;
   className?: string;
 }
 
@@ -34,6 +35,7 @@ export default function NFTCard({
   detailCards,
   detailWishlistIds,
   onToggleWishlist,
+  onBattle,
   className = "",
 }: NFTCardProps) {
   // Ordered fallback sources
@@ -144,6 +146,21 @@ export default function NFTCard({
             <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-text-secondary border border-border-default">
               x{card.quantity_owned}
             </span>
+          )}
+
+          {onBattle && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBattle(card);
+              }}
+              title="Battle"
+              aria-label={`Battle with ${card.name}`}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
+            >
+              <SwordsIcon className="h-4 w-4" />
+            </button>
           )}
 
           {onToggleWishlist && (
