@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
 import { getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { baseStatsFromSeed, deriveBaseSeed } from "@/lib/battle/rules";
 
 interface StatusCard {
   cardKey: string;
@@ -65,6 +66,23 @@ export function recoveryCopy(reason: "offensive" | "defensive" | null): string {
   return "";
 }
 
+/**
+ * A never-battled card has no wallet_card_progress row, so there's nothing
+ * to fetch -- this estimates its Level 1 Power/HP from data already loaded
+ * in the deck view, using the same seed derivation the server uses. Null
+ * when editions isn't loaded, rather than guessing at a fabricated number.
+ * The real seed is captured fresh from upstream at battle-commit time, so
+ * this can drift slightly if the edition count changes before then.
+ */
+export function previewStatsForCard(
+  card: Pick<NFTCardType, "editions" | "description">,
+): { power: number; hp: number } | null {
+  if (typeof card.editions !== "number") return null;
+  const seed = deriveBaseSeed(card.editions, card.description);
+  const { power, hp } = baseStatsFromSeed(seed);
+  return { power, hp };
+}
+
 export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const { address, signChallenge } = useWallet();
   const cardKey = getCardKey(card);
@@ -108,6 +126,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   }, [address, loadStatus]);
 
   const ownCardStatus = status?.cards.find((c) => c.cardKey === cardKey);
+  const previewStats = ownCardStatus ? null : previewStatsForCard(card);
   const isRecovering = Boolean(ownCardStatus?.recoveryUntil && new Date(ownCardStatus.recoveryUntil) > new Date());
   const atAttackCap = (status?.effectiveAttackCount ?? 0) >= ATTACK_CAP_MAX;
   const atDefenseCap = (status?.effectiveDefenseCount ?? 0) >= DEFENSE_CAP_MAX;
@@ -252,7 +271,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
             </p>
           )}
 
-          {ownCardStatus && (
+          {ownCardStatus ? (
             <div className="mt-3 text-xs text-text-secondary">
               <p>
                 Level {ownCardStatus.level} · Power {ownCardStatus.power} · HP {ownCardStatus.hp}
@@ -261,6 +280,12 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                 <p className="mt-1 text-danger">{recoveryCopy(ownCardStatus.recoveryReason)}</p>
               )}
             </div>
+          ) : (
+            previewStats && (
+              <p className="mt-3 text-xs text-text-tertiary">
+                Estimated Level 1 · Power {previewStats.power} · HP {previewStats.hp} — never battled, exact stats lock in on your first battle.
+              </p>
+            )
           )}
 
           {isRecovering ? (
