@@ -214,7 +214,7 @@ test("commit_battle: a defender opting out between the pre-check and this commit
   }
 });
 
-test("commit_battle: the partial-write bug a follow-up review found -- a failed eligibility guard leaves zero trace outside battle_attempts", async () => {
+test("commit_battle: a failed eligibility guard leaves zero trace outside battle_attempts (no partial writes)", async () => {
   const sql = getSql();
   await cleanup();
   try {

@@ -1,8 +1,9 @@
 -- U8: the core novel piece. A single plpgsql function so a failed
 -- eligibility guard triggers a REAL rollback (RAISE EXCEPTION), not a
 -- filtered SELECT -- Postgres commits every data-modifying CTE in a bare
--- statement together, which is exactly the bug a follow-up review found in
--- an earlier CTE-only version of this function.
+-- statement together regardless of a sibling CTE's WHERE-clause "failure",
+-- so a bare multi-CTE version of this function would partially commit a
+-- rejected battle.
 --
 -- Lock order is a fixed total order across every invocation: wallets first
 -- (sorted by address), then progress rows (sorted by wallet, card_key). With

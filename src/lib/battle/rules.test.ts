@@ -93,7 +93,7 @@ test("metadata captured at different times may legitimately produce different se
   assert.notDeepEqual(seedNow, seedLater);
 });
 
-test("the level-scaling gap a follow-up review found: effective stats change with level", () => {
+test("effective stats change with level, not just the stored seed", () => {
   const seed = deriveBaseSeed(5, "some description");
   const atLevel1 = effectiveStats(seed, 1);
   const atLevel5 = effectiveStats(seed, 5);

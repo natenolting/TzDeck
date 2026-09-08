@@ -1,4 +1,4 @@
--- Follow-up review found three gaps in the original commit_battle (0003):
+-- Extends commit_battle (0003) to close three gaps:
 --
 -- 1. It checked generation and pending status but never lease_expires_at or
 --    retry_until, so a worker whose authorization window had already closed

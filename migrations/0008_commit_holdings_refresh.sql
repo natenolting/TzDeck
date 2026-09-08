@@ -1,10 +1,8 @@
--- The refresh route had the same atomicity gap the review flagged in
--- opt-in (0004/0006's commit_participation): it called
--- promoteHoldingsSnapshot and completeAttempt as two separate statements,
--- so a crash between them left a promoted snapshot with no completed
--- response recorded. Refresh never touches wallets.opted_in, so it gets its
--- own function rather than overloading commit_participation's opted_in
--- branching.
+-- Promotion and attempt completion must commit atomically, same as opt-in's
+-- commit_participation (0004/0006): a crash between them would otherwise
+-- leave a promoted snapshot with no completed response recorded. Refresh
+-- never touches wallets.opted_in, so it gets its own function rather than
+-- overloading commit_participation's opted_in branching.
 CREATE FUNCTION commit_holdings_refresh(
   p_nonce text, p_generation bigint, p_wallet text, p_param_hash text, p_sync_id text
 ) RETURNS TABLE(response jsonb, status_code integer) AS $$

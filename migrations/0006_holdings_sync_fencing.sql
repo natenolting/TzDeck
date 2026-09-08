@@ -1,9 +1,7 @@
--- Follow-up review: staging (store.ts's old stageHoldingsPage) did a bare
--- read/merge/write across two separate round trips with no ownership check
--- at all, and promotion never confirmed the sync it was promoting was
--- staged by the CURRENT attempt generation -- a worker that lost its lease
--- to a takeover could still overwrite newer pages, or a stale sync could be
--- promoted after a takeover already resumed and completed it.
+-- Staging a page and promoting a completed sync both need to confirm which
+-- worker generation actually owns the sync -- a worker that lost its lease
+-- to a takeover could otherwise overwrite newer pages, or a stale sync
+-- could be promoted after a takeover already resumed and completed it.
 --
 -- Fixed the same way as commit_battle/promote_holdings_snapshot: the whole
 -- check-merge-write cycle for one staged page lives inside a single plpgsql
