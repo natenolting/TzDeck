@@ -131,3 +131,51 @@ test("commit_holdings_refresh: a lost holdings-generation race is retryable, not
     await cleanup();
   }
 });
+
+test("commit_holdings_refresh: an attempt reclaimed to a new generation after staging already completed can still promote", async () => {
+  const sql = getSql();
+  await cleanup();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${WALLET}, true)`;
+    const { nonce, generation } = await claimAttempt("refresh");
+    const syncId = `sync:${nonce}`;
+    await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
+    // Staging finishes under generation 0 -- worker_generation is now frozen at 0.
+    await stageHoldingsPage(syncId, generation, [card("KT1A:1")], null, true);
+
+    // The process died before promotion ran; a later request reclaims the
+    // attempt to a fresh generation (mirrors what reclaimAttempt does).
+    const reclaimedGeneration = "1";
+    await sql`UPDATE battle_attempts SET generation = ${reclaimedGeneration}::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
+
+    const result = await commitHoldingsRefresh(nonce, reclaimedGeneration, WALLET, "test", syncId);
+    assert.equal(result.status_code, 200, "a reclaimed generation must still be able to promote a sync staged under an older generation");
+    assert.deepEqual(result.response, { refreshed: true });
+
+    const holdings = await sql`SELECT * FROM wallet_holdings WHERE wallet = ${WALLET}`;
+    assert.equal(holdings.length, 1);
+  } finally {
+    await cleanup();
+  }
+});
+
+test("commit_holdings_refresh: a call from a genuinely superseded (older) generation is still rejected", async () => {
+  const sql = getSql();
+  await cleanup();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${WALLET}, true)`;
+    const { nonce, generation } = await claimAttempt("refresh");
+    const syncId = `sync:${nonce}`;
+    await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
+    // A newer worker (generation 2) stages and completes the sync.
+    await stageHoldingsPage(syncId, "2", [card("KT1A:1")], null, true);
+
+    // This call still thinks it's generation 1 -- genuinely superseded, not just resumed.
+    await sql`UPDATE battle_attempts SET generation = '1'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
+    const result = await commitHoldingsRefresh(nonce, "1", WALLET, "test", syncId);
+    assert.equal(result.status_code, 409);
+    assert.equal((result.response as { error: string }).error, "invalid_holdings_sync");
+  } finally {
+    await cleanup();
+  }
+});

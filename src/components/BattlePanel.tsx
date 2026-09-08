@@ -84,6 +84,37 @@ export function previewStatsForCard(
   return { power, hp };
 }
 
+export interface ResubmitResult {
+  response: Response;
+  timedOut: boolean;
+}
+
+/**
+ * Resubmits `post()` -- the identical signed body, never re-signed -- while
+ * the response keeps coming back 202, waiting `pollDelayMs` between tries,
+ * bounded to `maxAttempts` resubmissions so a persistently-202 server can't
+ * hang the caller forever. `wait` is injectable so tests don't need real
+ * timers.
+ */
+export async function resubmitWhilePending(
+  post: () => Promise<Response>,
+  maxAttempts: number,
+  pollDelayMs: number,
+  wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<ResubmitResult> {
+  let response = await post();
+  let attempts = 0;
+  while (response.status === 202) {
+    attempts += 1;
+    if (attempts > maxAttempts) {
+      return { response, timedOut: true };
+    }
+    await wait(pollDelayMs);
+    response = await post();
+  }
+  return { response, timedOut: false };
+}
+
 export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const { address, signChallenge } = useWallet();
   const cardKey = getCardKey(card);
@@ -151,16 +182,10 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
         });
 
       setPanelState({ kind: "syncing" });
-      let response = await postOptIn();
-      let attempts = 0;
-      while (response.status === 202) {
-        attempts += 1;
-        if (attempts > OPT_IN_SYNC_MAX_ATTEMPTS) {
-          setPanelState({ kind: "error", message: "Opt-in sync is taking too long. Please try again." });
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, OPT_IN_SYNC_POLL_DELAY_MS));
-        response = await postOptIn();
+      const { response, timedOut } = await resubmitWhilePending(postOptIn, OPT_IN_SYNC_MAX_ATTEMPTS, OPT_IN_SYNC_POLL_DELAY_MS);
+      if (timedOut) {
+        setPanelState({ kind: "error", message: "Opt-in sync is taking too long. Please try again." });
+        return;
       }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
