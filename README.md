@@ -34,6 +34,20 @@ The deck-only supply ladder is Legendary for a 1 of 1, Epic for editions of 5 or
 
 These thresholds were calibrated against 500 active OBJKT listings sampled deterministically across the marketplace's listing-ID range. The measured distribution was 1.6% Legendary, 4.8% Epic, 24.0% Rare, 55.6% Uncommon, and 14.0% Common. Re-run `npm run calibrate:rarity` to verify the live catalogue remains within the design targets.
 
+## Battle system
+
+Connected wallets can pit an owned card against another wallet's card for XP and levels, using the same edition-based Power/HP derivation as the deck rarity ladder above. Battling needs a Postgres database (`DATABASE_URL`) and two additional env vars (`BATTLE_AUTH_SECRET`, `BATTLE_APP_ID`) in `.env.local`; run `npm run migrate` once against that database before battling locally.
+
+Two scripts explore the combat math without a database or a running server:
+
+```bash
+npm run simulate -- 5000              # run 5000 battles between fresh random cards, report win/draw rates
+npm run simulate -- --help            # see all flags: fixed matchups, variance, seed, CSV export
+npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed acceptance run
+```
+
+`simulate` is the general-purpose tool for exploring balance: it defaults to rolling a new random card for each side every trial, or pins a specific matchup via `--a-editions`/`--a-desc`/`--a-level` (and `--b-*` for the defender). Pass `--seed=N` for a reproducible run or `--csv=path.csv` to export one row per trial.
+
 ## Run locally
 
 Install the dependencies and start the development server:
@@ -55,12 +69,15 @@ NEXT_PUBLIC_TEZOS_RPC_URL=https://mainnet.api.tez.ie
 ## Development commands
 
 ```bash
-npm test                 # Run the automated test suite
-npm run lint             # Check the code with ESLint
-npm run calibrate:rarity # Verify rarity tiers against 500 live listings
-npm run check:diversity  # Verify packs draw from several artists
-npx tsc --noEmit         # Type-check without emitting files
-npm run build            # Production build
+npm test                  # Run the automated test suite
+npm run lint              # Check the code with ESLint
+npm run calibrate:rarity  # Verify rarity tiers against 500 live listings
+npm run check:diversity   # Verify packs draw from several artists
+npm run migrate           # Apply battle-system database migrations
+npm run simulate          # Run N ad-hoc battle simulations (see Battle system above)
+npm run validate:tiebreak # The R14 tiebreak's own fixed acceptance run
+npx tsc --noEmit          # Type-check without emitting files
+npm run build             # Production build
 ```
 
 ## Built with
