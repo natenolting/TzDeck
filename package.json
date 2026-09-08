@@ -11,7 +11,8 @@
     "calibrate:rarity": "tsx scripts/calibrate-rarity.ts",
     "check:diversity": "tsx scripts/check-pack-diversity.ts",
     "migrate": "tsx scripts/migrate.ts",
-    "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts"
+    "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts",
+    "simulate": "tsx scripts/simulate-battles.ts"
   },
   "engines": {
     "node": "24.x"
