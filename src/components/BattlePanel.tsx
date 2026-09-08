@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
 import { getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { baseStatsFromSeed, deriveBaseSeed } from "@/lib/battle/rules";
+import { SwordsIcon } from "./icons";
 
 interface StatusCard {
   cardKey: string;
@@ -244,9 +245,12 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
       className="rounded-2xl border border-border-default bg-surface-1/90 p-5 backdrop-blur-md"
       aria-live="polite"
     >
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-text-primary">Battle — {card.name}</h3>
-        <button onClick={onClose} aria-label="Close battle panel" className="button-secondary h-8 w-8 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-bold text-text-primary">
+          <SwordsIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate">Battle — {card.name}</span>
+        </h3>
+        <button onClick={onClose} aria-label="Close battle panel" className="button-secondary h-8 w-8 shrink-0 text-xs">
           ✕
         </button>
       </div>
