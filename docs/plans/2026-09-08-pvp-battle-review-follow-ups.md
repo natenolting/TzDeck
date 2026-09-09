@@ -88,7 +88,23 @@ implementing. Fix one at a time, with one commit per fix, as requested.
 
 ## 4. P2 — Preserve large-wallet sync progress across rate limiting
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. `src/components/BattlePanel.tsx`'s
+  `resubmitWhilePending` now also resubmits the identical signed body on
+  `429`, backing off on its own (longer, separately-bounded)
+  `rateLimitDelayMs`/`maxRateLimitAttempts` so a rate-limit episode can't
+  starve a large wallet's legitimate 202 continuation budget or vice versa.
+  The server side turned out to already be correct once items 1-3 above
+  landed: `opt-in/route.ts` already marks the attempt retryable on 429
+  (never abandons it), a resubmission within envelope freshness reclaims it
+  normally, and the existing sync resumes from its stored cursor (fix 1's
+  attempt-fencing) rather than restarting (fix 3's restart path only
+  triggers on an actual holdings-generation mismatch, not a rate limit) --
+  so this fix was purely client-side. Regression coverage in
+  `BattlePanel.test.tsx`: the literal `202 -> 429 -> 202 -> 200` sequence
+  reuses one signed body to completion, and a persistently-429 server times
+  out on its own bound independent of the 202 one. Full suite: 198/200 pass,
+  same two pre-existing dev-database pollution failures as before,
+  unrelated.
 - Locations: `src/components/BattlePanel.tsx`, opt-in continuation loop, and
   `src/app/api/battle/opt-in/route.ts`, request budget.
 - The UI resubmits on `202`, but abandons the signed request on `429`. The server

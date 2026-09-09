@@ -81,3 +81,41 @@ test("resubmitWhilePending gives up after maxAttempts resubmissions rather than 
   assert.equal(postCalls, 3, "the initial post plus exactly maxAttempts resubmissions, never more");
   assert.equal(waitCalls, 2);
 });
+
+test("resubmitWhilePending resubmits the identical body across a rate-limit episode, not just bounded continuation", async () => {
+  const statuses = [202, 429, 202, 200];
+  let postCalls = 0;
+  const post = async () => {
+    const status = statuses[postCalls];
+    postCalls += 1;
+    return statusResponse(status);
+  };
+  const delays: number[] = [];
+  const wait = async (ms: number) => {
+    delays.push(ms);
+  };
+
+  const result = await resubmitWhilePending(post, 50, 300, wait, 15, 5000);
+  assert.equal(result.timedOut, false);
+  assert.equal(result.response.status, 200);
+  assert.equal(postCalls, 4, "the signed request must be resubmitted through 202 and 429 alike, never abandoned");
+  assert.deepEqual(delays, [300, 5000, 300], "429 must back off on its own (longer) delay, distinct from the 202 poll delay");
+});
+
+test("resubmitWhilePending gives up after maxRateLimitAttempts, independent of the 202 continuation budget", async () => {
+  let postCalls = 0;
+  const post = async () => {
+    postCalls += 1;
+    return statusResponse(429); // rate limit never clears
+  };
+  const delays: number[] = [];
+  const wait = async (ms: number) => {
+    delays.push(ms);
+  };
+
+  const result = await resubmitWhilePending(post, 50, 300, wait, 2, 5000);
+  assert.equal(result.timedOut, true);
+  assert.equal(result.response.status, 429, "the last-seen response is still returned so the caller can inspect it");
+  assert.equal(postCalls, 3, "the initial post plus exactly maxRateLimitAttempts resubmissions, never more");
+  assert.deepEqual(delays, [5000, 5000], "every wait must use the rate-limit delay, not the 202 poll delay");
+});

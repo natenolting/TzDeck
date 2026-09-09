@@ -67,6 +67,17 @@ const DEFENSE_CAP_MAX = 20;
 const OPT_IN_SYNC_MAX_ATTEMPTS = 50;
 const OPT_IN_SYNC_POLL_DELAY_MS = 300;
 
+// opt-in/route.ts allows 20 requests/minute per wallet, independent of the
+// signed attempt itself -- a large enough wallet's continuation loop can hit
+// that budget before finishing. The server already marks the attempt
+// retryable on 429 (its nonce/progress are never abandoned), so this waits
+// out the window and resubmits the SAME signed body rather than surfacing a
+// dead end that would force a fresh signature and restart staging from
+// scratch. A separate bound from the 202 loop above so a large wallet's
+// legitimate continuation isn't starved by an unrelated rate-limit episode.
+const OPT_IN_RATE_LIMIT_MAX_ATTEMPTS = 15;
+const OPT_IN_RATE_LIMIT_DELAY_MS = 5000;
+
 interface BattlePanelProps {
   card: NFTCardType;
   onClose: () => void;
@@ -102,25 +113,42 @@ export interface ResubmitResult {
 
 /**
  * Resubmits `post()` -- the identical signed body, never re-signed -- while
- * the response keeps coming back 202, waiting `pollDelayMs` between tries,
- * bounded to `maxAttempts` resubmissions so a persistently-202 server can't
- * hang the caller forever. `wait` is injectable so tests don't need real
- * timers.
+ * the response keeps coming back 202 (bounded continuation still in
+ * progress) or 429 (the wallet's own request budget, independent of the
+ * signed attempt, which the server has already marked retryable rather than
+ * abandoned). 202 waits `pollDelayMs` between tries, bounded to
+ * `maxAttempts`; 429 waits the longer `rateLimitDelayMs` between tries,
+ * bounded separately to `maxRateLimitAttempts` so a large wallet's
+ * legitimate continuation isn't starved by an unrelated rate-limit episode,
+ * or vice versa. Either persistently-202 or persistently-429 eventually
+ * gives up rather than hanging the caller forever. `wait` is injectable so
+ * tests don't need real timers.
  */
 export async function resubmitWhilePending(
   post: () => Promise<Response>,
   maxAttempts: number,
   pollDelayMs: number,
   wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  maxRateLimitAttempts: number = OPT_IN_RATE_LIMIT_MAX_ATTEMPTS,
+  rateLimitDelayMs: number = OPT_IN_RATE_LIMIT_DELAY_MS,
 ): Promise<ResubmitResult> {
   let response = await post();
   let attempts = 0;
-  while (response.status === 202) {
-    attempts += 1;
-    if (attempts > maxAttempts) {
-      return { response, timedOut: true };
+  let rateLimitAttempts = 0;
+  while (response.status === 202 || response.status === 429) {
+    if (response.status === 429) {
+      rateLimitAttempts += 1;
+      if (rateLimitAttempts > maxRateLimitAttempts) {
+        return { response, timedOut: true };
+      }
+      await wait(rateLimitDelayMs);
+    } else {
+      attempts += 1;
+      if (attempts > maxAttempts) {
+        return { response, timedOut: true };
+      }
+      await wait(pollDelayMs);
     }
-    await wait(pollDelayMs);
     response = await post();
   }
   return { response, timedOut: false };
@@ -183,7 +211,9 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
       // The signed envelope carries a nonce the server uses to resume this
       // exact attempt -- re-signing would mint a new nonce and restart a
       // large wallet's holdings sync from scratch, so the same signed body
-      // is resubmitted on every 202 rather than re-prompting the wallet.
+      // is resubmitted on every 202 (bounded continuation) or 429 (the
+      // wallet's own request budget -- the server marks the attempt
+      // retryable, never abandons it) rather than re-prompting the wallet.
       const requestBody = JSON.stringify({ ...signed, claimedAddress: signed.address, optedIn: nextOptedIn });
       const postOptIn = () =>
         fetch("/api/battle/opt-in", {
@@ -195,6 +225,10 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
       setPanelState({ kind: "syncing" });
       const { response, timedOut } = await resubmitWhilePending(postOptIn, OPT_IN_SYNC_MAX_ATTEMPTS, OPT_IN_SYNC_POLL_DELAY_MS);
       if (timedOut) {
+        // A clear restart path: this signed attempt's own bounded budget
+        // (continuation or rate-limit backoff) ran out, well short of the
+        // server's own retry window -- clicking again mints a fresh
+        // signature and attempt rather than leaving the user stuck.
         setPanelState({ kind: "error", message: "Opt-in sync is taking too long. Please try again." });
         return;
       }
