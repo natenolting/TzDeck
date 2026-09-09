@@ -32,7 +32,18 @@ implementing. Fix one at a time, with one commit per fix, as requested.
 
 ## 2. P2 — Honor the accepted retry horizon after nonce freshness expires
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. `src/lib/battle/requestAuth.ts`'s expired-envelope
+  branch now looks up the existing attempt and, if it matches identity and
+  isn't terminal, checks its own `retry_until` and attempts `reclaimAttempt`
+  (the same continuation path the fresh-envelope flow uses) instead of
+  rejecting outright -- envelope freshness now gates only creating a brand
+  new attempt. Regression coverage in `requestAuth.test.ts`: a pending
+  attempt with an expired lease is reclaimed past freshness; a retryable
+  failure is reclaimed past freshness; rejection once the retry horizon
+  itself has also closed; an expired envelope for an absent nonce still
+  cannot create one. Updated the existing test that expected a flat
+  rejection to expect reclaim instead. Full suite: 196/198 pass, same two
+  pre-existing dev-database pollution failures as before, unrelated.
 - Location: `src/lib/battle/requestAuth.ts`, expired-envelope handling.
 - Expired envelopes currently retrieve only terminal results. Pending attempts
   and retryable failures are rejected after five minutes even though an accepted

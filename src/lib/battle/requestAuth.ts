@@ -38,22 +38,39 @@ export async function authenticateAndClaim(
   });
   if (!verifyResult.ok) {
     if (verifyResult.reason === "expired") {
-      // Signature and address checked out; only the envelope's freshness
-      // window has passed. That's fine for replaying an already-terminal
-      // result (the whole point of retry_until outliving the 5-minute
-      // freshness window), but never for claiming a brand-new attempt.
+      // Signature and address checked out; only the envelope's 5-minute
+      // freshness window has passed. Freshness gates CREATING a new attempt
+      // only -- it says nothing about how long an already-accepted attempt
+      // stays continuable, which is retry_until's job (15 minutes). So an
+      // existing attempt is resumed exactly as the fresh-envelope path below
+      // would resume it (terminal replay, reclaim, or in-progress), just
+      // never inserted fresh: an absent or foreign nonce can't be claimed by
+      // an expired envelope.
       const identity = { wallet: verifyResult.wallet, action, paramHash: computeParamHash(actionParams) };
       const existing = await lookupAttemptByNonce(verifyResult.nonce);
-      const isMatchingTerminal =
+      const matchesIdentity =
         existing &&
         existing.wallet === identity.wallet &&
         existing.action === identity.action &&
-        existing.param_hash === identity.paramHash &&
-        (existing.status === "completed" || (existing.status === "failed" && !existing.retryable));
-      if (isMatchingTerminal) {
+        existing.param_hash === identity.paramHash;
+      if (!matchesIdentity) {
+        return { outcome: "rejected", status: 401, reason: "nonce_expired" };
+      }
+      if (existing.status === "completed" || (existing.status === "failed" && !existing.retryable)) {
         return { outcome: "terminal", row: existing };
       }
-      return { outcome: "rejected", status: 401, reason: "nonce_expired" };
+      if (new Date(existing.retry_until).getTime() <= Date.now()) {
+        // Pending or retryable, but the attempt's own retry horizon has
+        // also closed -- there is no longer anything to continue.
+        return { outcome: "rejected", status: 401, reason: "nonce_expired" };
+      }
+      const reclaimed = await reclaimAttempt(verifyResult.nonce, identity);
+      if (reclaimed) {
+        return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation };
+      }
+      // Still within its retry horizon with a live lease: a genuinely
+      // in-flight worker owns it right now.
+      return { outcome: "in_progress" };
     }
     return { outcome: "rejected", status: 401, reason: verifyResult.reason };
   }

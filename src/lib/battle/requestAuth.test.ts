@@ -76,7 +76,7 @@ test("authenticateAndClaim: an expired envelope still retrieves an already-compl
   }
 });
 
-test("authenticateAndClaim: an expired envelope for a still-pending (never completed) attempt is rejected, not replayed", async () => {
+test("authenticateAndClaim: a still-pending attempt with an expired lease is reclaimed after its envelope's freshness window closes", async () => {
   const { signer, publicKey, address } = await testSigner();
   const sql = getSql();
   const envelope = issueNonce();
@@ -88,11 +88,103 @@ test("authenticateAndClaim: an expired envelope for a still-pending (never compl
   try {
     const first = await authenticateAndClaim(body, "opt-in", params);
     assert.equal(first.outcome, "claimed"); // still pending -- never completed or failed
+    if (first.outcome !== "claimed") return;
+
+    // Simulate the lease (60s) having actually expired in real time, as a
+    // crashed or slow worker would leave it.
+    await sql`UPDATE battle_attempts SET lease_expires_at = now() - interval '1 second' WHERE nonce = ${first.nonce}`;
+
+    // Well past the 5-minute envelope freshness window too, but still
+    // within the 15-minute retry horizon, so the same signature can
+    // continue it.
+    const farFuture = envelope.timestamp + 10 * 60 * 1000;
+    const resumed = await authenticateAndClaim(body, "opt-in", params, farFuture);
+    assert.equal(resumed.outcome, "claimed", "envelope freshness gates creating a NEW attempt, not continuing an existing one within its retry horizon");
+    if (resumed.outcome === "claimed") {
+      assert.equal(resumed.generation, "1", "reclaiming should advance the generation");
+    }
+  } finally {
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+  }
+});
+
+test("authenticateAndClaim: a retryable failure is reclaimed after its envelope's freshness window closes, within the retry horizon", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  const envelope = issueNonce();
+  const params = ["expired-retryable-param"];
+  const bytes = bytesToSign(envelope, "random", params);
+  const { prefixSig } = await signer.sign(bytes);
+  const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
+
+  try {
+    const first = await authenticateAndClaim(body, "random", params);
+    assert.equal(first.outcome, "claimed");
+    if (first.outcome !== "claimed") return;
+    await failAttempt(first.nonce, first.generation, { error: "ownership_unverifiable" }, 503, true);
 
     const farFuture = envelope.timestamp + 10 * 60 * 1000;
-    const replay = await authenticateAndClaim(body, "opt-in", params, farFuture);
-    assert.equal(replay.outcome, "rejected");
-    if (replay.outcome === "rejected") assert.equal(replay.reason, "nonce_expired");
+    const resumed = await authenticateAndClaim(body, "random", params, farFuture);
+    assert.equal(resumed.outcome, "claimed", "a retryable failure must still be reclaimable past envelope freshness, within its retry horizon");
+    if (resumed.outcome === "claimed") {
+      assert.equal(resumed.generation, "1");
+    }
+  } finally {
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+  }
+});
+
+test("authenticateAndClaim: an expired envelope is rejected once the attempt's own retry horizon has also closed", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  const envelope = issueNonce();
+  const params = ["expired-past-retry-deadline-param"];
+  const bytes = bytesToSign(envelope, "opt-in", params);
+  const { prefixSig } = await signer.sign(bytes);
+  const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
+
+  try {
+    const first = await authenticateAndClaim(body, "opt-in", params);
+    assert.equal(first.outcome, "claimed");
+    if (first.outcome !== "claimed") return;
+
+    // retry_until is set from the real clock at claim time (15 minutes
+    // out), independent of the `now` test seam below -- simulate it having
+    // actually closed, alongside a long-expired lease.
+    await sql`
+      UPDATE battle_attempts SET lease_expires_at = now() - interval '1 second', retry_until = now() - interval '1 second'
+      WHERE nonce = ${first.nonce}
+    `;
+
+    // Past the 5-minute envelope freshness window too.
+    const farFuture = envelope.timestamp + 10 * 60 * 1000;
+    const rejected = await authenticateAndClaim(body, "opt-in", params, farFuture);
+    assert.equal(rejected.outcome, "rejected", "there is nothing left to continue once the retry horizon itself has closed");
+    if (rejected.outcome === "rejected") assert.equal(rejected.reason, "nonce_expired");
+  } finally {
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+  }
+});
+
+test("authenticateAndClaim: an expired envelope for a nonce with no existing attempt cannot create one", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  const envelope = issueNonce();
+  const params = ["expired-absent-nonce-param"];
+  const bytes = bytesToSign(envelope, "opt-in", params);
+  const { prefixSig } = await signer.sign(bytes);
+  const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
+
+  try {
+    // Never claimed fresh -- the very first request for this nonce arrives
+    // after its freshness window has already closed.
+    const farFuture = envelope.timestamp + 10 * 60 * 1000;
+    const result = await authenticateAndClaim(body, "opt-in", params, farFuture);
+    assert.equal(result.outcome, "rejected");
+    if (result.outcome === "rejected") assert.equal(result.reason, "nonce_expired");
+
+    const rows = await sql`SELECT nonce FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    assert.equal(rows.length, 0, "an expired envelope must never create a new attempt row");
   } finally {
     await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
   }
