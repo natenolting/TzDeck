@@ -36,6 +36,44 @@ function alwaysHeldStub(): ObjktClientStub["request"] {
   return async () => ({ token_holder: [{ quantity: 1, token: { supply: 5, description: "A test description." } }] });
 }
 
+function heldResponse() {
+  return { token_holder: [{ quantity: 1, token: { supply: 5, description: "A test description." } }] };
+}
+
+function notHeldResponse() {
+  return { token_holder: [] };
+}
+
+/**
+ * Reports ownership as `held` on the first ownership.ts (`SingleTokenOwnership`)
+ * query for each listed address, then `not_held` on every query after --
+ * simulating the exact card that passed an initial ownership check but no
+ * longer being held by the time of a later re-check (the pre-commit
+ * reverify). Every other query (holdings.ts's `SingleTokenMetadata` fetch,
+ * or an address not listed) is always reported held.
+ */
+function reverifyFailsFor(...addresses: string[]): ObjktClientStub["request"] {
+  const counts = new Map<string, number>();
+  const watched = new Set(addresses);
+  return async (document, variables) => {
+    const address = (variables as { address?: string } | undefined)?.address;
+    if (typeof document === "string" && document.includes("SingleTokenOwnership") && address && watched.has(address)) {
+      const seen = counts.get(address) ?? 0;
+      counts.set(address, seen + 1);
+      return seen === 0 ? heldResponse() : notHeldResponse();
+    }
+    return heldResponse();
+  };
+}
+
+function withFetchStub(stub: typeof fetch, fn: () => Promise<void>): Promise<void> {
+  const original = globalThis.fetch;
+  globalThis.fetch = stub;
+  return fn().finally(() => {
+    globalThis.fetch = original;
+  });
+}
+
 // A fixed, well-known test mnemonic. Node's test runner may run separate
 // test files concurrently against the same real Postgres instance, so this
 // file uses its own derivation path -- a distinct wallet address from every
@@ -187,5 +225,115 @@ test("POST /api/battle/random: a wallet past its request budget is rate-limited,
     });
   } finally {
     await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/random: the attacker's card failing the pre-commit reverify is rejected, even though the initial check passed", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const defenderWallet = `tz1Defender${randomUUID().slice(0, 20)}`;
+  const sql = getSql();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${defenderWallet}, true)`;
+    await sql`
+      INSERT INTO wallet_card_progress (wallet, card_key, seed_editions, seed_description_length, seed_source)
+      VALUES (${defenderWallet}, ${DEFENDER_CARD_KEY}, 5, 50, 'test')
+    `;
+    await sql`INSERT INTO wallet_holdings (wallet, card_key) VALUES (${defenderWallet}, ${DEFENDER_CARD_KEY})`;
+
+    const body = await buildSignedBody(signer, publicKey, address, "random", [ATTACKER_CARD_KEY]);
+    // Held on the attacker's initial check (and matchmaking never sees the
+    // attacker's card), not_held on the second check -- the reverify
+    // immediately before commitBattle, not just the first.
+    await withObjktStub(reverifyFailsFor(address), async () => {
+      const response = await POST(postRequest({ ...body, attackerCardKey: ATTACKER_CARD_KEY }));
+      assert.equal(response.status, 409);
+      const json = await response.json();
+      assert.equal(json.error, "attacker_card_not_held", "must fire from the reverify, not be silently skipped after the initial check");
+    });
+  } finally {
+    await cleanupWallet(address);
+    await cleanupWallet(defenderWallet);
+  }
+});
+
+test("POST /api/battle/random: the defender's card failing the pre-commit reverify is rejected, even though the initial check passed", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const defenderWallet = `tz1Defender${randomUUID().slice(0, 20)}`;
+  const sql = getSql();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${defenderWallet}, true)`;
+    await sql`
+      INSERT INTO wallet_card_progress (wallet, card_key, seed_editions, seed_description_length, seed_source)
+      VALUES (${defenderWallet}, ${DEFENDER_CARD_KEY}, 5, 50, 'test')
+    `;
+    await sql`INSERT INTO wallet_holdings (wallet, card_key) VALUES (${defenderWallet}, ${DEFENDER_CARD_KEY})`;
+
+    const body = await buildSignedBody(signer, publicKey, address, "random", [ATTACKER_CARD_KEY]);
+    // Held when matchmaking picks this defender (so it's actually selected),
+    // not_held on the second check -- the reverify immediately before
+    // commitBattle, not just the matchmaking-time check.
+    await withObjktStub(reverifyFailsFor(defenderWallet), async () => {
+      const response = await POST(postRequest({ ...body, attackerCardKey: ATTACKER_CARD_KEY }));
+      assert.equal(response.status, 409);
+      const json = await response.json();
+      assert.equal(json.error, "defender_card_not_held", "must fire from the reverify, not be silently skipped after matchmaking's own check");
+    });
+  } finally {
+    await cleanupWallet(address);
+    await cleanupWallet(defenderWallet);
+  }
+});
+
+test("POST /api/battle/random: a pool exhausted entirely by unverifiable exclusions is a retryable 503, not a false no_match", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const defenderWallet = `tz1Unverifiable${randomUUID().slice(0, 15)}`;
+  const sql = getSql();
+  const originalConsoleWarn = console.warn;
+  const originalConsoleError = console.error;
+  console.warn = () => undefined;
+  console.error = () => undefined;
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${defenderWallet}, true)`;
+    await sql`
+      INSERT INTO wallet_card_progress (wallet, card_key, seed_editions, seed_description_length, seed_source)
+      VALUES (${defenderWallet}, ${DEFENDER_CARD_KEY}, 5, 50, 'test')
+    `;
+    await sql`INSERT INTO wallet_holdings (wallet, card_key) VALUES (${defenderWallet}, ${DEFENDER_CARD_KEY})`;
+
+    const body = await buildSignedBody(signer, publicKey, address, "random", [ATTACKER_CARD_KEY]);
+    // Every candidate ownership check (any address but the attacker's own)
+    // fails on both OBJKT and TzKT -- never a confirmed not_held, only
+    // unverifiable -- regardless of how many wallets are actually in the
+    // pool, so every one of them gets excluded as unverifiable in turn.
+    const stub: ObjktClientStub["request"] = async (document, variables) => {
+      const address2 = (variables as { address?: string } | undefined)?.address;
+      if (typeof document === "string" && document.includes("SingleTokenOwnership") && address2 !== address) {
+        throw new Error("OBJKT unavailable for this defender");
+      }
+      return heldResponse();
+    };
+    // Selective: only TzKT's own endpoint fails. A blanket fetch stub would
+    // also break the Neon HTTP driver's own requests (it uses fetch too),
+    // taking down every DB call the route makes for the rest of this test.
+    const originalFetch = globalThis.fetch;
+    const tzktFailsFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("api.tzkt.io")) return new Response("", { status: 503 });
+      return originalFetch(input, init);
+    }) as typeof fetch;
+
+    await withObjktStub(stub, () =>
+      withFetchStub(tzktFailsFetch, async () => {
+        const response = await POST(postRequest({ ...body, attackerCardKey: ATTACKER_CARD_KEY }));
+        assert.equal(response.status, 503, "the only candidate was excluded for unverifiable ownership, never confirmed absent -- a false no_match would hide this from the player");
+        const json = await response.json();
+        assert.equal(json.error, "ownership_unverifiable");
+      }),
+    );
+  } finally {
+    console.warn = originalConsoleWarn;
+    console.error = originalConsoleError;
+    await cleanupWallet(address);
+    await cleanupWallet(defenderWallet);
   }
 });

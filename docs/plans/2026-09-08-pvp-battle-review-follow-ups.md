@@ -158,7 +158,25 @@ still describes only that review's own findings and checks.
 
 ## 6. P2 — Missing regression coverage for the ownership-reverify and unverifiable-exclusion fixes
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. Added three tests to `random/route.test.ts`: the
+  attacker's card, and separately the defender's card, passing the initial
+  ownership check but failing a second one -- asserting
+  `attacker_card_not_held`/`defender_card_not_held` actually fires from the
+  pre-commit reverify, via a stubbed `objktClient` that reports `held` on
+  the first ownership query for a watched address and `not_held` after; and
+  a pool where every candidate ownership check fails on both OBJKT and TzKT
+  (never a confirmed `not_held`), asserting `503 ownership_unverifiable`
+  instead of a false `200 no_match`. Made the unverifiable-exclusion stub
+  match "any address but the attacker's own" rather than one specific
+  wallet, so the test holds regardless of how many other wallets are
+  actually in the matchmaking pool (the dev DB carries some pre-existing
+  stray opted-in test wallets -- see the two unrelated failures below).
+  Also caught and fixed a stub-design pitfall along the way: a blanket
+  `globalThis.fetch` stub for TzKT also intercepts the Neon HTTP driver's
+  own requests (it uses `fetch` too), taking down every DB call for the
+  rest of the test -- the working stub checks the URL and only fails calls
+  to `api.tzkt.io`. Full suite: 204/206 pass, same two pre-existing
+  dev-database pollution failures as before, unrelated.
 - Location: `src/app/api/battle/random/route.test.ts`.
 - Two fixes from an earlier review pass have no route-level test: the final
   ownership reverify immediately before `commitBattle` (both attacker and
