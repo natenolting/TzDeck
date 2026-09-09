@@ -122,6 +122,15 @@ test("resolveBattle: both sides reach 0 the same round with unequal round damage
   assert.equal(result.outcome, "A", "the side that dealt more damage in the deciding round wins");
 });
 
+test("resolveBattle: records a per-round history with damage dealt and resulting HP for both sides", () => {
+  const result = resolveBattle({ power: 12, hp: 20 }, { power: 8, hp: 36 }, 0);
+  assert.equal(result.history.length, 3);
+  assert.deepEqual(result.history[0], { round: 1, damageA: 12, damageB: 8, hpA: 12, hpB: 24 });
+  assert.deepEqual(result.history[1], { round: 2, damageA: 12, damageB: 8, hpA: 4, hpB: 12 });
+  // HP never reported negative even though the losing side's real HP went below zero internally.
+  assert.deepEqual(result.history[2], { round: 3, damageA: 12, damageB: 8, hpA: 0, hpB: 0 });
+});
+
 test("resolveBattle: both sides reach 0 the same round with exactly equal round damage -- true draw", () => {
   const result = resolveBattle({ power: 10, hp: 30 }, { power: 10, hp: 30 }, 0);
   assert.equal(result.roundDamageA, result.roundDamageB);

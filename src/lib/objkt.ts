@@ -413,6 +413,58 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
   return [];
 }
 
+interface ObjktTokenByKeyResponse {
+  token: ObjktRawToken[];
+}
+
+/**
+ * Resolves one token's display metadata (name/art/collection) by contract
+ * and token id alone, independent of any wallet holding it -- for
+ * rendering a card the current client doesn't already have data for (e.g.
+ * a battle opponent's card, only known by key from a battle response).
+ */
+export async function fetchTokenByKey(contractAddress: string, tokenId: string): Promise<NFTCard | null> {
+  const query = `
+    query TokenByKey($contract: String!, $tokenId: String!) {
+      token(
+        where: { fa_contract: { _eq: $contract }, token_id: { _eq: $tokenId } },
+        limit: 1
+      ) {
+        name
+        token_id
+        fa_contract
+        display_uri
+        artifact_uri
+        thumbnail_uri
+        supply
+        description
+        creators {
+          holder {
+            alias
+            address
+          }
+        }
+        fa {
+          name
+        }
+      }
+    }
+  `;
+
+  try {
+    const data = await objktClient.request<ObjktTokenByKeyResponse>(query, {
+      contract: contractAddress,
+      tokenId,
+    });
+    const token = data?.token?.[0];
+    if (!token) return null;
+    return normalizeObjktToken(token);
+  } catch (err) {
+    console.warn("OBJKT token-by-key query failed:", err);
+    return null;
+  }
+}
+
 /** At most this many cards from one artist, so a bulk lister cannot fill a pack. */
 export const PACK_MAX_PER_ARTIST = 2;
 
@@ -578,6 +630,6 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
     }));
   } catch (err) {
     console.error("Failed to fetch random listings from OBJKT:", err);
-    return [];
+    throw err;
   }
 }

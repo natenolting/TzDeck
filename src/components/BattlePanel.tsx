@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
 import { getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
-import { baseStatsFromSeed, deriveBaseSeed } from "@/lib/battle/rules";
+import { baseStatsFromSeed, deriveBaseSeed, type RoundRecord } from "@/lib/battle/rules";
+import BattleResultScreen from "./BattleResultScreen";
 import { SwordsIcon } from "./icons";
 
 interface StatusCard {
@@ -26,12 +27,22 @@ interface StatusResponse {
   cards: StatusCard[];
 }
 
-interface BattleResult {
+export interface BattleResult {
   outcome: "win" | "draw" | "no_match";
   winner?: "attacker" | "defender" | null;
   xpAwarded?: number;
   winnerNewXp?: string | number;
   loserRecoveryUntil?: string | null;
+  defenderWallet?: string;
+  defenderCardKey?: string;
+  attackerStats?: { power: number; hp: number };
+  defenderStats?: { power: number; hp: number };
+  combat?: {
+    rounds: number;
+    finalHpA: number;
+    finalHpB: number;
+    history: RoundRecord[];
+  };
 }
 
 type PanelState =
@@ -265,6 +276,17 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
     );
   }
 
+  if (panelState.kind === "result") {
+    return (
+      <BattleResultScreen
+        attackerCard={card}
+        result={panelState.result}
+        wasOverkillTiebreak={panelState.wasOverkillTiebreak}
+        onClose={() => setPanelState({ kind: "idle" })}
+      />
+    );
+  }
+
   return (
     <div
       className="rounded-2xl border border-border-default bg-surface-1/90 p-5 backdrop-blur-md"
@@ -402,20 +424,6 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
             <p className="mt-3 text-xs text-text-secondary">Daily limit reached.</p>
           )}
           {panelState.kind === "error" && <p className="mt-3 text-xs text-danger">{panelState.message}</p>}
-          {panelState.kind === "result" && (
-            <div className="mt-3 rounded-xl border border-accent/40 bg-surface-2 px-3 py-2 text-xs">
-              {panelState.result.outcome === "draw" ? (
-                <p className="text-text-secondary">Draw — no XP, no recovery for either side.</p>
-              ) : panelState.result.winner === "attacker" ? (
-                <p className="font-semibold text-accent">
-                  {panelState.wasOverkillTiebreak ? "Won by margin! " : "Victory! "}
-                  +{panelState.result.xpAwarded ?? 0} XP
-                </p>
-              ) : (
-                <p className="text-danger">Defeated. Recovering for a while.</p>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>

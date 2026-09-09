@@ -122,6 +122,15 @@ export function mulberry32(seed: number): Rng {
 
 export type BattleOutcome = "A" | "B" | "draw";
 
+/** One round's damage exchange and the resulting HP for both sides, HP floored at 0 for display. */
+export interface RoundRecord {
+  round: number;
+  damageA: number;
+  damageB: number;
+  hpA: number;
+  hpB: number;
+}
+
 export interface BattleResult {
   rounds: number;
   outcome: BattleOutcome;
@@ -130,6 +139,8 @@ export interface BattleResult {
   /** Damage each side dealt in the deciding (final) round -- what the R14 tiebreak compares. */
   roundDamageA: number;
   roundDamageB: number;
+  /** Full round-by-round breakdown, for battle-log display. */
+  history: RoundRecord[];
 }
 
 const MAX_ROUNDS_SAFETY = 1000;
@@ -146,6 +157,7 @@ export function resolveBattle(
   let rounds = 0;
   let roundDamageA = 0;
   let roundDamageB = 0;
+  const history: RoundRecord[] = [];
 
   while (hpA > 0 && hpB > 0 && rounds < MAX_ROUNDS_SAFETY) {
     rounds += 1;
@@ -155,6 +167,13 @@ export function resolveBattle(
     roundDamageB = Math.max(0, defenderStats.power * swingB);
     hpB -= roundDamageA;
     hpA -= roundDamageB;
+    history.push({
+      round: rounds,
+      damageA: roundDamageA,
+      damageB: roundDamageB,
+      hpA: Math.max(0, Math.round(hpA)),
+      hpB: Math.max(0, Math.round(hpB)),
+    });
   }
 
   let outcome: BattleOutcome;
@@ -178,6 +197,7 @@ export function resolveBattle(
     finalHpB: Math.max(0, Math.round(hpB)),
     roundDamageA,
     roundDamageB,
+    history,
   };
 }
 

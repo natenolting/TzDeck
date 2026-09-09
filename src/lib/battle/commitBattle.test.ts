@@ -138,6 +138,53 @@ test("commit_battle: a win commits XP to the winner, recovery to the loser, cap 
   }
 });
 
+test("commit_battle: the response includes opponent identity and the combat detail from inputs, for battle-log display", async () => {
+  await cleanup();
+  try {
+    await seedWallets();
+    await seedProgress(ATTACKER, "KT1A:1");
+    await seedProgress(DEFENDER, "KT1B:1");
+    const { nonce, generation } = await claimFreshAttempt(ATTACKER);
+
+    const combatInputs = {
+      attackerStats: { power: 30, hp: 80 },
+      defenderStats: { power: 28, hp: 85 },
+      combat: {
+        rounds: 2,
+        outcome: "A",
+        finalHpA: 24,
+        finalHpB: 0,
+        roundDamageA: 42,
+        roundDamageB: 28,
+        history: [
+          { round: 1, damageA: 30, damageB: 28, hpA: 52, hpB: 55 },
+          { round: 2, damageA: 42, damageB: 28, hpA: 24, hpB: 0 },
+        ],
+      },
+    };
+
+    const result = await commitBattle(baseParams({ nonce, generation, inputs: combatInputs }));
+    assert.equal(isCommitted(result), true);
+    const response = result.response as {
+      defenderWallet: string;
+      defenderCardKey: string;
+      attackerStats: { power: number; hp: number };
+      defenderStats: { power: number; hp: number };
+      combat: { rounds: number; finalHpA: number; finalHpB: number; history: unknown[] };
+    };
+    assert.equal(response.defenderWallet, DEFENDER);
+    assert.equal(response.defenderCardKey, "KT1B:1");
+    assert.deepEqual(response.attackerStats, combatInputs.attackerStats);
+    assert.deepEqual(response.defenderStats, combatInputs.defenderStats);
+    assert.equal(response.combat.rounds, 2);
+    assert.equal(response.combat.finalHpA, 24);
+    assert.equal(response.combat.finalHpB, 0);
+    assert.deepEqual(response.combat.history, combatInputs.combat.history);
+  } finally {
+    await cleanup();
+  }
+});
+
 test("commit_battle: a draw commits cap usage and version bumps to both sides but no XP or recovery", async () => {
   const sql = getSql();
   await cleanup();

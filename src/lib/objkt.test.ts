@@ -7,6 +7,7 @@ import {
   convertIpfsUrl,
   extractIpfsHash,
   fetchRandomPack,
+  fetchTokenByKey,
   fetchUserHoldings,
   formatShortAddress,
   getCardKey,
@@ -334,6 +335,60 @@ test("fetchUserHoldings orders OBJKT holdings by the schema-supported timestamp"
 
     assert.match(emittedQuery, /order_by:\s*{\s*last_incremented_at:/);
     assert.equal(cards[0]?.name, "Clarence Duplex");
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchTokenByKey resolves a single token's display metadata by contract and token id", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  let emittedVars: Record<string, unknown> | undefined;
+
+  client.request = async (_document, variables) => {
+    emittedVars = variables;
+    return {
+      token: [
+        {
+          name: "Interference 1",
+          token_id: "0",
+          fa_contract: "KT1Example",
+          display_uri: "ipfs://QmExample",
+          artifact_uri: null,
+          thumbnail_uri: null,
+          supply: 1,
+          description: "a description",
+          creators: [{ holder: { alias: "Example Artist", address: "tz1Example" } }],
+          fa: { name: "Example Collection" },
+        },
+      ],
+    };
+  };
+
+  try {
+    const card = await fetchTokenByKey("KT1Example", "0");
+    assert.equal(card?.name, "Interference 1");
+    assert.equal(card?.contract_address, "KT1Example");
+    assert.equal(card?.token_id, "0");
+    assert.deepEqual(emittedVars, { contract: "KT1Example", tokenId: "0" });
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchTokenByKey returns null when the token can't be found", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => ({ token: [] });
+
+  try {
+    const card = await fetchTokenByKey("KT1Missing", "999");
+    assert.equal(card, null);
   } finally {
     client.request = originalRequest;
   }
