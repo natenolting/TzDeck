@@ -45,7 +45,7 @@ test("commit_participation: a lost holdings-generation race is retryable, not a 
     const { nonce, generation } = await claimAttempt("opt-in");
     const syncId = `sync:${nonce}`;
     await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
-    await stageHoldingsPage(syncId, generation, [card("KT1A:1")], null, true);
+    await stageHoldingsPage(nonce, syncId, generation, [card("KT1A:1")], null, true);
 
     // A concurrent opt-out bumps holdings_generation between staging and promotion.
     await sql`UPDATE wallets SET holdings_generation = holdings_generation + 1 WHERE address = ${WALLET}`;
@@ -70,7 +70,7 @@ test("commit_participation: an attempt reclaimed to a new generation after stagi
     const syncId = `sync:${nonce}`;
     await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
     // Staging finishes under generation 0 -- worker_generation is now frozen at 0.
-    await stageHoldingsPage(syncId, generation, [card("KT1A:1")], null, true);
+    await stageHoldingsPage(nonce, syncId, generation, [card("KT1A:1")], null, true);
 
     // The process died before promotion ran; a later request reclaims the
     // attempt to a fresh generation (mirrors what reclaimAttempt does).
@@ -96,8 +96,9 @@ test("commit_participation: a call from a genuinely superseded (older) generatio
     const { nonce, generation } = await claimAttempt("opt-in");
     const syncId = `sync:${nonce}`;
     await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
-    // A newer worker (generation 2) stages and completes the sync.
-    await stageHoldingsPage(syncId, "2", [card("KT1A:1")], null, true);
+    // A newer worker (generation 2, e.g. after a takeover) stages and completes the sync.
+    await sql`UPDATE battle_attempts SET generation = '2'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
+    await stageHoldingsPage(nonce, syncId, "2", [card("KT1A:1")], null, true);
 
     // This call still thinks it's generation 1 -- genuinely superseded, not just resumed.
     await sql`UPDATE battle_attempts SET generation = '1'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
@@ -117,7 +118,7 @@ test("commit_holdings_refresh: a lost holdings-generation race is retryable, not
     const { nonce, generation } = await claimAttempt("refresh");
     const syncId = `sync:${nonce}`;
     await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
-    await stageHoldingsPage(syncId, generation, [card("KT1A:1")], null, true);
+    await stageHoldingsPage(nonce, syncId, generation, [card("KT1A:1")], null, true);
 
     await sql`UPDATE wallets SET holdings_generation = holdings_generation + 1 WHERE address = ${WALLET}`;
 
@@ -141,7 +142,7 @@ test("commit_holdings_refresh: an attempt reclaimed to a new generation after st
     const syncId = `sync:${nonce}`;
     await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
     // Staging finishes under generation 0 -- worker_generation is now frozen at 0.
-    await stageHoldingsPage(syncId, generation, [card("KT1A:1")], null, true);
+    await stageHoldingsPage(nonce, syncId, generation, [card("KT1A:1")], null, true);
 
     // The process died before promotion ran; a later request reclaims the
     // attempt to a fresh generation (mirrors what reclaimAttempt does).
@@ -167,8 +168,9 @@ test("commit_holdings_refresh: a call from a genuinely superseded (older) genera
     const { nonce, generation } = await claimAttempt("refresh");
     const syncId = `sync:${nonce}`;
     await startOrResumeHoldingsSync(syncId, WALLET, nonce, generation, 0);
-    // A newer worker (generation 2) stages and completes the sync.
-    await stageHoldingsPage(syncId, "2", [card("KT1A:1")], null, true);
+    // A newer worker (generation 2, e.g. after a takeover) stages and completes the sync.
+    await sql`UPDATE battle_attempts SET generation = '2'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
+    await stageHoldingsPage(nonce, syncId, "2", [card("KT1A:1")], null, true);
 
     // This call still thinks it's generation 1 -- genuinely superseded, not just resumed.
     await sql`UPDATE battle_attempts SET generation = '1'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;

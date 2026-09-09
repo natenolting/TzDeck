@@ -6,7 +6,17 @@ implementing. Fix one at a time, with one commit per fix, as requested.
 
 ## 1. P1 — Fence staging against the current attempt owner
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. `migrations/0011_stage_holdings_page_attempt_fencing.sql`:
+  `stage_holdings_page` now locks and checks `battle_attempts` (current
+  generation, pending status, live lease, retry deadline) before ever
+  touching the sync row, instead of trusting the sync's own cached
+  `worker_generation`. Regression coverage added in
+  `src/lib/battle/holdingsPromotion.test.ts`: a takeover before the new
+  worker stages any page, an expired lease with no takeover, and a stale
+  worker trying to mark the sync complete. Full suite: 193/195 pass: the two
+  failures are pre-existing dev-database test pollution (stray rows from
+  earlier interrupted runs), unrelated to this change and reproduced in
+  isolation before this fix too.
 - Location: `migrations/0006_holdings_sync_fencing.sql`, `stage_holdings_page`.
 - The staging function checks the sync's `worker_generation`, but reclaim
   advances the attempt's generation without advancing the sync's generation.

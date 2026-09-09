@@ -255,10 +255,12 @@ export async function failAttempt(
 }
 
 // ---------------------------------------------------------------------------
-// U4c: staged, resumable holdings snapshots. Staging writes are serialized by
-// the attempt's own lease (only one worker holds it at a time), so no extra
-// DB-level locking is needed there; promotion touches shared cross-cutting
-// tables and runs through the real plpgsql function above.
+// U4c: staged, resumable holdings snapshots. Every staging write is fenced
+// against the attempt's own current generation/lease/retry-deadline (0011,
+// stage_holdings_page) -- the lease alone does not serialize this: a
+// takeover reclaims the ATTEMPT, not the sync row, so the sync needs its own
+// check against that same source of truth. Promotion touches shared
+// cross-cutting tables and runs through the real plpgsql function above.
 // ---------------------------------------------------------------------------
 
 export interface StagedCard {
@@ -304,18 +306,21 @@ export async function startOrResumeHoldingsSync(
 
 export interface StagePageResult {
   ok: boolean;
-  /** true if a newer worker generation already owns this sync -- this call's page was dropped, not applied. */
+  /** true if this caller is no longer the attempt's current, live, in-window owner -- this call's page was dropped, not applied. */
   stale: boolean;
 }
 
 /**
  * Appends a page's cards (deduplicated by card key, first-seen wins),
  * advances the cursor, and optionally marks the sync complete -- all inside
- * one plpgsql call (migrations/0006_holdings_sync_fencing.sql), fenced on
- * `p_generation` so a worker whose lease was reclaimed by a newer generation
- * can never overwrite pages the newer worker already staged.
+ * one plpgsql call (migrations/0011_stage_holdings_page_attempt_fencing.sql),
+ * fenced on the attempt's current generation, pending status, live lease,
+ * and retry deadline -- checked atomically with the write -- so a worker
+ * superseded by a takeover (or one whose lease simply expired) can never
+ * write, even before the newer worker has staged anything itself.
  */
 export async function stageHoldingsPage(
+  nonce: string,
   syncId: string,
   generation: string,
   newCards: StagedCard[],
@@ -325,7 +330,7 @@ export async function stageHoldingsPage(
   const sql = getSql();
   const rows = await sql<{ ok: boolean; stale: boolean }>`
     SELECT * FROM stage_holdings_page(
-      ${syncId}, ${generation}::bigint, ${JSON.stringify(newCards)}::jsonb, ${nextCursor}, ${complete}
+      ${nonce}, ${syncId}, ${generation}::bigint, ${JSON.stringify(newCards)}::jsonb, ${nextCursor}, ${complete}
     )
   `;
   return rows[0];

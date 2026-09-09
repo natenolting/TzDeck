@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
         return errorResponse(503, "holdings_unavailable");
       }
       const staged = await stageHoldingsPage(
+        nonce,
         syncId,
         generation,
         page.cards.map(toStagedCard),
