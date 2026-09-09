@@ -37,7 +37,17 @@ at a time, with one commit per fix, same as that doc.
 
 ## 2. MEDIUM — commit_battle's R20 repeat-farming decay has no end-to-end proof
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. Added two tests to `commitBattle.test.ts`: two
+  real `commitBattle` calls for the same attacker/defender wallet pair
+  (different defender card the second time, so the first loss's recovery
+  lock doesn't block it) assert the second win's `xpAwarded` is exactly
+  `decayScaledAward(100, 1)` (50), not the undecayed 100. A second test
+  seeds two fabricated `battle_log` rows for the exact same wallet pair --
+  one just outside the 7-day window (7 days 1 hour ago) and one just inside
+  it (6 days 23 hours ago) -- and asserts a real commit's decay reflects
+  exactly one prior win, proving the SQL's `settled_at > ... - interval '7
+  days'` filter is exclusive on the far side and inclusive on the near side,
+  not just "roughly a week." Full suite: 209/209 pass.
 - Location: `src/lib/battle/commitBattle.test.ts`, `commit_battle`
   (migrations, most recently 0010).
 - Existing coverage only checks (a) SQL-vs-JS decay formula parity in

@@ -48,6 +48,30 @@ async function claimFreshAttempt(wallet: string, action = "random"): Promise<{ n
   return { nonce, generation: claimed.row.generation };
 }
 
+/**
+ * Inserts a battle_log row (plus the completed battle_attempts row its FK
+ * requires) as if a real battle settled `ageInterval` ago -- for testing
+ * R20 decay's 7-day window without waiting on real time or chaining many
+ * live commits.
+ */
+async function seedHistoricalBattleLog(winner: string, loser: string, ageInterval: string) {
+  const sql = getSql();
+  const nonce = randomUUID();
+  await sql`
+    INSERT INTO battle_attempts (nonce, wallet, action, param_hash, issued_at, retry_until, status, status_code)
+    VALUES (${nonce}, ${winner}, 'random', 'historical', now(), now() + interval '15 minutes', 'completed', 200)
+  `;
+  await sql`
+    INSERT INTO battle_log (
+      attempt_nonce, attacker_wallet, attacker_card_key, defender_wallet, defender_card_key,
+      winner_wallet, loser_wallet, outcome, settled_at, rules_version, inputs, rng_seed, xp_awarded
+    ) VALUES (
+      ${nonce}, ${winner}, 'KT1Historical:1', ${loser}, 'KT1Historical:2',
+      ${winner}, ${loser}, 'win', now() - ${ageInterval}::interval, 'v1', '{}'::jsonb, 'seed', 100
+    )
+  `;
+}
+
 function baseParams(overrides: Partial<CommitBattleParams> & Pick<CommitBattleParams, "nonce" | "generation">): CommitBattleParams {
   return {
     attackerWallet: ATTACKER,
@@ -133,6 +157,72 @@ test("commit_battle: a win commits XP to the winner, recovery to the loser, cap 
     assert.equal(attempt[0].status, "completed");
     assert.equal(attempt[0].status_code, 200);
     assert.deepEqual(attempt[0].response, result.response, "the persisted response must be byte-identical to what the route received");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("commit_battle: a second win against the same wallet pair earns decayed XP, proven through two real commits", async () => {
+  await cleanup();
+  try {
+    await seedWallets();
+    await seedProgress(ATTACKER, "KT1A:1");
+    await seedProgress(DEFENDER, "KT1B:1");
+    await seedProgress(DEFENDER, "KT1B:2"); // a second defender card so the first's post-loss recovery doesn't block battle 2
+
+    const first = await claimFreshAttempt(ATTACKER);
+    const firstResult = await commitBattle(baseParams({ nonce: first.nonce, generation: first.generation }));
+    assert.equal(isCommitted(firstResult), true);
+    const firstResponse = firstResult.response as { xpAwarded: number; winnerNewXp: string };
+    assert.equal(firstResponse.xpAwarded, 100, "no prior wins against this pair -- undecayed");
+    assert.equal(Number(firstResponse.winnerNewXp), 100);
+
+    const second = await claimFreshAttempt(ATTACKER);
+    const secondResult = await commitBattle(
+      baseParams({
+        nonce: second.nonce,
+        generation: second.generation,
+        attackerExpectedVersion: "1", // bumped by the first win
+        defenderCardKey: "KT1B:2",
+        defenderExpectedVersion: "0",
+        winnerCardKey: "KT1A:1",
+        loserCardKey: "KT1B:2",
+      }),
+    );
+    assert.equal(isCommitted(secondResult), true);
+    const secondResponse = secondResult.response as { xpAwarded: number; winnerNewXp: string };
+    assert.equal(secondResponse.xpAwarded, decayScaledAward(100, 1), "one prior win against this exact wallet pair within 7 days must decay this award");
+    assert.equal(secondResponse.xpAwarded, 50);
+    assert.equal(Number(secondResponse.winnerNewXp), 150, "XP accumulates across both real commits, decay applies only to the new award");
+  } finally {
+    await cleanup();
+  }
+});
+
+test("commit_battle: R20 decay only counts prior wins within the 7-day window, not before it", async () => {
+  await cleanup();
+  try {
+    await seedWallets();
+    await seedProgress(ATTACKER, "KT1A:1");
+    await seedProgress(DEFENDER, "KT1B:1");
+    // One win just outside the window (must NOT count) and one just inside it
+    // (must count) against the exact same wallet pair -- proves the SQL's
+    // `settled_at > v_settlement_time - interval '7 days'` filter is
+    // correctly exclusive on one side and inclusive on the other, not just
+    // "some window roughly right."
+    await seedHistoricalBattleLog(ATTACKER, DEFENDER, "7 days 1 hour");
+    await seedHistoricalBattleLog(ATTACKER, DEFENDER, "6 days 23 hours");
+
+    const { nonce, generation } = await claimFreshAttempt(ATTACKER);
+    const result = await commitBattle(baseParams({ nonce, generation }));
+    assert.equal(isCommitted(result), true);
+    const response = result.response as { xpAwarded: number };
+    assert.equal(
+      response.xpAwarded,
+      decayScaledAward(100, 1),
+      "exactly one of the two seeded prior wins falls within the 7-day window",
+    );
+    assert.equal(response.xpAwarded, 50);
   } finally {
     await cleanup();
   }
