@@ -34,7 +34,8 @@ interface WalletContextType {
   ) => Promise<SignedChallenge>;
 }
 
-const WalletContext = createContext<WalletContextType>({
+/** Exported for test render harnesses (`<WalletContext.Provider>`) -- consumers use `useWallet()`. */
+export const WalletContext = createContext<WalletContextType>({
   address: null,
   connect: async () => {},
   disconnect: async () => {},

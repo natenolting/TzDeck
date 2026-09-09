@@ -7,7 +7,18 @@ at a time, with one commit per fix, same as that doc.
 
 ## 1. HIGH — No render-level test proves BattleResultScreen actually mounts from BattlePanel
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. Added a render-level test to
+  `BattlePanel.test.tsx` that renders the real `<BattlePanel>` under a
+  `<WalletContext.Provider>` (exported `WalletContext` itself from
+  `WalletContext.tsx` for exactly this purpose -- previously only the
+  `useWallet()` hook and the real, Beacon-initializing `WalletProvider` were
+  exported), drives `startBattle` through mocked `fetch`/`objktClient`
+  responses for a winning battle, and asserts `BattleResultScreen` actually
+  mounted with the right props (attacker card name, round-by-round log,
+  "Victory"). Verified the test actually catches the regression it targets:
+  temporarily reverted `BattlePanel`'s `panelState.kind === "result"` branch
+  to never render (`if (false && ...)`), confirmed the new test fails, then
+  reverted. Full suite: 207/207 pass.
 - Location: `src/components/BattlePanel.tsx`, `src/components/BattlePanel.test.tsx`.
 - `BattlePanel.test.tsx` only tests extracted pure helpers
   (`previewStatsForCard`, `recoveryCopy`, `resubmitWhilePending`); nothing
