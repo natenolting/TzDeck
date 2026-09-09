@@ -65,7 +65,15 @@ at a time, with one commit per fix, same as that doc.
 
 ## 3. MEDIUM — findMatch's progressive band-widening is untested as a loop
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. Added a test to `rules.test.ts`: a level-4
+  candidate (same seed as a level-1 attacker) sits at ~1.69x the attacker's
+  strength -- past band 0.5's 1.5x upper bound, only reachable once
+  widening reaches band 1.0's 2.0x upper bound -- with sanity assertions
+  confirming the constructed strength actually lands in that gap before
+  asserting `findMatch` still finds it. Verified the test actually catches
+  a regression: temporarily truncating `BAND_WIDENING_STEPS` to
+  `[0.1, 0.25, 0.5]` made it fail as expected, then reverted. Full suite:
+  210/210 pass.
 - Location: `src/lib/battle/rules.ts` (`findMatch`, `BAND_WIDENING_STEPS`),
   `src/lib/battle/rules.test.ts`.
 - Existing tests cover "matched within some band" and "no match even at the

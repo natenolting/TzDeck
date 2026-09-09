@@ -219,6 +219,22 @@ test("findMatch: no candidate within the widest band fails with no match", () =>
   assert.equal(match, null);
 });
 
+test("findMatch: a candidate outside the narrowest bands is still found once progressive widening reaches a band containing it", () => {
+  const seed = deriveBaseSeed(50, "a description");
+  const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed, level: 1 }));
+  // Level 4 scales both power and hp by 1 + PER_LEVEL_BONUS*(4-1) = 1.3x, so
+  // strength (power*hp) scales by ~1.69x -- past band 0.5's 1.5x upper
+  // bound, only reachable once widening reaches band 1.0's 2.0x upper bound.
+  const wideCandidate = makeCandidate({ wallet: "tz1Wide", cardKey: "KT1:1", seed, level: 4 });
+  const wideStrength = candidateStrength(wideCandidate);
+  assert.ok(wideStrength > attackerStrength * 1.5, "sanity: candidate strength must actually sit past the 0.5 band's upper bound, or this test proves nothing about widening");
+  assert.ok(wideStrength <= attackerStrength * 2.0, "sanity: candidate strength must actually sit within the 1.0 band's upper bound");
+
+  const match = findMatch(attackerStrength, [wideCandidate], NOW);
+  assert.ok(match, "a candidate only reachable by widening past the narrower bands must still be found, not lost to an early no-match");
+  assert.equal(match?.card.cardKey, "KT1:1");
+});
+
 test("findMatch: a recovering card is excluded from its wallet's candidacy", () => {
   const seed = deriveBaseSeed(50, "");
   const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed }));
