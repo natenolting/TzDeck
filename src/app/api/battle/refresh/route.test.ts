@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { InMemorySigner } from "@taquito/signer";
 
 import { objktClient } from "@/lib/objkt";
-import { bytesToSign, issueNonce, type NonceEnvelope } from "@/lib/battle/auth";
+import { bytesToSign, computeParamHash, issueNonce, type NonceEnvelope } from "@/lib/battle/auth";
 import { getSql } from "@/lib/battle/store";
 import { POST } from "./route";
 
@@ -174,6 +174,166 @@ test("POST /api/battle/refresh: a collection larger than one page bounds work pe
 
     const holdings = await sql`SELECT card_key FROM wallet_holdings WHERE wallet = ${address}`;
     assert.equal(holdings.length, TOTAL_CARDS, "resuming must complete the full traversal, not just the first invocation's pages");
+  } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/refresh: malformed JSON body is rejected before any upstream work", async () => {
+  const response = await POST(
+    new NextRequest("http://localhost/api/battle/refresh", {
+      method: "POST",
+      body: "{not valid json",
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  assert.equal(response.status, 400);
+  const json = await response.json();
+  assert.equal(json.error, "invalid_json_body");
+});
+
+test("POST /api/battle/refresh: a genuinely live attempt is reported as in-progress, not reclaimed", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${address}, true)`;
+    const body = await buildSignedBody(signer, publicKey, address, "refresh", []);
+    // Simulate another worker already holding this exact attempt with a
+    // still-live lease -- authenticateAndClaim must not reclaim it.
+    await sql`
+      INSERT INTO battle_attempts (nonce, wallet, action, param_hash, issued_at, retry_until, status, generation, lease_expires_at)
+      VALUES (${body.envelope.mac}, ${address}, 'refresh', ${computeParamHash([])}, now(), now() + interval '15 minutes', 'pending', 0, now() + interval '1 minute')
+    `;
+
+    const response = await POST(postRequest(body));
+    assert.equal(response.status, 409);
+    const json = await response.json();
+    assert.equal(json.error, "attempt_in_progress");
+    assert.equal(response.headers.get("Retry-After"), "2");
+  } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/refresh: a completed attempt replays its exact stored response, no upstream work repeated", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${address}, true)`;
+    const body = await buildSignedBody(signer, publicKey, address, "refresh", []);
+    await sql`
+      INSERT INTO battle_attempts (nonce, wallet, action, param_hash, issued_at, retry_until, status, generation, response, status_code, completed_at)
+      VALUES (${body.envelope.mac}, ${address}, 'refresh', ${computeParamHash([])}, now(), now() + interval '15 minutes', 'completed', 0, ${JSON.stringify({ refreshed: true })}::jsonb, 200, now())
+    `;
+
+    let objktCalled = false;
+    await withObjktStub(
+      async () => {
+        objktCalled = true;
+        return { token_holder: [] };
+      },
+      async () => {
+        const response = await POST(postRequest(body));
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), { refreshed: true });
+      },
+    );
+    assert.equal(objktCalled, false, "a terminal replay must never repeat the upstream holdings fetch");
+  } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/refresh: an upstream holdings fetch failure is a retryable 503, not silently swallowed", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  const originalConsoleError = console.error;
+  console.error = () => undefined;
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${address}, true)`;
+    const body = await buildSignedBody(signer, publicKey, address, "refresh", []);
+    await withObjktStub(
+      async () => {
+        throw new Error("OBJKT unavailable");
+      },
+      async () => {
+        const response = await POST(postRequest(body));
+        const json = await response.json();
+        assert.equal(response.status, 503, JSON.stringify(json));
+        assert.equal(json.error, "holdings_unavailable");
+      },
+    );
+    const [attempt] = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${body.envelope.mac}`;
+    assert.equal(attempt.retryable, true, "an upstream outage is operational timing, not a business rule the caller broke");
+  } finally {
+    console.error = originalConsoleError;
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/refresh: a takeover mid-request is reported as sync_superseded, not silently retried forever", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${address}, true)`;
+    const body = await buildSignedBody(signer, publicKey, address, "refresh", []);
+    await withObjktStub(
+      async () => {
+        // A takeover reclaims this exact attempt (mirrors reclaimAttempt)
+        // between this request's claim and its own staging write.
+        await sql`UPDATE battle_attempts SET generation = generation + 1, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${body.envelope.mac}`;
+        return { token_holder: [tokenHolderRow("KT1Superseded", 1)] };
+      },
+      async () => {
+        const response = await POST(postRequest(body));
+        const json = await response.json();
+        assert.equal(response.status, 409, JSON.stringify(json));
+        assert.equal(json.error, "sync_superseded");
+      },
+    );
+    // The route's own failAttempt call still carries the OLD generation it
+    // started with, so its generation-scoped WHERE clause is a no-op here --
+    // exactly the point: a stale (superseded) caller reporting failure must
+    // never overwrite the newer generation's state.
+    const [attempt] = await sql<{ status: string; generation: string }>`SELECT status, generation FROM battle_attempts WHERE nonce = ${body.envelope.mac}`;
+    assert.equal(attempt.generation, "1", "the newer generation this request was superseded by must be untouched");
+    assert.equal(attempt.status, "pending", "a stale caller's failure report must never overwrite the newer generation's state");
+  } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/refresh: a wallet past its request budget is rate-limited, persisted as a retryable attempt failure", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  try {
+    await sql`INSERT INTO wallets (address, opted_in) VALUES (${address}, true)`;
+    await withObjktStub(
+      async () => ({ token_holder: [] }), // cheapest deterministic within-budget response: an empty (single-page, complete) refresh
+      async () => {
+        // route.ts's RATE_LIMIT_MAX_REQUESTS is 20 -- confirms the limiter
+        // is actually wired into this route (after auth, before upstream
+        // work), not just that the underlying primitive works in isolation.
+        for (let i = 0; i < 20; i += 1) {
+          const body = await buildSignedBody(signer, publicKey, address, "refresh", []);
+          const response = await POST(postRequest(body));
+          assert.notEqual(response.status, 429, `request ${i + 1} of 20 should be within budget`);
+        }
+
+        const overBudget = await buildSignedBody(signer, publicKey, address, "refresh", []);
+        const response = await POST(postRequest(overBudget));
+        assert.equal(response.status, 429);
+        const json = await response.json();
+        assert.equal(json.error, "rate_limited");
+
+        const [attempt] = await sql<{ status: string; retryable: boolean | null; status_code: number | null }>`
+          SELECT status, retryable, status_code FROM battle_attempts WHERE nonce = ${overBudget.envelope.mac}
+        `;
+        assert.equal(attempt.status, "failed");
+        assert.equal(attempt.retryable, true, "a rate limit is operational timing, not a business rule the caller broke");
+        assert.equal(attempt.status_code, 429);
+      },
+    );
   } finally {
     await cleanupWallet(address);
   }

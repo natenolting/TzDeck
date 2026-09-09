@@ -88,7 +88,24 @@ at a time, with one commit per fix, same as that doc.
 
 ## 4. MEDIUM — refresh/route.ts is missing most of its outcome-branch coverage
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. Note: on closer inspection, `random`/`challenge`/
+  `opt-in` do NOT actually already have this coverage either (none of them
+  test `invalid_json_body`, the `in_progress`/`terminal` switch, or the
+  generic 500 catch at the route level) -- that part of the original
+  finding was inaccurate. Added six tests to `refresh/route.test.ts`
+  covering every branch confirmed uncovered by the coverage run: malformed
+  JSON body (400); a genuinely live attempt reported in-progress, not
+  reclaimed (409, pre-seeding a matching pending row with a live lease); a
+  completed attempt replaying its exact stored response with zero upstream
+  work; an upstream OBJKT failure as a retryable 503
+  (`holdings_unavailable`); a mid-request takeover as `sync_superseded`
+  (409) -- corrected mid-implementation to assert the real invariant
+  (`failAttempt`'s stale generation is a no-op, so the newer generation's
+  `pending` state is left untouched) rather than an initially-wrong
+  `retryable: true` expectation; and the wallet-keyed rate limit (429),
+  mirroring item 5 of the prior review-follow-ups doc. Left the bare
+  generic-500-catch untested, consistent with every other route in this
+  system. Full suite: 216/216 pass.
 - Location: `src/app/api/battle/refresh/route.ts`,
   `src/app/api/battle/refresh/route.test.ts`.
 - Verified directly against coverage output: `invalid_json_body` (400), the
