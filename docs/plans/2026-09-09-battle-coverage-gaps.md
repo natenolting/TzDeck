@@ -120,7 +120,14 @@ at a time, with one commit per fix, same as that doc.
 
 ## 5. LOW — status/route.ts is missing its own error-branch coverage
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. Added two tests to `status/route.test.ts`:
+  a missing `address` query param returns `400 address_required`; an IP
+  driven past its 30-requests/60s budget returns `429 rate_limited`,
+  mirroring `session/route.test.ts`'s existing IP-keyed pattern. Left the
+  bare generic-500-catch untested, consistent with every other route.
+  Full suite: 218/218 pass.
+
+This closes out every item in this doc.
 - Location: `src/app/api/battle/status/route.ts`,
   `src/app/api/battle/status/route.test.ts`.
 - Verified directly against coverage output: `address_required` (400),
