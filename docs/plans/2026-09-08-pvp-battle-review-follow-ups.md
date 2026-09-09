@@ -60,7 +60,19 @@ implementing. Fix one at a time, with one commit per fix, as requested.
 
 ## 3. P2 — Give stale holdings snapshots a recovery path
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. `src/lib/battle/store.ts`'s
+  `startOrResumeHoldingsSync` now compares the existing sync's captured
+  holdings generation against the wallet's current one on every resume; a
+  mismatch restarts staging fresh (clears staged cards/cursor, status back
+  to `in_progress`, recaptures the current generation) instead of resuming
+  an unpromotable stale snapshot. No SQL migration needed -- 0009 already
+  classified `stale_holdings_generation` retryable; the gap was purely that
+  resuming never repaired the capture. Regression coverage in
+  `participationCommit.test.ts`: both the opt-in and refresh "lost a
+  holdings-generation race" tests now perform the actual retry (reclaim,
+  resume, re-stage, re-commit) and assert it succeeds, not just that
+  `retryable` was true. Full suite: 196/198 pass, same two pre-existing
+  dev-database pollution failures as before, unrelated.
 - Locations: `migrations/0009_participation_retry_fencing.sql` and
   `src/lib/battle/store.ts`, `startOrResumeHoldingsSync`.
 - Participation and refresh commits mark `stale_holdings_generation` retryable,

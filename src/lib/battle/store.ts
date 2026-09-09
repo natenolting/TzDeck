@@ -282,7 +282,18 @@ export interface HoldingsSyncRow {
   staged_cards: StagedCard[];
 }
 
-/** Starts a fresh sync, or resumes one already staged under this exact attempt nonce. */
+/**
+ * Starts a fresh sync, or resumes one already staged under this exact
+ * attempt nonce. A sync whose captured holdings generation no longer
+ * matches the wallet's current one (a competing opt-out, or another sync,
+ * changed it since this one started) is restarted fresh under the current
+ * generation rather than resumed -- promote_holdings_snapshot fences
+ * promotion on exactly that comparison, so resuming the old capture
+ * unchanged can never promote again; reclaiming the ATTEMPT alone doesn't
+ * touch this sync's stale capture. Only one worker ever holds a given sync
+ * (the attempt's lease fences that -- see stage_holdings_page, 0011), so no
+ * extra locking is needed here.
+ */
 export async function startOrResumeHoldingsSync(
   syncId: string,
   wallet: string,
@@ -294,7 +305,24 @@ export async function startOrResumeHoldingsSync(
   const existing = await sql<HoldingsSyncRow>`
     SELECT * FROM holdings_syncs WHERE sync_id = ${syncId}
   `;
-  if (existing.length > 0) return existing[0];
+  if (existing.length > 0) {
+    const sync = existing[0];
+    if (sync.captured_holdings_generation === capturedHoldingsGeneration) {
+      return sync;
+    }
+    const restarted = await sql<HoldingsSyncRow>`
+      UPDATE holdings_syncs SET
+        captured_holdings_generation = ${capturedHoldingsGeneration},
+        staged_cards = '[]'::jsonb,
+        cursor = NULL,
+        status = 'in_progress',
+        worker_generation = ${workerGeneration}::bigint,
+        updated_at = now()
+      WHERE sync_id = ${syncId}
+      RETURNING *
+    `;
+    return restarted[0];
+  }
 
   const inserted = await sql<HoldingsSyncRow>`
     INSERT INTO holdings_syncs (sync_id, wallet, attempt_nonce, worker_generation, captured_holdings_generation, staged_cards)

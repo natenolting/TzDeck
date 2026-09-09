@@ -7,6 +7,7 @@ import {
   commitHoldingsRefresh,
   commitParticipation,
   getSql,
+  reclaimAttempt,
   stageHoldingsPage,
   startOrResumeHoldingsSync,
   type AttemptIdentity,
@@ -37,7 +38,7 @@ async function claimAttempt(action: "opt-in" | "refresh"): Promise<{ nonce: stri
   return { nonce, generation: claimed.row.generation };
 }
 
-test("commit_participation: a lost holdings-generation race is retryable, not a permanent dead end", async () => {
+test("commit_participation: a lost holdings-generation race recovers on retry by restarting the sync under the current generation", async () => {
   const sql = getSql();
   await cleanup();
   try {
@@ -56,6 +57,28 @@ test("commit_participation: a lost holdings-generation race is retryable, not a 
 
     const [attempt] = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${nonce}`;
     assert.equal(attempt.retryable, true, "a lost race is operational timing, not a business rule the caller broke");
+
+    // Asserting retryable alone doesn't prove recovery -- actually perform
+    // the retry a client would: reclaim the attempt, then resume the sync
+    // under the wallet's now-current holdings generation.
+    const identity: AttemptIdentity = { wallet: WALLET, action: "opt-in", paramHash: "test" };
+    const reclaimed = await reclaimAttempt(nonce, identity);
+    assert.ok(reclaimed, "a failed-but-retryable attempt must be reclaimable");
+    if (!reclaimed) return;
+
+    const [wallet] = await sql<{ holdings_generation: number }>`SELECT holdings_generation FROM wallets WHERE address = ${WALLET}`;
+    const resumed = await startOrResumeHoldingsSync(syncId, WALLET, nonce, reclaimed.generation, wallet.holdings_generation);
+    assert.equal(resumed.status, "in_progress", "the stale capture must be restarted, not resumed as already-complete");
+    assert.equal(resumed.staged_cards.length, 0, "the stale snapshot's cards must not carry over into the restarted sync");
+    assert.equal(resumed.captured_holdings_generation, wallet.holdings_generation, "the restarted sync must capture the CURRENT generation");
+
+    await stageHoldingsPage(nonce, syncId, reclaimed.generation, [card("KT1A:1"), card("KT1C:3")], null, true);
+    const retryResult = await commitParticipation(nonce, reclaimed.generation, WALLET, "test", true, syncId);
+    assert.equal(retryResult.status_code, 200, "restarting under the current generation must let the retry actually succeed");
+    assert.deepEqual(retryResult.response, { optedIn: true });
+
+    const holdings = await sql<{ card_key: string }>`SELECT card_key FROM wallet_holdings WHERE wallet = ${WALLET} ORDER BY card_key`;
+    assert.deepEqual(holdings.map((r) => r.card_key), ["KT1A:1", "KT1C:3"]);
   } finally {
     await cleanup();
   }
@@ -110,7 +133,7 @@ test("commit_participation: a call from a genuinely superseded (older) generatio
   }
 });
 
-test("commit_holdings_refresh: a lost holdings-generation race is retryable, not a permanent dead end", async () => {
+test("commit_holdings_refresh: a lost holdings-generation race recovers on retry by restarting the sync under the current generation", async () => {
   const sql = getSql();
   await cleanup();
   try {
@@ -128,6 +151,27 @@ test("commit_holdings_refresh: a lost holdings-generation race is retryable, not
 
     const [attempt] = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${nonce}`;
     assert.equal(attempt.retryable, true);
+
+    // Asserting retryable alone doesn't prove recovery -- actually perform
+    // the retry a client would: reclaim the attempt, then resume the sync
+    // under the wallet's now-current holdings generation.
+    const identity: AttemptIdentity = { wallet: WALLET, action: "refresh", paramHash: "test" };
+    const reclaimed = await reclaimAttempt(nonce, identity);
+    assert.ok(reclaimed, "a failed-but-retryable attempt must be reclaimable");
+    if (!reclaimed) return;
+
+    const [wallet] = await sql<{ holdings_generation: number }>`SELECT holdings_generation FROM wallets WHERE address = ${WALLET}`;
+    const resumed = await startOrResumeHoldingsSync(syncId, WALLET, nonce, reclaimed.generation, wallet.holdings_generation);
+    assert.equal(resumed.status, "in_progress", "the stale capture must be restarted, not resumed as already-complete");
+    assert.equal(resumed.staged_cards.length, 0, "the stale snapshot's cards must not carry over into the restarted sync");
+
+    await stageHoldingsPage(nonce, syncId, reclaimed.generation, [card("KT1A:1"), card("KT1D:4")], null, true);
+    const retryResult = await commitHoldingsRefresh(nonce, reclaimed.generation, WALLET, "test", syncId);
+    assert.equal(retryResult.status_code, 200, "restarting under the current generation must let the retry actually succeed");
+    assert.deepEqual(retryResult.response, { refreshed: true });
+
+    const holdings = await sql<{ card_key: string }>`SELECT card_key FROM wallet_holdings WHERE wallet = ${WALLET} ORDER BY card_key`;
+    assert.deepEqual(holdings.map((r) => r.card_key), ["KT1A:1", "KT1D:4"]);
   } finally {
     await cleanup();
   }
