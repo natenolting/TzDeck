@@ -133,6 +133,38 @@ test("POST /api/battle/opt-in: flipping the signed boolean fails verification", 
   }
 });
 
+test("POST /api/battle/opt-in: a wallet past its request budget is rate-limited, persisted as a retryable attempt failure", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  try {
+    // Opting out is a cheap, deterministic within-budget response that needs
+    // no objkt stub or holdings sync -- the rate limit check runs before any
+    // of that either way (route.ts's RATE_LIMIT_MAX_REQUESTS is 20),
+    // confirming the limiter is actually wired into this route (after auth,
+    // before upstream work).
+    for (let i = 0; i < 20; i += 1) {
+      const body = await buildSignedBody(signer, publicKey, address, "opt-in", [false]);
+      const response = await POST(postRequest({ ...body, optedIn: false }));
+      assert.notEqual(response.status, 429, `request ${i + 1} of 20 should be within budget`);
+    }
+
+    const overBudget = await buildSignedBody(signer, publicKey, address, "opt-in", [false]);
+    const response = await POST(postRequest({ ...overBudget, optedIn: false }));
+    assert.equal(response.status, 429);
+    const json = await response.json();
+    assert.equal(json.error, "rate_limited");
+
+    const [attempt] = await sql<{ status: string; retryable: boolean | null; status_code: number | null }>`
+      SELECT status, retryable, status_code FROM battle_attempts WHERE nonce = ${overBudget.envelope.mac}
+    `;
+    assert.equal(attempt.status, "failed");
+    assert.equal(attempt.retryable, true, "a rate limit is operational timing, not a business rule the caller broke");
+    assert.equal(attempt.status_code, 429);
+  } finally {
+    await cleanupWallet(address);
+  }
+});
+
 test("participation: a completed opt-in replay cannot undo a later opt-out", async () => {
   const { signer, publicKey, address } = await testSigner();
   try {

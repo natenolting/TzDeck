@@ -76,6 +76,10 @@ async function cleanupWallet(wallet: string) {
   await sql`DELETE FROM wallet_holdings WHERE wallet = ${wallet}`;
   await sql`DELETE FROM wallet_card_progress WHERE wallet = ${wallet}`;
   await sql`DELETE FROM wallets WHERE address = ${wallet}`;
+  // Every test in this file shares one wallet (fixed derivation path) -- reset
+  // its rate-limit bucket too, so a fast rerun of this file never accumulates
+  // toward the route's per-wallet budget across runs.
+  await sql`DELETE FROM rate_limits WHERE bucket_key = ${`random:${wallet}`}`;
 }
 
 test("POST /api/battle/random: happy path resolves a battle against an eligible opponent", async () => {
@@ -149,6 +153,38 @@ test("POST /api/battle/random: no eligible opponent returns a clean no_match res
 
     const [walletRow] = await sql<{ attack_count: number } | undefined>`SELECT attack_count FROM wallets WHERE address = ${address}`;
     if (walletRow) assert.equal(walletRow.attack_count, 0, "a failed search must not consume the attack allowance");
+  } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/random: a wallet past its request budget is rate-limited, persisted as a retryable attempt failure", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const sql = getSql();
+  try {
+    await withObjktStub(alwaysHeldStub(), async () => {
+      // route.ts's RATE_LIMIT_MAX_REQUESTS is 10 -- confirms the limiter is
+      // actually wired into this route (after auth, before upstream work),
+      // not just that the underlying primitive works in isolation.
+      for (let i = 0; i < 10; i += 1) {
+        const body = await buildSignedBody(signer, publicKey, address, "random", [ATTACKER_CARD_KEY]);
+        const response = await POST(postRequest({ ...body, attackerCardKey: ATTACKER_CARD_KEY }));
+        assert.notEqual(response.status, 429, `request ${i + 1} of 10 should be within budget`);
+      }
+
+      const overBudget = await buildSignedBody(signer, publicKey, address, "random", [ATTACKER_CARD_KEY]);
+      const response = await POST(postRequest({ ...overBudget, attackerCardKey: ATTACKER_CARD_KEY }));
+      assert.equal(response.status, 429);
+      const json = await response.json();
+      assert.equal(json.error, "rate_limited");
+
+      const [attempt] = await sql<{ status: string; retryable: boolean | null; status_code: number | null }>`
+        SELECT status, retryable, status_code FROM battle_attempts WHERE nonce = ${overBudget.envelope.mac}
+      `;
+      assert.equal(attempt.status, "failed");
+      assert.equal(attempt.retryable, true, "a rate limit is operational timing, not a business rule the caller broke");
+      assert.equal(attempt.status_code, 429);
+    });
   } finally {
     await cleanupWallet(address);
   }

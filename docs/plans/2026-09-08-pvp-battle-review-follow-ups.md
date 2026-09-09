@@ -124,7 +124,22 @@ still describes only that review's own findings and checks.
 
 ## 5. P2 — No route-level coverage proving wallet-keyed rate limits actually fire
 
-- [ ] Resolve and verify.
+- [x] Resolved and verified. Added a route-level rate-limit test to each of
+  `random`, `challenge`, and `opt-in`'s `route.test.ts`, mirroring
+  `session/route.test.ts`'s existing IP-keyed pattern: drive the wallet to
+  exactly its budget (10, 10, and 20 requests respectively -- all confirmed
+  not `429`), then assert the next request returns `429`/`rate_limited` and
+  is persisted on the attempt as `status: "failed"`, `retryable: true`,
+  `status_code: 429`. Each within-budget request uses the cheapest
+  deterministic response the route offers before any upstream work (an
+  always-held ownership stub for `random`; a self-challenge for `challenge`,
+  which needs no stub since the rate check runs before it; an opt-out for
+  `opt-in`, which needs no holdings sync) so the loop needs no unrelated
+  setup. Added the same per-file rate-limit bucket cleanup `opt-in` already
+  had to `random` and `challenge`'s `cleanupWallet`, so a shared wallet's
+  budget never carries over to other tests in the same file. Full suite:
+  201/203 pass, same two pre-existing dev-database pollution failures as
+  before, unrelated.
 - Locations: `src/app/api/battle/random/route.test.ts`,
   `src/app/api/battle/challenge/route.test.ts`,
   `src/app/api/battle/opt-in/route.test.ts`.
