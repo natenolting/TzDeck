@@ -57,6 +57,8 @@ npm install
 npm run dev
 ```
 
+Use npm, not pnpm or yarn -- the repo tracks `package-lock.json`, and `pnpm install` will fail on its build-script approval gate for transitive dependencies.
+
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 The app includes public defaults for its OBJKT GraphQL endpoint and Tezos mainnet RPC. You can override them in `.env.local` when needed:
