@@ -5,7 +5,7 @@ import { NFTCard as NFTCardType, getCardImageSources } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import NFTDetailsModal from "./NFTDetailsModal";
+import NFTDetailsModal, { type BattleCardStats } from "./NFTDetailsModal";
 import { RARITY_CONFIG } from "./rarityStyles";
 import { ExternalLinkIcon, HeartIcon, ImageOffIcon, SwordsIcon } from "./icons";
 
@@ -19,6 +19,8 @@ interface NFTCardProps {
   isWishlisted?: boolean;
   detailCards?: NFTCardType[];
   detailWishlistIds?: Set<string>;
+  /** undefined outside a battle-aware context (My Deck); null means never battled. */
+  battleStats?: BattleCardStats | null;
   onToggleWishlist?: (card: NFTCardType) => void;
   onBattle?: (card: NFTCardType) => void;
   className?: string;
@@ -34,6 +36,7 @@ export default function NFTCard({
   isWishlisted = false,
   detailCards,
   detailWishlistIds,
+  battleStats,
   onToggleWishlist,
   onBattle,
   className = "",
@@ -283,8 +286,10 @@ export default function NFTCard({
           isWishlisted={isWishlisted}
           navigationCards={detailCards}
           wishlistIds={detailWishlistIds}
+          battleStats={battleStats}
           onClose={closeDetails}
           onToggleWishlist={onToggleWishlist}
+          onBattle={onBattle}
         />
       )}
     </>

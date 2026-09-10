@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
+import type { BattleCardStats } from "./NFTDetailsModal";
 import BattlePanel from "./BattlePanel";
 import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
 
@@ -60,6 +61,26 @@ async function requestDeck(address: string, signal: AbortSignal): Promise<NFTCar
   return data.tokens || [];
 }
 
+interface BattleStatusResponse {
+  cards?: Array<{ cardKey: string; xp: number; level: number; power: number; hp: number }>;
+}
+
+/** Never battled rows just don't appear here -- the modal shows an estimated preview for those. */
+async function requestBattleStats(address: string, signal: AbortSignal): Promise<Map<string, BattleCardStats>> {
+  const response = await fetch(`/api/battle/status?address=${encodeURIComponent(address)}`, {
+    signal,
+    cache: "no-store",
+  });
+  if (!response.ok) return new Map();
+
+  const data = (await response.json()) as BattleStatusResponse;
+  const byCardKey = new Map<string, BattleCardStats>();
+  for (const card of data.cards ?? []) {
+    byCardKey.set(card.cardKey, { xp: card.xp, level: card.level, power: card.power, hp: card.hp });
+  }
+  return byCardKey;
+}
+
 export default function DeckGrid({
   onWishlistToggle,
   wishlistIds = new Set(),
@@ -71,6 +92,7 @@ export default function DeckGrid({
   const [error, setError] = useState<string | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
   const [battleCard, setBattleCard] = useState<NFTCardType | null>(null);
+  const [battleStatsByCardKey, setBattleStatsByCardKey] = useState<Map<string, BattleCardStats>>(new Map());
 
   // Filters and Sorting
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,6 +123,21 @@ export default function DeckGrid({
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [address, requestVersion]);
+
+  useEffect(() => {
+    if (!address) return;
+
+    const controller = new AbortController();
+
+    requestBattleStats(address, controller.signal)
+      .then(setBattleStatsByCardKey)
+      .catch((requestError: unknown) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        console.error(requestError);
       });
 
     return () => controller.abort();
@@ -275,6 +312,7 @@ export default function DeckGrid({
                 isWishlisted={isWish}
                 detailCards={filteredTokens}
                 detailWishlistIds={wishlistIds}
+                battleStats={battleStatsByCardKey.get(cardKey) ?? null}
                 onToggleWishlist={onWishlistToggle}
                 onBattle={setBattleCard}
               />

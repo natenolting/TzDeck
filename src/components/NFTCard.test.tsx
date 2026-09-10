@@ -4,6 +4,7 @@ import { afterEach, test } from "node:test";
 import { JSDOM } from "jsdom";
 
 import type { NFTCard as NFTCardType } from "@/lib/objkt";
+import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost/",
@@ -370,4 +371,88 @@ test("cards omit the battle control when onBattle is not passed", async () => {
 
   assert.equal(screen.queryByRole("button", { name: `Battle with ${card.name}` }), null);
   assert.ok(screen.getByRole("button", { name: "Add to wishlist" }));
+});
+
+test("the details modal shows real battle stats when the card has already battled", async () => {
+  const { fireEvent, render, screen, within, NFTCard } = await loadTestHarness();
+  const battleStats = { xp: 1300, level: 5, power: 84, hp: 165 };
+
+  render(<NFTCard card={card} battleStats={battleStats} />);
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+
+  const modal = within(screen.getByRole("dialog", { name: card.name }));
+  assert.ok(modal.getByText("Level 5"));
+  assert.ok(modal.getByText("Power"));
+  assert.ok(modal.getByText("84"));
+  assert.ok(modal.getByText("HP"));
+  assert.ok(modal.getByText("165"));
+  assert.ok(modal.getByText(`1300 / ${xpThresholdForLevel(6)} XP`));
+  assert.equal(modal.queryByText(/Estimated/), null, "a card with real progress must not show the never-battled estimate");
+});
+
+test("the details modal shows an estimated Level 1 preview for a card that has never battled", async () => {
+  const { fireEvent, render, screen, within, NFTCard } = await loadTestHarness();
+
+  render(<NFTCard card={card} battleStats={null} />);
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+
+  const modal = within(screen.getByRole("dialog", { name: card.name }));
+  const expected = baseStatsFromSeed(deriveBaseSeed(card.editions!, card.description));
+  assert.ok(modal.getByText("Estimated Level 1"));
+  assert.ok(modal.getByText(String(expected.power)));
+  assert.ok(modal.getByText(String(expected.hp)));
+  assert.ok(modal.getByText(`0 / ${xpThresholdForLevel(2)} XP`));
+  assert.ok(modal.getByText(/never battled/i));
+});
+
+test("the details modal omits the battle-stats section entirely outside a battle-aware context", async () => {
+  const { fireEvent, render, screen, within, NFTCard } = await loadTestHarness();
+
+  render(<NFTCard card={card} />);
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+
+  const modal = within(screen.getByRole("dialog", { name: card.name }));
+  assert.equal(modal.queryByText("Battle Stats"), null);
+  assert.equal(modal.queryByText(/Estimated Level/), null);
+});
+
+test("the details modal's Battle button calls onBattle with the active card and closes the modal", async () => {
+  const { fireEvent, render, screen, userEvent, within, NFTCard } = await loadTestHarness();
+  const user = userEvent.setup({ document });
+  let battled: NFTCardType | undefined;
+
+  render(
+    <NFTCard
+      card={card}
+      onBattle={(selectedCard) => {
+        battled = selectedCard;
+      }}
+    />,
+  );
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+
+  const dialog = screen.getByRole("dialog", { name: card.name });
+  await user.click(within(dialog).getByRole("button", { name: `Battle with ${card.name}` }));
+
+  assert.equal(battled, card);
+  assert.equal(screen.queryByRole("dialog"), null, "the details modal closes once Battle is chosen");
+});
+
+test("the details modal omits its Battle button when onBattle is not passed", async () => {
+  const { fireEvent, render, screen, within, NFTCard } = await loadTestHarness();
+  render(<NFTCard card={card} />);
+
+  fireEvent.load(screen.getByRole("img", { name: card.name }));
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+
+  const modal = within(screen.getByRole("dialog", { name: card.name }));
+  assert.equal(modal.queryByRole("button", { name: `Battle with ${card.name}` }), null);
 });
