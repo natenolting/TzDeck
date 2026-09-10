@@ -177,7 +177,35 @@ failure scenarios below.
 
 ## 5. Bound holdings sync by elapsed time
 
-- [ ] Implement and verify.
+- [x] Implemented and verified. New `src/lib/battle/holdingsSync.ts`
+  (`runBoundedHoldingsSync`, shared by both routes so their budget policy
+  can't drift) tracks a deadline set at route entry
+  (`Date.now() + INVOCATION_DEADLINE_MS`, 18s -- 2s under the routes'
+  `maxDuration = 20`), before another page is started requires enough
+  remaining budget for its worst case (`PAGE_WORK_RESERVE_MS` = the real
+  8s upstream timeout + 1.5s for staging/lease-release/response), and
+  separately requires `PROMOTION_RESERVE_MS` (2s) before attempting the
+  final commit once staging completes -- a fully staged sync that runs out
+  of budget still returns a resumable 202 rather than racing the deadline,
+  and the next invocation sees status "complete" and promotes with a fresh
+  budget. `opt-in/route.ts` and `refresh/route.ts` both now call this
+  instead of their own inline page loops. Four new tests in
+  `holdingsSync.test.ts`, using a real claimed attempt (via
+  `authenticateAndClaim` directly, no HTTP layer) and an injectable clock
+  (no real sleeps): a fast collection completes in one invocation; slow
+  successful pages (simulated 7s/page) stop after 2 pages rather than
+  risking a 3rd, preserving staged progress; a fully staged sync with too
+  little time left to promote releases for continuation instead of racing
+  it; and resuming (via a real `reclaimAttempt` generation bump, matching
+  what a resubmitted request goes through) picks up from the exact saved
+  cursor and completes. Verified all three time-budget tests actually
+  catch the regression: temporarily short-circuited both deadline checks
+  (`if (false && ...)`), confirmed those exact 3 tests fail, reverted.
+  Full suite: 250/252 pass (the 2 failures are the pre-existing, unrelated
+  DB-contamination issues noted elsewhere in this session, not from this
+  change) -- includes both routes' pre-existing "collection larger than one
+  page" tests unchanged and still green. `npx tsc --noEmit` and
+  `npm run build` both clean.
 - Locations: `src/app/api/battle/opt-in/route.ts`,
   `src/app/api/battle/refresh/route.ts`, and supporting holdings/store helpers
   as needed.
