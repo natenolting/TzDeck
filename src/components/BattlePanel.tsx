@@ -57,20 +57,23 @@ type PanelState =
   | { kind: "cap_reached" }
   | { kind: "expired" }
   | { kind: "uncertain" }
+  | { kind: "refreshing_holdings" }
   | { kind: "error"; message: string };
 
 const ATTACK_CAP_MAX = 20;
 const DEFENSE_CAP_MAX = 20;
 
 // Large wallets need more than MAX_PAGES_PER_INVOCATION pages of holdings
-// synced (opt-in/route.ts), so the server returns 202 and expects the same
-// signed request resubmitted to resume from its stored cursor. Bounded like
-// MAX_NOT_HELD_REROLLS in random/route.ts so a persistently-202 server can't
-// hang the UI forever.
-const OPT_IN_SYNC_MAX_ATTEMPTS = 50;
-const OPT_IN_SYNC_POLL_DELAY_MS = 300;
+// synced (opt-in/route.ts, refresh/route.ts), so the server returns 202 and
+// expects the same signed request resubmitted to resume from its stored
+// cursor. Bounded like MAX_NOT_HELD_REROLLS in random/route.ts so a
+// persistently-202 server can't hang the UI forever. Shared by both opt-in
+// and the authenticated holdings refresh (item 4) -- same underlying
+// materialization pipeline, same continuation contract.
+const HOLDINGS_SYNC_MAX_ATTEMPTS = 50;
+const HOLDINGS_SYNC_POLL_DELAY_MS = 300;
 
-// opt-in/route.ts allows 20 requests/minute per wallet, independent of the
+// opt-in/refresh allow 20 requests/minute per wallet, independent of the
 // signed attempt itself -- a large enough wallet's continuation loop can hit
 // that budget before finishing. The server already marks the attempt
 // retryable on 429 (its nonce/progress are never abandoned), so this waits
@@ -78,8 +81,16 @@ const OPT_IN_SYNC_POLL_DELAY_MS = 300;
 // dead end that would force a fresh signature and restart staging from
 // scratch. A separate bound from the 202 loop above so a large wallet's
 // legitimate continuation isn't starved by an unrelated rate-limit episode.
-const OPT_IN_RATE_LIMIT_MAX_ATTEMPTS = 15;
-const OPT_IN_RATE_LIMIT_DELAY_MS = 5000;
+const HOLDINGS_RATE_LIMIT_MAX_ATTEMPTS = 15;
+const HOLDINGS_RATE_LIMIT_DELAY_MS = 5000;
+
+/** UI policy (item 4): how long a holdings sync is considered fresh before we nudge the user to refresh. */
+export const HOLDINGS_STALE_MS = 24 * 60 * 60 * 1000;
+
+export function isHoldingsStale(holdingsRefreshedAt: string | null, now: Date, staleMs: number): boolean {
+  if (!holdingsRefreshedAt) return true;
+  return now.getTime() - new Date(holdingsRefreshedAt).getTime() > staleMs;
+}
 
 interface BattlePanelProps {
   card: NFTCardType;
@@ -132,8 +143,8 @@ export async function resubmitWhilePending(
   maxAttempts: number,
   pollDelayMs: number,
   wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  maxRateLimitAttempts: number = OPT_IN_RATE_LIMIT_MAX_ATTEMPTS,
-  rateLimitDelayMs: number = OPT_IN_RATE_LIMIT_DELAY_MS,
+  maxRateLimitAttempts: number = HOLDINGS_RATE_LIMIT_MAX_ATTEMPTS,
+  rateLimitDelayMs: number = HOLDINGS_RATE_LIMIT_DELAY_MS,
 ): Promise<ResubmitResult> {
   let response = await post();
   let attempts = 0;
@@ -345,12 +356,19 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const isRecovering = Boolean(ownCardStatus?.recoveryUntil && new Date(ownCardStatus.recoveryUntil) > new Date());
   const atAttackCap = (status?.effectiveAttackCount ?? 0) >= ATTACK_CAP_MAX;
   const atDefenseCap = (status?.effectiveDefenseCount ?? 0) >= DEFENSE_CAP_MAX;
+  const holdingsStale = isHoldingsStale(status?.holdingsRefreshedAt ?? null, new Date(), HOLDINGS_STALE_MS);
 
   const toggleOptIn = async () => {
     if (!status) return;
     // Duplicate-invocation guard beyond the disabled button (item 2): a
-    // battle submission and an opt-in sync must never run concurrently.
-    if (panelState.kind === "awaiting_signature" || panelState.kind === "syncing" || panelState.kind === "submitting") {
+    // battle submission, an opt-in sync, and a holdings refresh must never
+    // run concurrently.
+    if (
+      panelState.kind === "awaiting_signature" ||
+      panelState.kind === "syncing" ||
+      panelState.kind === "submitting" ||
+      panelState.kind === "refreshing_holdings"
+    ) {
       return;
     }
     const nextOptedIn = !status.optedIn;
@@ -372,7 +390,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
         });
 
       setPanelState({ kind: "syncing" });
-      const { response, timedOut } = await resubmitWhilePending(postOptIn, OPT_IN_SYNC_MAX_ATTEMPTS, OPT_IN_SYNC_POLL_DELAY_MS);
+      const { response, timedOut } = await resubmitWhilePending(postOptIn, HOLDINGS_SYNC_MAX_ATTEMPTS, HOLDINGS_SYNC_POLL_DELAY_MS);
       if (timedOut) {
         // A clear restart path: this signed attempt's own bounded budget
         // (continuation or rate-limit backoff) ran out, well short of the
@@ -384,6 +402,55 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         setPanelState({ kind: "error", message: body.error || "Failed to update opt-in status." });
+        return;
+      }
+      setPanelState({ kind: "idle" });
+      await refreshStatus();
+    } catch (error) {
+      if (error instanceof UnsupportedWalletTypeError) {
+        setPanelState({ kind: "unsupported_wallet" });
+        return;
+      }
+      setPanelState({ kind: "declined" });
+    }
+  };
+
+  // Item 4: an explicit, authenticated holdings refresh -- opt-in only reads
+  // status today, so a card acquired after opting in stays outside the
+  // defender pool until the wallet opts out and back in. Signs the existing
+  // `refresh` action with `[]` (GET /api/battle/status stays read-only) and
+  // reuses the same bounded-continuation/rate-limit handling as opt-in,
+  // since refresh/route.ts shares the identical materialization pipeline --
+  // opt-in state itself is never touched by this call.
+  const refreshHoldings = async () => {
+    if (
+      panelState.kind === "awaiting_signature" ||
+      panelState.kind === "syncing" ||
+      panelState.kind === "submitting" ||
+      panelState.kind === "refreshing_holdings"
+    ) {
+      return;
+    }
+    setPanelState({ kind: "awaiting_signature" });
+    try {
+      const signed = await signChallenge("refresh", []);
+      const requestBody = JSON.stringify({ ...signed, claimedAddress: signed.address });
+      const postRefresh = () =>
+        fetch("/api/battle/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: requestBody,
+        });
+
+      setPanelState({ kind: "refreshing_holdings" });
+      const { response, timedOut } = await resubmitWhilePending(postRefresh, HOLDINGS_SYNC_MAX_ATTEMPTS, HOLDINGS_SYNC_POLL_DELAY_MS);
+      if (timedOut) {
+        setPanelState({ kind: "error", message: "Holdings refresh is taking too long. Please try again." });
+        return;
+      }
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setPanelState({ kind: "error", message: body.error || "Failed to refresh holdings." });
         return;
       }
       setPanelState({ kind: "idle" });
@@ -429,7 +496,16 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
 
   const startBattle = async () => {
     // Guards the handler itself, not just the disabled button (item 2).
-    if (panelState.kind === "awaiting_signature" || panelState.kind === "submitting") return;
+    // Mutually exclusive with opt-in syncing and a holdings refresh too --
+    // one shared panelState machine, only one action in flight at a time.
+    if (
+      panelState.kind === "awaiting_signature" ||
+      panelState.kind === "submitting" ||
+      panelState.kind === "syncing" ||
+      panelState.kind === "refreshing_holdings"
+    ) {
+      return;
+    }
     if (isRecovering || atAttackCap) return;
     setPanelState({ kind: "awaiting_signature" });
 
@@ -465,7 +541,14 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
 
   const retryPendingAttempt = async () => {
     if (!pendingAttempt) return;
-    if (panelState.kind === "awaiting_signature" || panelState.kind === "submitting") return;
+    if (
+      panelState.kind === "awaiting_signature" ||
+      panelState.kind === "submitting" ||
+      panelState.kind === "syncing" ||
+      panelState.kind === "refreshing_holdings"
+    ) {
+      return;
+    }
     await submitAttempt(pendingAttempt);
   };
 
@@ -527,7 +610,8 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
               disabled={
                 panelState.kind === "awaiting_signature" ||
                 panelState.kind === "syncing" ||
-                panelState.kind === "submitting"
+                panelState.kind === "submitting" ||
+                panelState.kind === "refreshing_holdings"
               }
               className={`button-secondary px-3 py-1.5 text-xs font-semibold ${status?.optedIn ? "text-accent" : ""}`}
             >
@@ -545,6 +629,31 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
               You can still attack without opting in — but your own cards stay invisible as opponents until you do.
             </p>
           )}
+
+          <div className="mt-2 flex items-center justify-between rounded-xl border border-border-default bg-surface-2 px-3 py-2">
+            <span className="text-xs text-text-secondary">
+              {status?.holdingsRefreshedAt
+                ? `Holdings last synced ${new Date(status.holdingsRefreshedAt).toLocaleString()}`
+                : "Holdings never synced"}
+              {holdingsStale && (
+                <span className="mt-0.5 block text-2xs text-text-tertiary">
+                  Newly acquired cards may be missing until you refresh.
+                </span>
+              )}
+            </span>
+            <button
+              onClick={refreshHoldings}
+              disabled={
+                panelState.kind === "awaiting_signature" ||
+                panelState.kind === "syncing" ||
+                panelState.kind === "submitting" ||
+                panelState.kind === "refreshing_holdings"
+              }
+              className="button-secondary shrink-0 px-3 py-1.5 text-xs font-semibold"
+            >
+              {panelState.kind === "refreshing_holdings" ? "Refreshing…" : "Refresh Holdings"}
+            </button>
+          </div>
 
           {ownCardStatus ? (
             <div className="mt-3 text-xs text-text-secondary">
@@ -625,6 +734,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   panelState.kind === "awaiting_signature" ||
                   panelState.kind === "submitting" ||
                   panelState.kind === "syncing" ||
+                  panelState.kind === "refreshing_holdings" ||
                   (mode === "challenge" && (!targetWallet || targetWallet === address))
                 }
                 className="button-primary w-full px-4 py-2.5 text-xs font-semibold"

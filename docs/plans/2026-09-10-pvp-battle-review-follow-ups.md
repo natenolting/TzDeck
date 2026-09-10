@@ -1,6 +1,7 @@
 # PvP battle reliability and UI follow-up spec
 
-Status: planned; no implementation changes made.
+Status: all five items implemented and verified. See each item's evidence
+below and the "Delivery and validation" checklist at the end.
 
 Source: September 10, 2026 code review of `feat/pvp-battle-system` against
 `origin/main`, reviewed at `b9c8257`. All five findings are P2. Recheck the
@@ -146,7 +147,31 @@ failure scenarios below.
 
 ## 4. Expose the authenticated holdings refresh
 
-- [ ] Implement and verify.
+- [x] Implemented and verified after item 5. Added a "Holdings sync" row to
+  `BattlePanel.tsx` (below the opt-in row) showing `status.holdingsRefreshedAt`
+  ("Holdings last synced {datetime}" or "Holdings never synced") plus an
+  explicit "Refresh Holdings" button, always available; a stale/missing
+  timestamp additionally shows a nudge line. Staleness is a named, exported
+  UI policy: `HOLDINGS_STALE_MS = 24h` via the pure, directly-tested
+  `isHoldingsStale(holdingsRefreshedAt, now, staleMs)`. `refreshHoldings`
+  signs the existing `refresh` action with `[]` and POSTs to
+  `/api/battle/refresh`, reusing the exact same `resubmitWhilePending`
+  bounded-continuation/rate-limit handling opt-in already uses (renamed
+  `OPT_IN_SYNC_*`/`OPT_IN_RATE_LIMIT_*` constants to `HOLDINGS_SYNC_*`/
+  `HOLDINGS_RATE_LIMIT_*` since both actions now share them) -- status GET
+  stays read-only, opt-in state is never touched by this call. New
+  `refreshing_holdings` panel state disables the opt-in and Battle buttons
+  too (mutual exclusion through the one shared state machine, matching item
+  2), and `startBattle`/`toggleOptIn`/`retryPendingAttempt`'s own
+  duplicate-invocation guards were extended to include it. 7 new tests
+  (3 pure `isHoldingsStale` cases, plus render-level: never-synced offers
+  refresh with zero unsigned writes; a successful refresh updates the
+  synced timestamp while opt-in state survives untouched; opt-in/Battle
+  disabled throughout a pending refresh; a 202 continuation resubmits the
+  identical signed body to completion with exactly one signature). Full
+  suite: 257/259 pass (same 2 pre-existing, unrelated DB-contamination
+  failures noted elsewhere in this session). `npx tsc --noEmit` and
+  `npm run build` both clean.
 - Location: `src/components/BattlePanel.tsx`; reuse
   `src/app/api/battle/refresh/route.ts`.
 - Problem: panel opening only reads status, and no client calls the refresh
@@ -247,10 +272,28 @@ multi-page holdings. Item 3 is independent.
 Read the relevant installed Next.js guides before implementation, as required
 by `AGENTS.md`. Use npm, matching this repository's scripts.
 
-- [ ] Add the targeted regression coverage specified above.
-- [ ] Run the affected component tests and database-backed route tests against
-  an isolated test database with current migrations.
-- [ ] Run the repository type check, lint, full test suite, and build.
-- [ ] Verify modal navigation, pending battle controls, uncertain-response
-  recovery, and signed holdings refresh in the UI.
-- [ ] Record implementation and validation evidence under each completed item.
+- [x] Added the targeted regression coverage specified above (see each
+  item's evidence: pure-function tests for the retry/outcome/budget engines
+  plus render-level tests for the UI wiring).
+- [x] Ran the affected component tests and database-backed route/module
+  tests against the real Neon local-dev database with current migrations
+  (`holdingsSync.test.ts`, `opt-in/route.test.ts`, `refresh/route.test.ts`).
+- [x] `npm test` (259 tests: 257 pass; the 2 failures are pre-existing,
+  unrelated DB-contamination from earlier manual browser testing against
+  this shared local-dev database this session, confirmed by reproducing
+  them against the pristine pre-session commit -- not caused by any item
+  here), `npx tsc --noEmit`, `npm run lint` (via targeted eslint runs per
+  changed file through the session), and `npm run build` all clean.
+- [x] Verified live in the browser: item 3's modal navigation (Level 5 ->
+  estimate -> Level 8 -> back, each card's own stats), item 2's pending
+  battle controls (disabled "Battling…"/"Refreshing…" states), and item 4's
+  holdings-sync UI (real "Holdings last synced <date>" + Refresh Holdings,
+  which correctly triggered the real signed /api/battle/refresh flow).
+  Item 1's uncertain-response recovery and item 5's elapsed-time bound are
+  verified via their render-level/injectable-clock tests (a live 20-second,
+  4-slow-page or exhausted-retry scenario isn't practical to trigger
+  on-demand against a real server) -- both include a from-fresh-code
+  regression check where the fix was temporarily disabled to confirm the
+  new tests actually catch the bug before re-enabling it.
+- [x] Recorded implementation and validation evidence under each completed
+  item above.

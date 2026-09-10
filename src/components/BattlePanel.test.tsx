@@ -5,6 +5,8 @@ import { JSDOM } from "jsdom";
 
 import BattlePanel, {
   applyBattleOutcome,
+  HOLDINGS_STALE_MS,
+  isHoldingsStale,
   previewStatsForCard,
   recoveryCopy,
   resubmitBattleAttempt,
@@ -73,6 +75,25 @@ test("previewStatsForCard matches the server's own seed derivation for the same 
 
 test("previewStatsForCard returns null rather than a fabricated number when editions isn't loaded", () => {
   assert.equal(previewStatsForCard({ editions: undefined, description: "irrelevant" }), null);
+});
+
+test("isHoldingsStale: never synced (null) is always stale, regardless of the interval", () => {
+  assert.equal(isHoldingsStale(null, new Date(), HOLDINGS_STALE_MS), true);
+});
+
+test("isHoldingsStale: synced well within the interval is not stale", () => {
+  const now = new Date("2026-01-02T00:00:00.000Z");
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  assert.equal(isHoldingsStale(oneHourAgo, now, HOLDINGS_STALE_MS), false);
+});
+
+test("isHoldingsStale: exactly at the interval boundary is not yet stale, just past it is", () => {
+  const now = new Date("2026-01-02T00:00:00.000Z");
+  const staleMs = 60_000;
+  const exactlyAtBoundary = new Date(now.getTime() - staleMs).toISOString();
+  const justPastBoundary = new Date(now.getTime() - staleMs - 1).toISOString();
+  assert.equal(isHoldingsStale(exactlyAtBoundary, now, staleMs), false);
+  assert.equal(isHoldingsStale(justPastBoundary, now, staleMs), true);
 });
 
 function statusResponse(status: number): Response {
@@ -369,14 +390,18 @@ function mockWalletValue() {
   };
 }
 
-function statusJson() {
+function statusJson(overrides: Partial<ReturnType<typeof baseStatusJson>> = {}) {
+  return { ...baseStatusJson(), ...overrides };
+}
+
+function baseStatusJson() {
   return {
     optedIn: false,
     effectiveAttackCount: 0,
     attackResetAt: null,
     effectiveDefenseCount: 0,
     defenseResetAt: null,
-    holdingsRefreshedAt: null,
+    holdingsRefreshedAt: null as string | null,
     cards: [],
   };
 }
@@ -634,4 +659,149 @@ test("automatic retries and a manual Retry after exhaustion both reuse the origi
   assert.ok(await screen.findByText(/Victory/, undefined, { timeout: 5000 }));
   assert.equal(signChallengeCalls, 1, "the manual Retry resubmits the exact same signed body -- it never re-signs either");
   assert.equal(randomCalls, autoAttemptsBeforeUncertain + 1);
+});
+
+test("holdings that have never synced show 'Never synced' and offer a Refresh Holdings action, with no unsigned write", async () => {
+  const { render, screen, WalletContext } = await loadTestHarness();
+  let refreshCalls = 0;
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/battle/status")) {
+      return new Response(JSON.stringify(statusJson({ holdingsRefreshedAt: null })), { status: 200 });
+    }
+    if (url.includes("/api/battle/refresh")) {
+      refreshCalls += 1;
+      return new Response(JSON.stringify({ refreshed: true }), { status: 200 });
+    }
+    throw new Error(`unexpected fetch in BattlePanel render test: ${url}`);
+  }) as typeof fetch;
+
+  render(
+    <WalletContext.Provider value={mockWalletValue()}>
+      <BattlePanel card={attackerCard} onClose={() => {}} />
+    </WalletContext.Provider>,
+  );
+
+  assert.ok(await screen.findByText(/Never synced/i));
+  assert.ok(await screen.findByRole("button", { name: "Refresh Holdings" }));
+  assert.equal(refreshCalls, 0, "merely opening a stale panel must never perform an unsigned write");
+});
+
+test("Refresh Holdings signs the refresh action, POSTs the signed body, and updates the last-synced status without touching opt-in", async () => {
+  const { fireEvent, render, screen, WalletContext } = await loadTestHarness();
+  let statusCalls = 0;
+  let refreshCalls = 0;
+  let refreshRequestBody: Record<string, unknown> | undefined;
+  const refreshedAt = "2026-01-05T12:00:00.000Z";
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/battle/status")) {
+      statusCalls += 1;
+      const holdingsRefreshedAt = statusCalls === 1 ? null : refreshedAt;
+      return new Response(JSON.stringify(statusJson({ optedIn: true, holdingsRefreshedAt })), { status: 200 });
+    }
+    if (url.includes("/api/battle/refresh")) {
+      refreshCalls += 1;
+      refreshRequestBody = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ refreshed: true }), { status: 200 });
+    }
+    throw new Error(`unexpected fetch in BattlePanel render test: ${url}`);
+  }) as typeof fetch;
+
+  render(
+    <WalletContext.Provider value={mockWalletValue()}>
+      <BattlePanel card={attackerCard} onClose={() => {}} />
+    </WalletContext.Provider>,
+  );
+
+  await screen.findByText(/Never synced/i);
+  const refreshButton = await screen.findByRole("button", { name: "Refresh Holdings" });
+  fireEvent.click(refreshButton);
+
+  await screen.findByText(new RegExp(new Date(refreshedAt).toLocaleString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal(refreshCalls, 1);
+  assert.equal(refreshRequestBody?.claimedAddress, "tz1PanelWallet00000000000000000000");
+  assert.equal(statusCalls, 2, "status is re-fetched after a successful refresh, reflecting the new timestamp");
+  assert.ok(screen.getByText(/Opted in/), "opt-in state must survive a holdings refresh untouched");
+});
+
+test("opt-in and Battle stay disabled while holdings are refreshing", async () => {
+  const { fireEvent, render, screen, WalletContext } = await loadTestHarness();
+  let resolveRefresh: (response: Response) => void;
+  const refreshPromise = new Promise<Response>((resolve) => {
+    resolveRefresh = resolve;
+  });
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/battle/status")) return new Response(JSON.stringify(statusJson()), { status: 200 });
+    if (url.includes("/api/battle/refresh")) return refreshPromise;
+    throw new Error(`unexpected fetch in BattlePanel render test: ${url}`);
+  }) as typeof fetch;
+
+  render(
+    <WalletContext.Provider value={mockWalletValue()}>
+      <BattlePanel card={attackerCard} onClose={() => {}} />
+    </WalletContext.Provider>,
+  );
+
+  const refreshButton = await screen.findByRole("button", { name: "Refresh Holdings" });
+  const optInButton = screen.getByRole("button", { name: "Opt in" });
+  const battleButton = screen.getByRole("button", { name: "Battle!" });
+  fireEvent.click(refreshButton);
+
+  const refreshingButton = await screen.findByRole("button", { name: "Refreshing…" });
+  assert.equal(refreshingButton.hasAttribute("disabled"), true);
+  assert.equal(optInButton.hasAttribute("disabled"), true, "opt-in must be blocked while a holdings refresh is pending");
+  assert.equal(battleButton.hasAttribute("disabled"), true, "battling must be blocked while a holdings refresh is pending");
+
+  resolveRefresh!(new Response(JSON.stringify({ refreshed: true }), { status: 200 }));
+
+  await screen.findByRole("button", { name: "Refresh Holdings" });
+  assert.equal(screen.getByRole("button", { name: "Opt in" }).hasAttribute("disabled"), false);
+});
+
+test("a 202 continuation from Refresh Holdings is resubmitted with the identical signed body until it completes", async () => {
+  const { fireEvent, render, screen, WalletContext } = await loadTestHarness();
+  let refreshCalls = 0;
+  let signChallengeCalls = 0;
+  const bodiesSeen: string[] = [];
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/battle/status")) return new Response(JSON.stringify(statusJson()), { status: 200 });
+    if (url.includes("/api/battle/refresh")) {
+      refreshCalls += 1;
+      bodiesSeen.push(String(init?.body));
+      if (refreshCalls < 3) return new Response(JSON.stringify({ status: "in_progress" }), { status: 202 });
+      return new Response(JSON.stringify({ refreshed: true }), { status: 200 });
+    }
+    throw new Error(`unexpected fetch in BattlePanel render test: ${url}`);
+  }) as typeof fetch;
+
+  const baseWallet = mockWalletValue();
+  const wallet = {
+    ...baseWallet,
+    signChallenge: async (...args: Parameters<typeof baseWallet.signChallenge>) => {
+      signChallengeCalls += 1;
+      return baseWallet.signChallenge(...args);
+    },
+  };
+
+  render(
+    <WalletContext.Provider value={wallet}>
+      <BattlePanel card={attackerCard} onClose={() => {}} />
+    </WalletContext.Provider>,
+  );
+
+  const refreshButton = await screen.findByRole("button", { name: "Refresh Holdings" });
+  fireEvent.click(refreshButton);
+
+  await screen.findByRole("button", { name: "Refreshing…" }, { timeout: 5000 });
+  await screen.findByRole("button", { name: "Refresh Holdings" }, { timeout: 5000 });
+  assert.equal(refreshCalls, 3, "two 202 continuations plus the settling call");
+  assert.equal(signChallengeCalls, 1, "bounded continuation resubmits the same signed body -- it never re-signs");
+  assert.equal(new Set(bodiesSeen).size, 1, "every resubmission sends byte-identical signed bytes");
 });
