@@ -312,7 +312,7 @@ export default function DeckGrid({
                 isWishlisted={isWish}
                 detailCards={filteredTokens}
                 detailWishlistIds={wishlistIds}
-                battleStats={battleStatsByCardKey.get(cardKey) ?? null}
+                battleStatsByCardKey={battleStatsByCardKey}
                 onToggleWishlist={onWishlistToggle}
                 onBattle={setBattleCard}
               />

@@ -21,8 +21,8 @@ interface NFTDetailsModalProps {
   isWishlisted: boolean;
   navigationCards?: NFTCard[];
   wishlistIds?: Set<string>;
-  /** undefined outside a battle-aware context (section omitted); null means never battled (estimated preview shown). */
-  battleStats?: BattleCardStats | null;
+  /** undefined outside a battle-aware context (section omitted); a card missing from the map means never battled (estimated preview shown). Resolved per actively displayed card, not just the one that opened the modal. */
+  battleStatsByCardKey?: Map<string, BattleCardStats>;
   onClose: () => void;
   onToggleWishlist?: (card: NFTCard) => void;
   onBattle?: (card: NFTCard) => void;
@@ -116,7 +116,7 @@ export default function NFTDetailsModal({
   isWishlisted,
   navigationCards,
   wishlistIds,
-  battleStats,
+  battleStatsByCardKey,
   onClose,
   onToggleWishlist,
   onBattle,
@@ -143,6 +143,7 @@ export default function NFTDetailsModal({
   const rarity = RARITY_CONFIG[activeCard.rarity || "common"];
   const previousCard = cards[activeIndex - 1];
   const nextCard = cards[activeIndex + 1];
+  const battleStats = battleStatsByCardKey ? battleStatsByCardKey.get(activeKey) ?? null : undefined;
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;

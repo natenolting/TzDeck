@@ -19,8 +19,8 @@ interface NFTCardProps {
   isWishlisted?: boolean;
   detailCards?: NFTCardType[];
   detailWishlistIds?: Set<string>;
-  /** undefined outside a battle-aware context (My Deck); null means never battled. */
-  battleStats?: BattleCardStats | null;
+  /** undefined outside a battle-aware context (My Deck); a card missing from the map means never battled. */
+  battleStatsByCardKey?: Map<string, BattleCardStats>;
   onToggleWishlist?: (card: NFTCardType) => void;
   onBattle?: (card: NFTCardType) => void;
   className?: string;
@@ -36,7 +36,7 @@ export default function NFTCard({
   isWishlisted = false,
   detailCards,
   detailWishlistIds,
-  battleStats,
+  battleStatsByCardKey,
   onToggleWishlist,
   onBattle,
   className = "",
@@ -286,7 +286,7 @@ export default function NFTCard({
           isWishlisted={isWishlisted}
           navigationCards={detailCards}
           wishlistIds={detailWishlistIds}
-          battleStats={battleStats}
+          battleStatsByCardKey={battleStatsByCardKey}
           onClose={closeDetails}
           onToggleWishlist={onToggleWishlist}
           onBattle={onBattle}
