@@ -3,13 +3,38 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchTokenByKey, formatShortAddress, getCardImageSources, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
+import type { RoundRecord } from "@/lib/battle/rules";
 import type { BattleResult } from "./BattlePanel";
+
+export const DEFAULT_BEAT_DELAY_MS = 650;
 
 interface BattleResultScreenProps {
   attackerCard: NFTCardType;
   result: BattleResult;
   wasOverkillTiebreak: boolean;
   onClose: () => void;
+  beatDelayMs?: number;
+}
+
+interface CombatBeat {
+  round: number;
+  side: "attacker" | "defender";
+  damage: number;
+  hpA: number;
+  hpB: number;
+}
+
+function combatBeats(history: RoundRecord[] | undefined, attackerMaxHp: number, defenderMaxHp: number): CombatBeat[] {
+  const beats: CombatBeat[] = [];
+  let hpA = attackerMaxHp;
+  let hpB = defenderMaxHp;
+  for (const round of history ?? []) {
+    beats.push({ round: round.round, side: "attacker", damage: round.damageA, hpA, hpB: round.hpB });
+    hpB = round.hpB;
+    beats.push({ round: round.round, side: "defender", damage: round.damageB, hpA: round.hpA, hpB });
+    hpA = round.hpA;
+  }
+  return beats;
 }
 
 function CardFace({ card, side }: { card: NFTCardType | null; side: "attacker" | "defender" }) {
@@ -56,7 +81,13 @@ function HealthBar({ label, current, max }: { label: string; current: number; ma
   );
 }
 
-export default function BattleResultScreen({ attackerCard, result, wasOverkillTiebreak, onClose }: BattleResultScreenProps) {
+export default function BattleResultScreen({
+  attackerCard,
+  result,
+  wasOverkillTiebreak,
+  onClose,
+  beatDelayMs = DEFAULT_BEAT_DELAY_MS,
+}: BattleResultScreenProps) {
   const [defenderCard, setDefenderCard] = useState<NFTCardType | null>(null);
 
   useEffect(() => {
@@ -78,11 +109,29 @@ export default function BattleResultScreen({ attackerCard, result, wasOverkillTi
   const attackerMaxHp = result.attackerStats?.hp ?? result.combat?.finalHpA ?? 0;
   const defenderMaxHp = result.defenderStats?.hp ?? result.combat?.finalHpB ?? 0;
 
+  const beats = useMemo(
+    () => combatBeats(result.combat?.history, attackerMaxHp, defenderMaxHp),
+    [result.combat, attackerMaxHp, defenderMaxHp],
+  );
+
+  const [revealedBeats, setRevealedBeats] = useState(0);
+
+  useEffect(() => {
+    if (revealedBeats >= beats.length) return;
+    const timer = setTimeout(() => setRevealedBeats((n) => n + 1), beatDelayMs);
+    return () => clearTimeout(timer);
+  }, [revealedBeats, beats.length, beatDelayMs]);
+
+  const sequenceComplete = revealedBeats >= beats.length;
+  const lastRevealed = beats[revealedBeats - 1];
+  const attackerHp = lastRevealed ? lastRevealed.hpA : attackerMaxHp;
+  const defenderHp = lastRevealed ? lastRevealed.hpB : defenderMaxHp;
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-0/98 px-4 py-6 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
         <div className="mb-4 text-center">
-          {result.outcome === "draw" ? (
+          {!sequenceComplete ? null : result.outcome === "draw" ? (
             <p className="text-sm font-semibold text-text-secondary">Draw — no XP, no recovery for either side.</p>
           ) : result.winner === "attacker" ? (
             <p className="text-sm font-bold text-accent">
@@ -96,30 +145,34 @@ export default function BattleResultScreen({ attackerCard, result, wasOverkillTi
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-1 flex-col items-center gap-2">
             <CardFace card={attackerCard} side="attacker" />
-            <HealthBar label="You" current={result.combat?.finalHpA ?? 0} max={attackerMaxHp} />
+            <HealthBar label="You" current={attackerHp} max={attackerMaxHp} />
           </div>
           <div className="mt-10 shrink-0 text-xs font-bold text-text-tertiary">VS</div>
           <div className="flex flex-1 flex-col items-center gap-2">
             <CardFace card={defenderCard} side="defender" />
             <HealthBar
               label={result.defenderWallet ? formatShortAddress(result.defenderWallet) : "Opponent"}
-              current={result.combat?.finalHpB ?? 0}
+              current={defenderHp}
               max={defenderMaxHp}
             />
           </div>
         </div>
 
         <div className="mt-6 flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border-default bg-surface-1/60 p-3">
-          {(result.combat?.history ?? []).map((round) => (
-            <p key={round.round} className="text-xs text-text-secondary">
-              Round {round.round} — you dealt {Math.round(round.damageA)}, they dealt {Math.round(round.damageB)}
+          {beats.slice(0, revealedBeats).map((beat, index) => (
+            <p key={index} className="text-xs text-text-secondary">
+              {beat.side === "attacker"
+                ? `${attackerCard.name} hit for ${Math.round(beat.damage)}!`
+                : `${defenderCard?.name ?? "Opponent"} hit back for ${Math.round(beat.damage)}!`}
             </p>
           ))}
         </div>
 
-        <button onClick={onClose} className="button-primary mt-6 w-full px-4 py-2.5 text-xs font-semibold">
-          Close
-        </button>
+        {sequenceComplete ? (
+          <button onClick={onClose} className="button-primary mt-6 w-full px-4 py-2.5 text-xs font-semibold">
+            Close
+          </button>
+        ) : null}
       </div>
     </div>
   );

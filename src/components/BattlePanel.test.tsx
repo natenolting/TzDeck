@@ -271,6 +271,12 @@ test("BattlePanel: a won battle mounts BattleResultScreen with the attacker card
     await screen.findByText("Panel Fighter"),
     "BattleResultScreen must actually mount with the same attacker card BattlePanel was given, not just compute a result",
   );
-  assert.ok(await screen.findByText(/Round 1/), "the round-by-round combat log from the server response must reach the screen");
-  assert.ok(screen.getByText(/Victory/), "a win must render through BattleResultScreen, not the panel's old inline result line");
+  assert.ok(
+    await screen.findByText(/Panel Fighter hit for 30/),
+    "the round-by-round combat log from the server response must reach the screen",
+  );
+  assert.ok(
+    await screen.findByText(/Victory/, undefined, { timeout: 5000 }),
+    "a win must render through BattleResultScreen, not the panel's old inline result line, once its beat-by-beat playback finishes",
+  );
 });
