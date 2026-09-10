@@ -74,29 +74,25 @@ function stubDefenderTokenFetch(name: string) {
 }
 
 function stubDelayedDefenderTokenFetch(name: string, delayMs: number) {
-  objktClient.request = (() =>
-    new Promise((resolve) => {
-      setTimeout(
-        () =>
-          resolve({
-            token: [
-              {
-                name,
-                token_id: "9",
-                fa_contract: "KT1Defender",
-                display_uri: "https://example.com/defender.jpg",
-                artifact_uri: null,
-                thumbnail_uri: null,
-                supply: 3,
-                description: "A rival card.",
-                creators: [],
-                fa: { name: "Rival Collection" },
-              },
-            ],
-          }),
-        delayMs,
-      );
-    })) as typeof objktClient.request;
+  objktClient.request = (async () => {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return {
+      token: [
+        {
+          name,
+          token_id: "9",
+          fa_contract: "KT1Defender",
+          display_uri: "https://example.com/defender.jpg",
+          artifact_uri: null,
+          thumbnail_uri: null,
+          supply: 3,
+          description: "A rival card.",
+          creators: [],
+          fa: { name: "Rival Collection" },
+        },
+      ],
+    };
+  }) as typeof objktClient.request;
 }
 
 function baseResult(overrides: Partial<BattleResult> = {}): BattleResult {

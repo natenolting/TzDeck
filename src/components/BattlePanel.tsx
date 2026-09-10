@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
 import { getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { baseStatsFromSeed, deriveBaseSeed, type RoundRecord } from "@/lib/battle/rules";
@@ -48,12 +48,15 @@ export interface BattleResult {
 type PanelState =
   | { kind: "idle" }
   | { kind: "awaiting_signature" }
+  | { kind: "submitting" }
   | { kind: "syncing" }
   | { kind: "declined" }
   | { kind: "unsupported_wallet" }
   | { kind: "result"; result: BattleResult; wasOverkillTiebreak: boolean }
   | { kind: "no_match" }
   | { kind: "cap_reached" }
+  | { kind: "expired" }
+  | { kind: "uncertain" }
   | { kind: "error"; message: string };
 
 const ATTACK_CAP_MAX = 20;
@@ -154,6 +157,141 @@ export async function resubmitWhilePending(
   return { response, timedOut: false };
 }
 
+// ---------------------------------------------------------------------------
+// Review follow-up items 1/2: preserving a signed battle attempt across
+// network failures and the server's own bounded-retry signals, instead of
+// discarding it and mislabeling every post-submission failure as a declined
+// signature.
+// ---------------------------------------------------------------------------
+
+/**
+ * Error strings the battle-route/attempt-ledger contract marks retryable
+ * (server called failAttempt/commit_battle with retryable=true, or the
+ * request never reached a persisted attempt at all -- attempt_in_progress).
+ * Every other non-2xx response is a terminal business rejection per the
+ * existing contract (random/route.ts, challenge/route.ts, commit_battle.sql)
+ * -- NOT every 409 is retryable: attack_cap_reached, self_challenge,
+ * attacker_card_not_held, etc. are all 409 and all terminal, while
+ * conflicting_first_use_materialization is also 409 but IS retryable.
+ */
+const RETRYABLE_BATTLE_ERRORS = new Set([
+  "attempt_in_progress",
+  "rate_limited",
+  "ownership_unverifiable",
+  "attacker_metadata_unavailable",
+  "attempt_expired",
+  "conflicting_first_use_materialization",
+]);
+
+const BATTLE_RETRY_MAX_ATTEMPTS = 5;
+const BATTLE_RETRY_DELAY_MS = 2000;
+
+export type BattleAttemptOutcome =
+  | { kind: "success"; json: Record<string, unknown> }
+  | { kind: "terminal"; status: number; error: string }
+  | { kind: "expired" }
+  | { kind: "uncertain" };
+
+type ClassifiedResponse = BattleAttemptOutcome | { kind: "retry"; retryAfterMs?: number };
+
+async function classifyBattleResponse(post: () => Promise<Response>): Promise<ClassifiedResponse> {
+  let response: Response;
+  try {
+    response = await post();
+  } catch {
+    return { kind: "retry" };
+  }
+
+  let json: Record<string, unknown> = {};
+  try {
+    json = await response.json();
+  } catch {
+    return { kind: "retry" };
+  }
+
+  if (response.ok) return { kind: "success", json };
+
+  const error = typeof json.error === "string" ? json.error : "battle_request_failed";
+  if (error === "nonce_expired") return { kind: "expired" };
+  if (RETRYABLE_BATTLE_ERRORS.has(error)) {
+    const retryAfterHeader = response.headers.get("Retry-After");
+    const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
+    return { kind: "retry", retryAfterMs };
+  }
+  return { kind: "terminal", status: response.status, error };
+}
+
+/**
+ * Resubmits `post()` -- the identical signed body, never re-signed -- while
+ * the response is one the attempt ledger marks retryable. Honors a 409
+ * attempt_in_progress's Retry-After header; falls back to `defaultDelayMs`
+ * otherwise. Exhausting `maxAttempts` reports "uncertain" (the request may
+ * have settled server-side even though this client never confirmed it)
+ * rather than a false success or a false terminal failure. `wait` is
+ * injectable so tests don't need real timers.
+ */
+export async function resubmitBattleAttempt(
+  post: () => Promise<Response>,
+  maxAttempts: number = BATTLE_RETRY_MAX_ATTEMPTS,
+  defaultDelayMs: number = BATTLE_RETRY_DELAY_MS,
+  wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<BattleAttemptOutcome> {
+  let attempts = 0;
+  for (;;) {
+    const outcome = await classifyBattleResponse(post);
+    if (outcome.kind !== "retry") return outcome;
+    attempts += 1;
+    if (attempts > maxAttempts) return { kind: "uncertain" };
+    await wait(outcome.retryAfterMs ?? defaultDelayMs);
+  }
+}
+
+/**
+ * Pure mapping from a classified attempt outcome to the resulting panel
+ * state, isolated from React so every branch is directly testable. Only
+ * "uncertain" retains the pending attempt -- every other outcome is either a
+ * definite answer (success, a business rejection) or requires a fresh
+ * signature (expired), so resubmitting the same body would be pointless or
+ * wrong.
+ */
+export function applyBattleOutcome(outcome: BattleAttemptOutcome): {
+  panelState: PanelState;
+  clearPendingAttempt: boolean;
+} {
+  switch (outcome.kind) {
+    case "success": {
+      const json = outcome.json;
+      if (json.outcome === "no_match") {
+        return { panelState: { kind: "no_match" }, clearPendingAttempt: true };
+      }
+      // An overkill-tiebreak win is one where both sides' realized HP hit
+      // zero the same round -- the server doesn't currently flag this
+      // explicitly in the response, so this reads as an ordinary win until
+      // that's added; documented here rather than guessed at.
+      return {
+        panelState: { kind: "result", result: json as unknown as BattleResult, wasOverkillTiebreak: false },
+        clearPendingAttempt: true,
+      };
+    }
+    case "terminal":
+      if (outcome.error === "attack_cap_reached" || outcome.error === "defense_cap_reached") {
+        return { panelState: { kind: "cap_reached" }, clearPendingAttempt: true };
+      }
+      return { panelState: { kind: "error", message: outcome.error }, clearPendingAttempt: true };
+    case "expired":
+      return { panelState: { kind: "expired" }, clearPendingAttempt: true };
+    case "uncertain":
+      return { panelState: { kind: "uncertain" }, clearPendingAttempt: false };
+  }
+}
+
+interface PendingBattleAttempt {
+  /** The wallet that actually signed this attempt (from signChallenge's own result), not a possibly-stale reactive address. */
+  wallet: string;
+  endpoint: string;
+  body: string;
+}
+
 export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const { address, signChallenge } = useWallet();
   const cardKey = getCardKey(card);
@@ -164,6 +302,12 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const [mode, setMode] = useState<"random" | "challenge">("random");
   const [targetWallet, setTargetWallet] = useState("");
   const [panelState, setPanelState] = useState<PanelState>({ kind: "idle" });
+  const [pendingAttempt, setPendingAttempt] = useState<PendingBattleAttempt | null>(null);
+  // Bumped on every new attempt (initial submit or manual retry) so a
+  // superseded async resolution can never overwrite a later one's UI --
+  // "only the active attempt may update the result or release the busy
+  // state" (item 1).
+  const attemptIdRef = useRef(0);
 
   const loadStatus = useCallback(
     (walletAddress: string) =>
@@ -204,6 +348,11 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
 
   const toggleOptIn = async () => {
     if (!status) return;
+    // Duplicate-invocation guard beyond the disabled button (item 2): a
+    // battle submission and an opt-in sync must never run concurrently.
+    if (panelState.kind === "awaiting_signature" || panelState.kind === "syncing" || panelState.kind === "submitting") {
+      return;
+    }
     const nextOptedIn = !status.optedIn;
     setPanelState({ kind: "awaiting_signature" });
     try {
@@ -248,54 +397,76 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
     }
   };
 
+  // Submits (or resubmits, on manual Retry) one already-signed attempt.
+  // Never calls signChallenge -- that only happens once, in startBattle,
+  // before an attempt exists. Item 1: retains the exact signed body across
+  // automatic retries and an exhausted-retry manual Retry alike.
+  const submitAttempt = useCallback(
+    async (attempt: PendingBattleAttempt) => {
+      const attemptId = ++attemptIdRef.current;
+      setPanelState({ kind: "submitting" });
+
+      const post = () =>
+        fetch(attempt.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: attempt.body,
+        });
+      const outcome = await resubmitBattleAttempt(post);
+
+      // A newer attempt superseded this one, or the wallet that signed it
+      // is no longer the connected wallet -- drop this stale resolution
+      // rather than letting it clobber the current UI (item 1).
+      if (attemptIdRef.current !== attemptId || address !== attempt.wallet) return;
+
+      const { panelState: nextState, clearPendingAttempt } = applyBattleOutcome(outcome);
+      setPanelState(nextState);
+      if (clearPendingAttempt) setPendingAttempt(null);
+      if (nextState.kind === "result") await refreshStatus();
+    },
+    [address, refreshStatus],
+  );
+
   const startBattle = async () => {
+    // Guards the handler itself, not just the disabled button (item 2).
+    if (panelState.kind === "awaiting_signature" || panelState.kind === "submitting") return;
     if (isRecovering || atAttackCap) return;
     setPanelState({ kind: "awaiting_signature" });
+
+    let signed: Awaited<ReturnType<typeof signChallenge>>;
     try {
       const action = mode === "random" ? "random" : "challenge";
       const params = mode === "random" ? [cardKey] : [cardKey, targetWallet];
-      const signed = await signChallenge(action, params);
-      setPanelState({ kind: "idle" });
-
-      const body =
-        mode === "random"
-          ? { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey }
-          : { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey, defenderWallet: targetWallet };
-
-      const response = await fetch(`/api/battle/${mode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await response.json();
-
-      if (!response.ok) {
-        if (json.error === "attack_cap_reached" || response.status === 429) {
-          setPanelState({ kind: "cap_reached" });
-          return;
-        }
-        setPanelState({ kind: "error", message: json.error || "Battle request failed." });
-        return;
-      }
-
-      if (json.outcome === "no_match") {
-        setPanelState({ kind: "no_match" });
-        return;
-      }
-
-      // An overkill-tiebreak win is one where both sides' realized HP hit
-      // zero the same round -- the server doesn't currently flag this
-      // explicitly in the response, so this reads as an ordinary win until
-      // that's added; documented here rather than guessed at.
-      setPanelState({ kind: "result", result: json, wasOverkillTiebreak: false });
-      await refreshStatus();
+      signed = await signChallenge(action, params);
     } catch (error) {
+      // Only a wallet-signing rejection/cancellation reaches this catch --
+      // nothing after this point (the POST phase) is allowed to land here
+      // and be mislabeled as a declined signature (item 1).
       if (error instanceof UnsupportedWalletTypeError) {
         setPanelState({ kind: "unsupported_wallet" });
         return;
       }
       setPanelState({ kind: "declined" });
+      return;
     }
+
+    const body =
+      mode === "random"
+        ? { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey }
+        : { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey, defenderWallet: targetWallet };
+    const attempt: PendingBattleAttempt = {
+      wallet: signed.address,
+      endpoint: `/api/battle/${mode}`,
+      body: JSON.stringify(body),
+    };
+    setPendingAttempt(attempt);
+    await submitAttempt(attempt);
+  };
+
+  const retryPendingAttempt = async () => {
+    if (!pendingAttempt) return;
+    if (panelState.kind === "awaiting_signature" || panelState.kind === "submitting") return;
+    await submitAttempt(pendingAttempt);
   };
 
   if (statusUnavailable) {
@@ -353,7 +524,11 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
             <span className="text-xs text-text-secondary">Defend against other wallets</span>
             <button
               onClick={toggleOptIn}
-              disabled={panelState.kind === "awaiting_signature" || panelState.kind === "syncing"}
+              disabled={
+                panelState.kind === "awaiting_signature" ||
+                panelState.kind === "syncing" ||
+                panelState.kind === "submitting"
+              }
               className={`button-secondary px-3 py-1.5 text-xs font-semibold ${status?.optedIn ? "text-accent" : ""}`}
             >
               {panelState.kind === "syncing" ? "Syncing your holdings…" : status?.optedIn ? "Opted in" : "Opt in"}
@@ -388,7 +563,20 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
             )
           )}
 
-          {isRecovering ? (
+          {panelState.kind === "uncertain" ? (
+            <div className="mt-4 rounded-xl border border-danger/40 bg-danger-quiet px-3 py-3 text-xs text-danger">
+              <p>
+                We couldn&apos;t confirm whether this battle completed. Retrying resubmits the exact same signed
+                request — it will never start a second battle.
+              </p>
+              <button
+                onClick={retryPendingAttempt}
+                className="button-secondary mt-2 w-full px-3 py-2 text-xs font-semibold"
+              >
+                Retry
+              </button>
+            </div>
+          ) : isRecovering ? (
             <p className="mt-4 rounded-xl border border-danger/40 bg-danger-quiet px-3 py-2 text-xs text-danger">
               This card is recovering and can&apos;t battle right now.
             </p>
@@ -435,12 +623,17 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                 onClick={startBattle}
                 disabled={
                   panelState.kind === "awaiting_signature" ||
+                  panelState.kind === "submitting" ||
                   panelState.kind === "syncing" ||
                   (mode === "challenge" && (!targetWallet || targetWallet === address))
                 }
                 className="button-primary w-full px-4 py-2.5 text-xs font-semibold"
               >
-                {panelState.kind === "awaiting_signature" ? "Awaiting wallet signature…" : "Battle!"}
+                {panelState.kind === "awaiting_signature"
+                  ? "Awaiting wallet signature…"
+                  : panelState.kind === "submitting"
+                    ? "Battling…"
+                    : "Battle!"}
               </button>
             </div>
           )}
@@ -456,6 +649,12 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
           )}
           {panelState.kind === "cap_reached" && (
             <p className="mt-3 text-xs text-text-secondary">Daily limit reached.</p>
+          )}
+          {panelState.kind === "expired" && (
+            <p className="mt-3 text-xs text-danger">
+              This battle attempt expired before it could complete. Click Battle! to try again with a fresh
+              signature.
+            </p>
           )}
           {panelState.kind === "error" && <p className="mt-3 text-xs text-danger">{panelState.message}</p>}
         </>

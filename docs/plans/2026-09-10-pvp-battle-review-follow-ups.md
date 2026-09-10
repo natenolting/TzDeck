@@ -12,7 +12,26 @@ failure scenarios below.
 
 ## 1. Preserve signed requests after an uncertain response
 
-- [ ] Implement and verify.
+- [x] Implemented and verified together with item 2. `startBattle` now
+  splits `signChallenge` into its own try/catch (`declined`/
+  `unsupported_wallet` are reachable ONLY from a signing failure) from the
+  POST phase, which never throws in a way that reaches that catch --
+  `resubmitBattleAttempt`/`classifyBattleResponse` (new, `BattlePanel.tsx`)
+  swallow network failures and malformed JSON as retryable. The exact
+  signed body/endpoint/wallet is retained in `pendingAttempt` state
+  (`PendingBattleAttempt`) and resubmitted verbatim by both automatic
+  retries and a manual "Retry" action -- neither ever calls `signChallenge`
+  again. `RETRYABLE_BATTLE_ERRORS` encodes the real route/commit_battle.sql
+  contract (attempt_in_progress, rate_limited, ownership_unverifiable,
+  attacker_metadata_unavailable, attempt_expired, and BT012's
+  conflicting_first_use_materialization) -- every other non-2xx, including
+  other 409s like attack_cap_reached/self_challenge/attacker_card_not_held,
+  is terminal, not retried. `nonce_expired` gets its own `expired` state
+  requiring a fresh signature. Retry-After is honored; otherwise a fixed
+  2s/5-attempt bound applies, exhausting to an `uncertain` state (Retry
+  button, same stored body) rather than any success/failure claim.
+  `attemptIdRef` plus a wallet-identity check drop stale resolutions from a
+  superseded or wallet-switched attempt.
 - Location: `src/components/BattlePanel.tsx`, `startBattle` and error handling.
 - Problem: a POST can settle successfully while its response is lost. The
   catch currently reports that the signature was declined and nothing was
@@ -48,7 +67,18 @@ failure scenarios below.
 
 ## 2. Keep battle controls disabled until settlement finishes
 
-- [ ] Implement and verify.
+- [x] Implemented and verified together with item 1. `startBattle` no
+  longer sets `panelState` back to `idle` after signing -- it goes straight
+  to a new `submitting` state (button reads "Battling…") that lasts through
+  the whole retry lifecycle, not just the first POST. Both the Battle
+  button and the opt-in toggle button are disabled during
+  `awaiting_signature`/`submitting`/`syncing`, and both handlers
+  (`startBattle`, `toggleOptIn`) also guard themselves at entry against
+  duplicate invocation, independent of the disabled attribute. A dedicated
+  render-level test ("Battle and opt-in controls stay disabled while a
+  battle submission is in flight") holds a fetch response pending, asserts
+  both buttons disabled and the button label reads "Battling…", then
+  resolves and confirms they re-enable once a terminal state is reached.
 - Location: `src/components/BattlePanel.tsx`, immediately after
   `signChallenge` and in the action controls.
 - Problem: setting the panel to idle after signing re-enables Battle while
