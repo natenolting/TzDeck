@@ -1,7 +1,14 @@
 # Critical hits and misses design
 
-Status: designed and approved in chat (numbers confirmed); not yet
-implemented.
+Status: implemented (see docs/plans/2026-09-10-critical-hits-misses-plan.md
+and its commits on feat/pvp-battle-system). Verified via the full
+automated test suite (unit tests for the three level curves,
+resolveBattle's crit/miss branching, and BattleResultScreen's three beat
+styles), tsc, lint, and a production build. A live click-through in the
+browser with a mocked miss/critical/hit sequence was set up but not
+completed -- it needed a wallet signature the user couldn't approve
+mid-session (away from their PC) -- so this rests on the automated
+coverage alone, not an eyes-on confirmation of the rendered styling.
 
 ## Summary
 
