@@ -41,13 +41,31 @@ function resolveEditions(rawSupply: unknown): number {
 export type MetadataResult =
   | { status: "ok"; metadata: BattleTokenMetadata }
   | { status: "not_held" }
-  | { status: "unavailable" };
+  | { status: "unavailable" }
+  /** Held, but self-minted by this same wallet -- never battle-eligible (M1). */
+  | { status: "self_minted" };
 
 interface ObjktSingleTokenResponse {
   token_holder: Array<{
     quantity: number | string;
-    token: { supply: number | string | null; description: string | null };
+    token: {
+      supply: number | string | null;
+      description: string | null;
+      creators?: Array<{ holder: { address: string } }>;
+    };
   }>;
+}
+
+/**
+ * M1: stats are derived purely from edition count, and a 1/1 is the global
+ * maximum -- so self-minting a free single-edition token and battling with
+ * it while still holding it would otherwise be a strictly-best card for
+ * the cost of a mint, not an NFT acquisition. A wallet can mint and
+ * immediately hold any token it likes, so the only signal available here
+ * is whether the current holder is also the token's original creator.
+ */
+function isSelfMintedByHolder(address: string, creators: Array<{ holder: { address: string } }> | undefined): boolean {
+  return creators?.[0]?.holder?.address === address;
 }
 
 /** Fetches one card's authoritative metadata fresh from the upstream, never from client-supplied stats. */
@@ -68,7 +86,13 @@ export async function fetchBattleTokenMetadata(
           limit: 1
         ) {
           quantity
-          token { supply description }
+          token {
+            supply
+            description
+            creators {
+              holder { address }
+            }
+          }
         }
       }
     `;
@@ -79,6 +103,7 @@ export async function fetchBattleTokenMetadata(
     const row = data?.token_holder?.[0];
     if (!row) return { status: "not_held" };
     if (Number(row.quantity) <= 0) return { status: "not_held" };
+    if (isSelfMintedByHolder(address, row.token.creators)) return { status: "self_minted" };
 
     const editions = resolveEditions(row.token.supply);
     return {
@@ -105,7 +130,13 @@ export type HoldingsPageResult =
 interface ObjktHoldingsPageResponse {
   token_holder: Array<{
     quantity: number | string;
-    token: { fa_contract: string; token_id: string; supply: number | string | null; description: string | null };
+    token: {
+      fa_contract: string;
+      token_id: string;
+      supply: number | string | null;
+      description: string | null;
+      creators?: Array<{ holder: { address: string } }>;
+    };
   }>;
 }
 
@@ -136,7 +167,15 @@ export async function fetchBattleHoldingsPage(
           order_by: [{ token: { fa_contract: asc } }, { token: { token_id: asc } }]
         ) {
           quantity
-          token { fa_contract token_id supply description }
+          token {
+            fa_contract
+            token_id
+            supply
+            description
+            creators {
+              holder { address }
+            }
+          }
         }
       }
     `;
@@ -145,14 +184,20 @@ export async function fetchBattleHoldingsPage(
       UPSTREAM_TIMEOUT_MS,
     );
     const rows = data?.token_holder ?? [];
-    const cards: BattleTokenMetadata[] = rows.map((row) => ({
-      cardKey: `${row.token.fa_contract}:${row.token.token_id}`,
-      contractAddress: row.token.fa_contract,
-      tokenId: row.token.token_id,
-      seed: deriveBaseSeed(resolveEditions(row.token.supply), row.token.description),
-      source: "objkt",
-      observedAt: new Date(),
-    }));
+    // M1: a self-minted, still-self-held card never enters the battle pool
+    // at all -- filtered here at ingestion rather than at read time, so
+    // this can't diverge across every place a card's eligibility matters
+    // (matchmaking pool, opt-in, direct challenge).
+    const cards: BattleTokenMetadata[] = rows
+      .filter((row) => !isSelfMintedByHolder(address, row.token.creators))
+      .map((row) => ({
+        cardKey: `${row.token.fa_contract}:${row.token.token_id}`,
+        contractAddress: row.token.fa_contract,
+        tokenId: row.token.token_id,
+        seed: deriveBaseSeed(resolveEditions(row.token.supply), row.token.description),
+        source: "objkt",
+        observedAt: new Date(),
+      }));
     const complete = rows.length < pageSize;
     return { status: "ok", cards, nextCursor: complete ? null : offset + pageSize, complete };
   } catch (err) {

@@ -47,6 +47,40 @@ test("fetchBattleTokenMetadata: a missing supply never defaults to a valuable 1-
   );
 });
 
+test("fetchBattleTokenMetadata: a token still held by its own creator is self_minted, never battle-eligible", async () => {
+  await withObjktStub(
+    async () => ({
+      token_holder: [
+        {
+          quantity: 1,
+          token: { supply: 1, description: null, creators: [{ holder: { address: "tz1Wallet" } }] },
+        },
+      ],
+    }),
+    async () => {
+      const result = await fetchBattleTokenMetadata("tz1Wallet", "KT1Contract", "1");
+      assert.equal(result.status, "self_minted");
+    },
+  );
+});
+
+test("fetchBattleTokenMetadata: a token created by someone else is battle-eligible", async () => {
+  await withObjktStub(
+    async () => ({
+      token_holder: [
+        {
+          quantity: 1,
+          token: { supply: 1, description: null, creators: [{ holder: { address: "tz1SomeoneElse" } }] },
+        },
+      ],
+    }),
+    async () => {
+      const result = await fetchBattleTokenMetadata("tz1Wallet", "KT1Contract", "1");
+      assert.equal(result.status, "ok");
+    },
+  );
+});
+
 test("fetchBattleTokenMetadata: zero quantity is not_held", async () => {
   await withObjktStub(
     async () => ({ token_holder: [{ quantity: 0, token: { supply: 5, description: null } }] }),
@@ -110,6 +144,46 @@ test("fetchBattleHoldingsPage: a partial page (fewer than pageSize) is complete"
         assert.equal(page.cards.length, 30);
         assert.equal(page.complete, true);
         assert.equal(page.nextCursor, null);
+      }
+    },
+  );
+});
+
+test("fetchBattleHoldingsPage: a self-minted, still-self-held card is excluded from the page, but still counted for pagination", async () => {
+  await withObjktStub(
+    async () => ({
+      token_holder: [
+        {
+          quantity: 1,
+          token: {
+            fa_contract: "KT1Contract",
+            token_id: "1",
+            supply: 1,
+            description: null,
+            creators: [{ holder: { address: "tz1Wallet" } }],
+          },
+        },
+        {
+          quantity: 1,
+          token: {
+            fa_contract: "KT1Contract",
+            token_id: "2",
+            supply: 10,
+            description: null,
+            creators: [{ holder: { address: "tz1SomeoneElse" } }],
+          },
+        },
+      ],
+    }),
+    async () => {
+      const page = await fetchBattleHoldingsPage("tz1Wallet", null, 100);
+      assert.equal(page.status, "ok");
+      if (page.status === "ok") {
+        assert.equal(page.cards.length, 1, "the self-minted card must never enter the battle pool");
+        assert.equal(page.cards[0].tokenId, "2");
+        // Only two rows came back from a page sized 100 -- genuinely complete,
+        // not "complete" because filtering happened to shrink the count.
+        assert.equal(page.complete, true);
       }
     },
   );

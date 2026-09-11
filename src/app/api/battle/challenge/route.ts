@@ -122,6 +122,10 @@ export async function POST(request: NextRequest) {
       attackerLevel = levelForXp(Number(existingAttackerProgress.xp));
     } else {
       const metadata = await fetchBattleTokenMetadata(wallet, contractAddress, tokenId);
+      if (metadata.status === "self_minted") {
+        await failAttempt(nonce, generation, { error: "attacker_card_self_minted" }, 409, false);
+        return errorResponse(409, "attacker_card_self_minted");
+      }
       if (metadata.status !== "ok") {
         await failAttempt(nonce, generation, { error: "attacker_metadata_unavailable" }, 503, true);
         return errorResponse(503, "attacker_metadata_unavailable");
