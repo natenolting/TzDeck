@@ -19,8 +19,8 @@ import {
   checkRateLimit,
   commitBattle,
   failAttempt,
-  fetchMatchmakingCandidatePool,
   fetchProgress,
+  fetchWalletCandidateCards,
   type CandidatePoolRow,
 } from "@/lib/battle/store";
 
@@ -137,8 +137,7 @@ export async function POST(request: NextRequest) {
     });
 
     // No re-roll for a direct challenge -- a named wallet has no sensible substitute.
-    const poolRows = await fetchMatchmakingCandidatePool(wallet);
-    const targetRows = poolRows.filter((row) => row.wallet === body.defenderWallet);
+    const targetRows = await fetchWalletCandidateCards(body.defenderWallet);
     if (targetRows.length === 0) {
       await failAttempt(nonce, generation, { error: "target_not_eligible" }, 409, false);
       return errorResponse(409, "target_not_eligible");

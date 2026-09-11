@@ -94,6 +94,14 @@ export async function runBoundedHoldingsSync(params: BoundedHoldingsSyncParams):
       await failAttempt(params.nonce, params.generation, { error: "sync_superseded" }, 409, true);
       return { outcome: "failed", error: "sync_superseded", status: 409 };
     }
+    if (staged.too_large) {
+      // H4: the collection exceeds the total staged-card cap -- paging
+      // further would only keep growing an already-oversized jsonb blob.
+      // Not retryable: the wallet's holdings, not a transient condition,
+      // are what's over the limit.
+      await failAttempt(params.nonce, params.generation, { error: "collection_too_large" }, 413, false);
+      return { outcome: "failed", error: "collection_too_large", status: 413 };
+    }
     cursor = page.nextCursor;
     complete = page.complete;
     pagesThisInvocation += 1;

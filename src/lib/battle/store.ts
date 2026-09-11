@@ -336,16 +336,20 @@ export interface StagePageResult {
   ok: boolean;
   /** true if this caller is no longer the attempt's current, live, in-window owner -- this call's page was dropped, not applied. */
   stale: boolean;
+  /** true if applying this page would exceed the total staged-card cap (H4) -- this call's page was dropped, not applied. */
+  too_large: boolean;
 }
 
 /**
  * Appends a page's cards (deduplicated by card key, first-seen wins),
  * advances the cursor, and optionally marks the sync complete -- all inside
- * one plpgsql call (migrations/0011_stage_holdings_page_attempt_fencing.sql),
+ * one plpgsql call (migrations/0013_stage_holdings_page_size_cap.sql),
  * fenced on the attempt's current generation, pending status, live lease,
  * and retry deadline -- checked atomically with the write -- so a worker
  * superseded by a takeover (or one whose lease simply expired) can never
- * write, even before the newer worker has staged anything itself.
+ * write, even before the newer worker has staged anything itself. Also caps
+ * the total distinct cards a sync will ever stage (H4) -- a wallet past
+ * that cap fails the sync rather than paging forever.
  */
 export async function stageHoldingsPage(
   nonce: string,
@@ -356,7 +360,7 @@ export async function stageHoldingsPage(
   complete: boolean,
 ): Promise<StagePageResult> {
   const sql = getSql();
-  const rows = await sql<{ ok: boolean; stale: boolean }>`
+  const rows = await sql<{ ok: boolean; stale: boolean; too_large: boolean }>`
     SELECT * FROM stage_holdings_page(
       ${nonce}, ${syncId}, ${generation}::bigint, ${JSON.stringify(newCards)}::jsonb, ${nextCursor}, ${complete}
     )
@@ -441,7 +445,49 @@ export interface CandidatePoolRow {
   defense_reset_at: string;
 }
 
+// H3: an opted-in wallet's card count is caller-controlled (any Tezos wallet
+// can hold or mint an unbounded number of tokens) -- with no cap, one such
+// wallet inflates the row count, and the JS iteration cost over it, for
+// every other player's every random-battle request. MAX_CANDIDATE_CARDS_PER_WALLET
+// bounds how many of any one wallet's cards are ever pulled; MAX_POOL_ROWS
+// bounds the total pulled into Node memory for a random-opponent search.
+// `random()` ordering, not a fixed one (e.g. xp DESC), so which of a large
+// wallet's cards -- and which wallets make the cut at all once the
+// ecosystem exceeds MAX_POOL_ROWS -- varies request to request rather than
+// permanently starving whoever would otherwise never rank in a fixed order.
+const MAX_CANDIDATE_CARDS_PER_WALLET = 5;
+const MAX_POOL_ROWS = 500;
+
 export async function fetchMatchmakingCandidatePool(attackerWallet: string): Promise<CandidatePoolRow[]> {
+  const sql = getSql();
+  return sql<CandidatePoolRow>`
+    WITH ranked AS (
+      SELECT
+        p.wallet,
+        p.card_key,
+        p.seed_editions,
+        p.seed_description_length,
+        p.xp,
+        p.recovery_until,
+        p.progress_version,
+        w.defense_count,
+        w.defense_reset_at,
+        row_number() OVER (PARTITION BY p.wallet ORDER BY random()) AS rn
+      FROM wallet_card_progress p
+      JOIN wallet_holdings h ON h.wallet = p.wallet AND h.card_key = p.card_key
+      JOIN wallets w ON w.address = p.wallet
+      WHERE w.opted_in = true AND w.address != ${attackerWallet}
+    )
+    SELECT wallet, card_key, seed_editions, seed_description_length, xp, recovery_until, progress_version, defense_count, defense_reset_at
+    FROM ranked
+    WHERE rn <= ${MAX_CANDIDATE_CARDS_PER_WALLET}
+    ORDER BY random()
+    LIMIT ${MAX_POOL_ROWS}
+  `;
+}
+
+/** A direct challenge names its target, so no pool search -- just that one wallet's own (capped) cards. */
+export async function fetchWalletCandidateCards(defenderWallet: string): Promise<CandidatePoolRow[]> {
   const sql = getSql();
   return sql<CandidatePoolRow>`
     SELECT
@@ -457,7 +503,9 @@ export async function fetchMatchmakingCandidatePool(attackerWallet: string): Pro
     FROM wallet_card_progress p
     JOIN wallet_holdings h ON h.wallet = p.wallet AND h.card_key = p.card_key
     JOIN wallets w ON w.address = p.wallet
-    WHERE w.opted_in = true AND w.address != ${attackerWallet}
+    WHERE w.opted_in = true AND w.address = ${defenderWallet}
+    ORDER BY random()
+    LIMIT ${MAX_CANDIDATE_CARDS_PER_WALLET}
   `;
 }
 
