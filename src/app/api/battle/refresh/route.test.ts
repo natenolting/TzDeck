@@ -303,7 +303,7 @@ test("POST /api/battle/refresh: a takeover mid-request is reported as sync_super
   }
 });
 
-test("POST /api/battle/refresh: a wallet past its request budget is rate-limited, persisted as a retryable attempt failure", async () => {
+test("POST /api/battle/refresh: a wallet past its request budget is rate-limited before any attempt row is claimed", async () => {
   const { signer, publicKey, address } = await testSigner();
   const sql = getSql();
   try {
@@ -326,12 +326,10 @@ test("POST /api/battle/refresh: a wallet past its request budget is rate-limited
         const json = await response.json();
         assert.equal(json.error, "rate_limited");
 
-        const [attempt] = await sql<{ status: string; retryable: boolean | null; status_code: number | null }>`
-          SELECT status, retryable, status_code FROM battle_attempts WHERE nonce = ${overBudget.envelope.mac}
+        const [attempt] = await sql<{ status: string }>`
+          SELECT status FROM battle_attempts WHERE nonce = ${overBudget.envelope.mac}
         `;
-        assert.equal(attempt.status, "failed");
-        assert.equal(attempt.retryable, true, "a rate limit is operational timing, not a business rule the caller broke");
-        assert.equal(attempt.status_code, 429);
+        assert.equal(attempt, undefined, "an over-budget request must never claim a permanent attempt row");
       },
     );
   } finally {

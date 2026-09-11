@@ -71,7 +71,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const auth = await authenticateAndClaim(body, "random", [body.attackerCardKey]);
+    const auth = await authenticateAndClaim(body, "random", [body.attackerCardKey], {
+      checkBudget: (wallet) => checkRateLimit(`random:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS),
+    });
     switch (auth.outcome) {
       case "rejected":
         return errorResponse(auth.status, auth.reason);
@@ -85,12 +87,6 @@ export async function POST(request: NextRequest) {
         break;
     }
     const { wallet, nonce, generation } = auth;
-
-    const withinBudget = await checkRateLimit(`random:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
-    if (!withinBudget) {
-      await failAttempt(nonce, generation, { error: "rate_limited" }, 429, true);
-      return errorResponse(429, "rate_limited");
-    }
 
     const { contractAddress, tokenId } = splitCardKey(body.attackerCardKey);
 

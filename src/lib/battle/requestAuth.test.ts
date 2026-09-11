@@ -66,7 +66,7 @@ test("authenticateAndClaim: an expired envelope still retrieves an already-compl
     // -- retry_until (15 minutes) is meant to outlive that window precisely
     // so a slow client can still retrieve the result.
     const farFuture = envelope.timestamp + 10 * 60 * 1000;
-    const replay = await authenticateAndClaim(body, "opt-in", params, farFuture);
+    const replay = await authenticateAndClaim(body, "opt-in", params, { now: farFuture });
     assert.equal(replay.outcome, "terminal", "an expired envelope must still resolve to the terminal result, not a fresh rejection");
     if (replay.outcome === "terminal") {
       assert.deepEqual(replay.row.response, { optedIn: true });
@@ -98,7 +98,7 @@ test("authenticateAndClaim: a still-pending attempt with an expired lease is rec
     // within the 15-minute retry horizon, so the same signature can
     // continue it.
     const farFuture = envelope.timestamp + 10 * 60 * 1000;
-    const resumed = await authenticateAndClaim(body, "opt-in", params, farFuture);
+    const resumed = await authenticateAndClaim(body, "opt-in", params, { now: farFuture });
     assert.equal(resumed.outcome, "claimed", "envelope freshness gates creating a NEW attempt, not continuing an existing one within its retry horizon");
     if (resumed.outcome === "claimed") {
       assert.equal(resumed.generation, "1", "reclaiming should advance the generation");
@@ -124,7 +124,7 @@ test("authenticateAndClaim: a retryable failure is reclaimed after its envelope'
     await failAttempt(first.nonce, first.generation, { error: "ownership_unverifiable" }, 503, true);
 
     const farFuture = envelope.timestamp + 10 * 60 * 1000;
-    const resumed = await authenticateAndClaim(body, "random", params, farFuture);
+    const resumed = await authenticateAndClaim(body, "random", params, { now: farFuture });
     assert.equal(resumed.outcome, "claimed", "a retryable failure must still be reclaimable past envelope freshness, within its retry horizon");
     if (resumed.outcome === "claimed") {
       assert.equal(resumed.generation, "1");
@@ -158,7 +158,7 @@ test("authenticateAndClaim: an expired envelope is rejected once the attempt's o
 
     // Past the 5-minute envelope freshness window too.
     const farFuture = envelope.timestamp + 10 * 60 * 1000;
-    const rejected = await authenticateAndClaim(body, "opt-in", params, farFuture);
+    const rejected = await authenticateAndClaim(body, "opt-in", params, { now: farFuture });
     assert.equal(rejected.outcome, "rejected", "there is nothing left to continue once the retry horizon itself has closed");
     if (rejected.outcome === "rejected") assert.equal(rejected.reason, "nonce_expired");
   } finally {
@@ -179,7 +179,7 @@ test("authenticateAndClaim: an expired envelope for a nonce with no existing att
     // Never claimed fresh -- the very first request for this nonce arrives
     // after its freshness window has already closed.
     const farFuture = envelope.timestamp + 10 * 60 * 1000;
-    const result = await authenticateAndClaim(body, "opt-in", params, farFuture);
+    const result = await authenticateAndClaim(body, "opt-in", params, { now: farFuture });
     assert.equal(result.outcome, "rejected");
     if (result.outcome === "rejected") assert.equal(result.reason, "nonce_expired");
 

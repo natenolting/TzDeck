@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { computeParamHash } from "@/lib/battle/auth";
 import { INVOCATION_DEADLINE_MS, runBoundedHoldingsSync } from "@/lib/battle/holdingsSync";
 import { authenticateAndClaim, type SignedRequestBody } from "@/lib/battle/requestAuth";
-import { checkRateLimit, commitParticipation, ensureWalletExists, failAttempt, startOrResumeHoldingsSync } from "@/lib/battle/store";
+import { checkRateLimit, commitParticipation, ensureWalletExists, startOrResumeHoldingsSync } from "@/lib/battle/store";
 
 // Independent of the daily attack/defense caps (U9/U10, "Implementation-Time
 // Unknowns": exact figures) -- generous enough that a large wallet's bounded
@@ -41,7 +41,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const auth = await authenticateAndClaim(body, "opt-in", [body.optedIn]);
+    const auth = await authenticateAndClaim(body, "opt-in", [body.optedIn], {
+      checkBudget: (wallet) => checkRateLimit(`optin:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS),
+    });
     switch (auth.outcome) {
       case "rejected":
         return errorResponse(auth.status, auth.reason);
@@ -55,12 +57,6 @@ export async function POST(request: NextRequest) {
         break;
     }
     const { wallet, nonce, generation } = auth;
-
-    const withinBudget = await checkRateLimit(`optin:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
-    if (!withinBudget) {
-      await failAttempt(nonce, generation, { error: "rate_limited" }, 429, true);
-      return errorResponse(429, "rate_limited");
-    }
 
     if (!body.optedIn) {
       const result = await commitParticipation(nonce, generation, wallet, computeParamHash([false]), false, null);

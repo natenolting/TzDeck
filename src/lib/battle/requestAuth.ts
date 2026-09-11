@@ -20,13 +20,27 @@ export type AuthenticateAndClaimResult =
  * nonce+identity. Never authenticates a request whose reconstructed bytes
  * don't match what was actually signed for THIS action/params.
  */
+export interface AuthenticateAndClaimOptions {
+  /** Test seam only -- production callers rely on the default (Date.now()). */
+  now?: number;
+  /**
+   * Called with the signature-verified wallet, before any attempt row is
+   * created or reclaimed. Returning false rejects the request with no DB
+   * write at all, rather than the budget check running only after a fresh
+   * attempt was already inserted -- otherwise a caller with a valid keypair
+   * can force one permanent `battle_attempts` row per over-budget request,
+   * for free, forever.
+   */
+  checkBudget?: (wallet: string) => Promise<boolean>;
+}
+
 export async function authenticateAndClaim(
   body: SignedRequestBody,
   action: string,
   actionParams: ReadonlyArray<string | number | boolean>,
-  /** Test seam only -- production callers rely on the default (Date.now()). */
-  now?: number,
+  options: AuthenticateAndClaimOptions = {},
 ): Promise<AuthenticateAndClaimResult> {
+  const { now, checkBudget } = options;
   const verifyResult = verifySignedAction({
     envelope: body.envelope,
     publicKey: body.publicKey,
@@ -64,6 +78,9 @@ export async function authenticateAndClaim(
         // also closed -- there is no longer anything to continue.
         return { outcome: "rejected", status: 401, reason: "nonce_expired" };
       }
+      if (checkBudget && !(await checkBudget(verifyResult.wallet))) {
+        return { outcome: "rejected", status: 429, reason: "rate_limited" };
+      }
       const reclaimed = await reclaimAttempt(verifyResult.nonce, identity);
       if (reclaimed) {
         return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation };
@@ -76,6 +93,20 @@ export async function authenticateAndClaim(
   }
 
   const identity = { wallet: verifyResult.wallet, action, paramHash: computeParamHash(actionParams) };
+
+  // A brand-new nonce is about to insert a permanent `battle_attempts` row;
+  // gate that on budget *before* writing it, not after -- otherwise an
+  // over-budget caller with a valid keypair gets a free row per rejected
+  // request. A nonce that already has a row (replay, reclaim) is charged
+  // against budget at the point it actually mutates state below instead,
+  // matching a terminal replay staying free either way.
+  if (checkBudget) {
+    const existing = await lookupAttemptByNonce(verifyResult.nonce);
+    if (!existing && !(await checkBudget(verifyResult.wallet))) {
+      return { outcome: "rejected", status: 429, reason: "rate_limited" };
+    }
+  }
+
   const claim = await claimOrLookupAttempt(verifyResult.nonce, identity, new Date(body.envelope.timestamp));
 
   switch (claim.kind) {
@@ -87,6 +118,9 @@ export async function authenticateAndClaim(
       // The lease may have expired (a prior worker released it for bounded
       // continuation, or crashed) -- attempt a reclaim before reporting
       // in-flight. If the lease is still genuinely live, this is a no-op.
+      if (checkBudget && !(await checkBudget(verifyResult.wallet))) {
+        return { outcome: "rejected", status: 429, reason: "rate_limited" };
+      }
       const reclaimed = await reclaimAttempt(verifyResult.nonce, identity);
       if (reclaimed) {
         return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation };
@@ -104,10 +138,23 @@ export async function authenticateAndClaim(
   }
 }
 
-/** Best-effort caller IP, for rate-limiting the unauthenticated routes that have no wallet identity yet. */
+/**
+ * Best-effort caller IP, for rate-limiting the unauthenticated routes that
+ * have no wallet identity yet. `x-vercel-forwarded-for` is set by Vercel's
+ * edge itself and can't be spoofed by the client (Vercel strips any
+ * client-supplied copy) -- it's the only header here that's actually
+ * trustworthy. Plain `x-forwarded-for` is attacker-controlled at its first
+ * hop, so if that's all we have, the last entry (appended nearest the
+ * server) is the least-untrustworthy fallback, not the first.
+ */
 export function getClientIp(request: { headers: { get(name: string): string | null } }): string {
+  const vercelForwardedFor = request.headers.get("x-vercel-forwarded-for");
+  if (vercelForwardedFor) return vercelForwardedFor.split(",")[0].trim();
   const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) return forwardedFor.split(",")[0].trim();
+  if (forwardedFor) {
+    const hops = forwardedFor.split(",").map((hop) => hop.trim());
+    return hops[hops.length - 1];
+  }
   return request.headers.get("x-real-ip") ?? "unknown";
 }
 

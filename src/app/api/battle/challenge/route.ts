@@ -64,7 +64,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const auth = await authenticateAndClaim(body, "challenge", [body.attackerCardKey, body.defenderWallet]);
+    const auth = await authenticateAndClaim(body, "challenge", [body.attackerCardKey, body.defenderWallet], {
+      checkBudget: (wallet) => checkRateLimit(`challenge:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS),
+    });
     switch (auth.outcome) {
       case "rejected":
         return errorResponse(auth.status, auth.reason);
@@ -78,12 +80,6 @@ export async function POST(request: NextRequest) {
         break;
     }
     const { wallet, nonce, generation } = auth;
-
-    const withinBudget = await checkRateLimit(`challenge:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
-    if (!withinBudget) {
-      await failAttempt(nonce, generation, { error: "rate_limited" }, 429, true);
-      return errorResponse(429, "rate_limited");
-    }
 
     // R6: a wallet can never challenge itself.
     if (wallet === body.defenderWallet) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { computeParamHash } from "@/lib/battle/auth";
 import { INVOCATION_DEADLINE_MS, runBoundedHoldingsSync } from "@/lib/battle/holdingsSync";
 import { authenticateAndClaim, type SignedRequestBody } from "@/lib/battle/requestAuth";
-import { checkRateLimit, commitHoldingsRefresh, ensureWalletExists, failAttempt, startOrResumeHoldingsSync } from "@/lib/battle/store";
+import { checkRateLimit, commitHoldingsRefresh, ensureWalletExists, startOrResumeHoldingsSync } from "@/lib/battle/store";
 
 // Bounded so a large collection resumes across requests rather than a
 // single invocation trying to page through everything at once -- see
@@ -39,7 +39,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const auth = await authenticateAndClaim(body, "refresh", []);
+    const auth = await authenticateAndClaim(body, "refresh", [], {
+      checkBudget: (wallet) => checkRateLimit(`refresh:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS),
+    });
     switch (auth.outcome) {
       case "rejected":
         return errorResponse(auth.status, auth.reason);
@@ -53,12 +55,6 @@ export async function POST(request: NextRequest) {
         break;
     }
     const { wallet, nonce, generation } = auth;
-
-    const withinBudget = await checkRateLimit(`refresh:${wallet}`, RATE_LIMIT_WINDOW_SECONDS, RATE_LIMIT_MAX_REQUESTS);
-    if (!withinBudget) {
-      await failAttempt(nonce, generation, { error: "rate_limited" }, 429, true);
-      return errorResponse(429, "rate_limited");
-    }
 
     const walletRow = await ensureWalletExists(wallet);
     const capturedHoldingsGeneration = walletRow.holdings_generation;
