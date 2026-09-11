@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchTokenByKey, formatShortAddress, getCardImageSources, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
-import type { RoundRecord } from "@/lib/battle/rules";
+import type { RoundOutcome, RoundRecord } from "@/lib/battle/rules";
 import type { BattleResult } from "./BattlePanel";
 
 export const DEFAULT_BEAT_DELAY_MS = 650;
@@ -22,6 +22,7 @@ interface CombatBeat {
   damage: number;
   hpA: number;
   hpB: number;
+  result: RoundOutcome;
 }
 
 function combatBeats(history: RoundRecord[] | undefined, attackerMaxHp: number, defenderMaxHp: number): CombatBeat[] {
@@ -29,9 +30,23 @@ function combatBeats(history: RoundRecord[] | undefined, attackerMaxHp: number, 
   let hpA = attackerMaxHp;
   let hpB = defenderMaxHp;
   for (const round of history ?? []) {
-    beats.push({ round: round.round, side: "attacker", damage: round.damageA, hpA, hpB: round.hpB });
+    beats.push({
+      round: round.round,
+      side: "attacker",
+      damage: round.damageA,
+      hpA,
+      hpB: round.hpB,
+      result: round.resultA ?? "hit",
+    });
     hpB = round.hpB;
-    beats.push({ round: round.round, side: "defender", damage: round.damageB, hpA: round.hpA, hpB });
+    beats.push({
+      round: round.round,
+      side: "defender",
+      damage: round.damageB,
+      hpA: round.hpA,
+      hpB,
+      result: round.resultB ?? "hit",
+    });
     hpA = round.hpA;
   }
   return beats;
@@ -159,13 +174,32 @@ export default function BattleResultScreen({
         </div>
 
         <div className="mt-6 flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border-default bg-surface-1/60 p-3">
-          {beats.slice(0, revealedBeats).map((beat, index) => (
-            <p key={index} className="text-xs text-text-secondary">
-              {beat.side === "attacker"
-                ? `${attackerCard.name} hit for ${Math.round(beat.damage)}!`
-                : `${defenderCard?.name ?? "Opponent"} hit back for ${Math.round(beat.damage)}!`}
-            </p>
-          ))}
+          {beats.slice(0, revealedBeats).map((beat, index) => {
+            const name = beat.side === "attacker" ? attackerCard.name : (defenderCard?.name ?? "Opponent");
+            if (beat.result === "miss") {
+              return (
+                <p key={index} className="text-xs italic text-text-tertiary">
+                  {beat.side === "attacker" ? `${name}'s hit missed!` : `${name}'s counter missed!`}
+                </p>
+              );
+            }
+            if (beat.result === "critical") {
+              return (
+                <p key={index} className="text-xs font-bold text-accent">
+                  {beat.side === "attacker"
+                    ? `${name} landed a CRITICAL HIT for ${Math.round(beat.damage)}!`
+                    : `${name} countered with a CRITICAL HIT for ${Math.round(beat.damage)}!`}
+                </p>
+              );
+            }
+            return (
+              <p key={index} className="text-xs text-text-secondary">
+                {beat.side === "attacker"
+                  ? `${name} hit for ${Math.round(beat.damage)}!`
+                  : `${name} hit back for ${Math.round(beat.damage)}!`}
+              </p>
+            );
+          })}
         </div>
 
         {sequenceComplete ? (

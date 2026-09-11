@@ -230,6 +230,107 @@ test("defender hits fall back to 'Opponent' while the card name is still loading
   assert.equal(screen.queryByText(/Opponent hit back for/), null, "the fallback text is fully replaced once the name resolves");
 });
 
+test("a missed attacker beat shows a miss line, not a damage number", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+  stubDefenderTokenFetch("Rival Card");
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({
+        combat: {
+          rounds: 1,
+          finalHpA: 55,
+          finalHpB: 85,
+          history: [{ round: 1, damageA: 0, damageB: 25, hpA: 55, hpB: 85, resultA: "miss", resultB: "hit" }],
+        },
+      })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+    />,
+  );
+
+  assert.ok(await screen.findByText(/My Fighter's hit missed/), "a miss shows no damage number");
+});
+
+test("a critical defender beat is called out distinctly, with the real multiplied damage", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+  stubDefenderTokenFetch("Rival Card");
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({
+        combat: {
+          rounds: 1,
+          finalHpA: 20,
+          finalHpB: 85,
+          history: [{ round: 1, damageA: 0, damageB: 60, hpA: 20, hpB: 85, resultA: "miss", resultB: "critical" }],
+        },
+      })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+    />,
+  );
+
+  await screen.findByText("Rival Card");
+  assert.ok(await screen.findByText(/Rival Card countered with a CRITICAL HIT for 60/));
+});
+
+test("a normal hit's line is unaffected by the new result field", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+  stubDefenderTokenFetch("Rival Card");
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({
+        combat: {
+          rounds: 1,
+          finalHpA: 60,
+          finalHpB: 55,
+          history: [{ round: 1, damageA: 30, damageB: 20, hpA: 60, hpB: 55, resultA: "hit", resultB: "hit" }],
+        },
+      })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+    />,
+  );
+
+  assert.ok(await screen.findByText(/My Fighter hit for 30/));
+});
+
+test("a beat with no result field (a legacy stored battle) renders as a normal hit", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+  stubDefenderTokenFetch("Rival Card");
+  // No resultA/resultB on this row at all -- resultA/resultB are optional
+  // in RoundRecord specifically so a pre-feature stored response like this
+  // still type-checks.
+  const legacyResult = baseResult({
+    combat: {
+      rounds: 1,
+      finalHpA: 52,
+      finalHpB: 55,
+      history: [{ round: 1, damageA: 30, damageB: 28, hpA: 52, hpB: 55 }],
+    },
+  });
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={legacyResult}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+    />,
+  );
+
+  assert.ok(await screen.findByText(/My Fighter hit for 30/), "missing resultA/resultB defaults to a normal hit, not a crash");
+});
+
 test("HP bars drain hit-by-hit in step with the revealed beats, not jump straight to final HP", async () => {
   const { render, screen, BattleResultScreen } = await loadTestHarness();
   stubDefenderTokenFetch("Rival Card");
