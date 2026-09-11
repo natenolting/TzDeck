@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeParamHash } from "@/lib/battle/auth";
 import { INVOCATION_DEADLINE_MS, runBoundedHoldingsSync } from "@/lib/battle/holdingsSync";
-import { authenticateAndClaim, type SignedRequestBody } from "@/lib/battle/requestAuth";
+import { authenticateAndClaim, isSignedRequestBodyShapeValid, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import { checkRateLimit, commitParticipation, ensureWalletExists, startOrResumeHoldingsSync } from "@/lib/battle/store";
 
 // Independent of the daily attack/defense caps (U9/U10, "Implementation-Time
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return errorResponse(400, "invalid_json_body");
   }
-  if (typeof body?.optedIn !== "boolean" || !body.envelope || !body.publicKey || !body.signature || !body.claimedAddress) {
+  if (typeof body?.optedIn !== "boolean" || !isSignedRequestBodyShapeValid(body)) {
     return errorResponse(400, "missing_required_fields");
   }
 

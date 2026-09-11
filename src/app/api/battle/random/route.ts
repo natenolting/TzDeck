@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { calculateSupplyRarity } from "@/lib/objkt";
 import { verifyOwnership } from "@/lib/battle/ownership";
 import { fetchBattleTokenMetadata } from "@/lib/battle/holdings";
-import { authenticateAndClaim, splitCardKey, type SignedRequestBody } from "@/lib/battle/requestAuth";
+import { authenticateAndClaim, isSignedRequestBodyShapeValid, splitCardKey, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import {
   baseXpAward,
   candidateStrength,
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return errorResponse(400, "invalid_json_body");
   }
-  if (!body?.attackerCardKey || !body.envelope || !body.publicKey || !body.signature || !body.claimedAddress) {
+  if (typeof body?.attackerCardKey !== "string" || !body.attackerCardKey || !isSignedRequestBodyShapeValid(body)) {
     return errorResponse(400, "missing_required_fields");
   }
 

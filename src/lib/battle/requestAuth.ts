@@ -8,6 +8,28 @@ export interface SignedRequestBody {
   claimedAddress: string;
 }
 
+/**
+ * L2: a route that only truthy-checked its fields let a non-string (e.g. a
+ * number or object) reach signature verification, where it throws inside
+ * `Buffer.from`/`verifySignature` instead of failing the input check -- a
+ * 500 plus an attempt row wedged pending for the full 15-minute retry
+ * horizon, instead of a clean 400 before any attempt was ever claimed.
+ */
+export function isSignedRequestBodyShapeValid(body: unknown): body is SignedRequestBody {
+  if (typeof body !== "object" || body === null) return false;
+  const candidate = body as Record<string, unknown>;
+  if (typeof candidate.publicKey !== "string") return false;
+  if (typeof candidate.signature !== "string") return false;
+  if (typeof candidate.claimedAddress !== "string") return false;
+  const envelope = candidate.envelope;
+  if (typeof envelope !== "object" || envelope === null) return false;
+  const envelopeCandidate = envelope as Record<string, unknown>;
+  if (typeof envelopeCandidate.timestamp !== "number") return false;
+  if (typeof envelopeCandidate.random !== "string") return false;
+  if (typeof envelopeCandidate.mac !== "string") return false;
+  return true;
+}
+
 export type AuthenticateAndClaimResult =
   | { outcome: "claimed"; wallet: string; nonce: string; generation: string }
   | { outcome: "terminal"; row: AttemptRow }

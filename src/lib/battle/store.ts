@@ -18,8 +18,17 @@ export type Sql = <T = Record<string, unknown>>(
   ...values: unknown[]
 ) => Promise<T[]>;
 
+// L3: an unanchored /neon\.tech/ regex would match that substring anywhere
+// in the URL (path, query param, credentials), not just the actual host --
+// parsing the URL and checking the real hostname is the only way to be sure
+// which driver a given DATABASE_URL actually needs.
 function isNeonHost(databaseUrl: string): boolean {
-  return /neon\.tech/.test(databaseUrl);
+  try {
+    const { hostname } = new URL(databaseUrl);
+    return hostname === "neon.tech" || hostname.endsWith(".neon.tech");
+  } catch {
+    return false;
+  }
 }
 
 let cachedSql: Sql | null = null;
@@ -420,9 +429,19 @@ export async function ensureWalletExists(wallet: string): Promise<WalletRow> {
   return rows[0];
 }
 
+// M2: GET /api/battle/status is unauthenticated (read-only game status for
+// any address) and returned every progress row with no bound. In practice
+// H4's staged-card cap already bounds how many rows a sync can ever
+// materialize for a wallet, but this LIMIT is a second, independent bound
+// at the API layer -- defense in depth against any other path ever adding
+// rows, not a cap real callers should hit.
+const MAX_PROGRESS_ROWS_PER_WALLET = 2500;
+
 export async function fetchAllProgressForWallet(wallet: string): Promise<ProgressRow[]> {
   const sql = getSql();
-  return sql<ProgressRow>`SELECT * FROM wallet_card_progress WHERE wallet = ${wallet} ORDER BY card_key`;
+  return sql<ProgressRow>`
+    SELECT * FROM wallet_card_progress WHERE wallet = ${wallet} ORDER BY card_key LIMIT ${MAX_PROGRESS_ROWS_PER_WALLET}
+  `;
 }
 
 export async function fetchProgress(wallet: string, cardKey: string): Promise<ProgressRow | null> {

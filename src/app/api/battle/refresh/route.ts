@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeParamHash } from "@/lib/battle/auth";
 import { INVOCATION_DEADLINE_MS, runBoundedHoldingsSync } from "@/lib/battle/holdingsSync";
-import { authenticateAndClaim, type SignedRequestBody } from "@/lib/battle/requestAuth";
+import { authenticateAndClaim, isSignedRequestBodyShapeValid, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import { checkRateLimit, commitHoldingsRefresh, ensureWalletExists, startOrResumeHoldingsSync } from "@/lib/battle/store";
 
 // Bounded so a large collection resumes across requests rather than a
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return errorResponse(400, "invalid_json_body");
   }
-  if (!body?.envelope || !body.publicKey || !body.signature || !body.claimedAddress) {
+  if (!isSignedRequestBodyShapeValid(body)) {
     return errorResponse(400, "missing_required_fields");
   }
 
