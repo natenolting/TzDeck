@@ -197,7 +197,10 @@ export async function POST(request: NextRequest) {
 
     const defenderStats = effectiveStats(defenderCard.seed, defenderCard.level);
     const rngSeed = randomInt(0, 2 ** 31).toString();
-    const combat = resolveBattle(attackerStats, defenderStats, COMBAT_VARIANCE, mulberry32(Number(rngSeed)));
+    const combat = resolveBattle(attackerStats, defenderStats, COMBAT_VARIANCE, mulberry32(Number(rngSeed)), {
+      attacker: attackerLevel,
+      defender: defenderCard.level,
+    });
 
     const outcome: "win" | "draw" = combat.outcome === "draw" ? "draw" : "win";
     const attackerWon = combat.outcome === "A";
