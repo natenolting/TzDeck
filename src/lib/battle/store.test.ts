@@ -81,7 +81,11 @@ test("store: a connection failure surfaces a clear error rather than hanging", a
       await sql`SELECT 1`;
     });
   } finally {
-    process.env.DATABASE_URL = originalUrl;
+    if (originalUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = originalUrl;
+    }
     resetConnectionForTests();
   }
 });
