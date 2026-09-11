@@ -3,10 +3,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchTokenByKey, formatShortAddress, getCardImageSources, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
+import { RARITY_CONFIG } from "./rarityStyles";
 import type { RoundOutcome, RoundRecord } from "@/lib/battle/rules";
 import type { BattleResult } from "./BattlePanel";
 
 export const DEFAULT_BEAT_DELAY_MS = 650;
+
+/** A bar's fill hue carries meaning: identity (yours vs theirs) normally, danger once either side is running out. */
+const LOW_HP_THRESHOLD_PCT = 25;
 
 interface BattleResultScreenProps {
   attackerCard: NFTCardType;
@@ -58,10 +62,13 @@ function CardFace({ card, side }: { card: NFTCardType | null; side: "attacker" |
     [card],
   );
   const { imageUrl, loaded, failed, handleLoad, handleError } = useFailoverImage(sources);
+  const rarityConfig = RARITY_CONFIG[card?.rarity || "common"];
 
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border border-border-default bg-surface-2 sm:h-36 sm:w-36">
+      <div
+        className={`flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border border-border-subtle bg-surface-2 transition-all sm:h-36 sm:w-36 ${card ? rarityConfig.ring : ""} ${card ? rarityConfig.glow : ""}`}
+      >
         {card && imageUrl && !failed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -82,16 +89,64 @@ function CardFace({ card, side }: { card: NFTCardType | null; side: "attacker" |
   );
 }
 
-function HealthBar({ label, current, max }: { label: string; current: number; max: number }) {
+function HealthBar({ label, current, max, side }: { label: string; current: number; max: number; side: "attacker" | "defender" }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
+  // Identity carries the bar's normal color -- you read as the accent
+  // (the app's one "this is you, this is action" hue), the opponent reads
+  // neutral. Either one crossing into danger territory overrides that with
+  // the same signal a critical hit against you already carries, so a bar
+  // about to hit zero reads as urgent regardless of whose it is.
+  const isLow = pct <= LOW_HP_THRESHOLD_PCT;
+  const fillClass = isLow ? "bg-danger" : side === "attacker" ? "bg-accent" : "bg-text-tertiary";
   return (
     <div className="w-full max-w-[9rem]">
       <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
-        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+        <div className={`h-full rounded-full transition-all ${fillClass}`} style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-1 text-[11px] text-text-tertiary">
+      <p className={`mt-1 text-[11px] tabular-nums ${isLow ? "text-danger" : "text-text-tertiary"}`}>
         {label} — {current} / {max} HP
       </p>
+    </div>
+  );
+}
+
+function OutcomeBanner({
+  sequenceComplete,
+  outcome,
+  winner,
+  wasOverkillTiebreak,
+  xpAwarded,
+}: {
+  sequenceComplete: boolean;
+  outcome: BattleResult["outcome"];
+  winner: BattleResult["winner"];
+  wasOverkillTiebreak: boolean;
+  xpAwarded: number;
+}) {
+  if (!sequenceComplete) return <div className="h-[3.25rem]" aria-hidden="true" />;
+
+  if (outcome === "draw") {
+    return (
+      <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-border-default bg-surface-2 px-4 py-2.5">
+        <p className="font-display text-lg font-bold text-text-secondary">Draw</p>
+        <p className="text-xs text-text-tertiary">No XP, no recovery for either side.</p>
+      </div>
+    );
+  }
+
+  if (winner === "attacker") {
+    return (
+      <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-success/40 bg-success-quiet px-4 py-2.5">
+        <p className="font-display text-lg font-bold text-success">{wasOverkillTiebreak ? "Won by margin!" : "Victory!"}</p>
+        <p className="text-sm font-bold tabular-nums text-success">+{xpAwarded} XP</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-danger/40 bg-danger-quiet px-4 py-2.5">
+      <p className="font-display text-lg font-bold text-danger">Defeated</p>
+      <p className="text-xs text-danger/80">Recovering for a while.</p>
     </div>
   );
 }
@@ -145,37 +200,45 @@ export default function BattleResultScreen({
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-0/98 px-4 py-6 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
-        <div className="mb-4 text-center">
-          {!sequenceComplete ? null : result.outcome === "draw" ? (
-            <p className="text-sm font-semibold text-text-secondary">Draw — no XP, no recovery for either side.</p>
-          ) : result.winner === "attacker" ? (
-            <p className="text-sm font-bold text-accent">
-              {wasOverkillTiebreak ? "Won by margin! " : "Victory! "}+{result.xpAwarded ?? 0} XP
-            </p>
-          ) : (
-            <p className="text-sm font-bold text-danger">Defeated. Recovering for a while.</p>
-          )}
+        <div className="mb-5">
+          <OutcomeBanner
+            sequenceComplete={sequenceComplete}
+            outcome={result.outcome}
+            winner={result.winner}
+            wasOverkillTiebreak={wasOverkillTiebreak}
+            xpAwarded={result.xpAwarded ?? 0}
+          />
         </div>
 
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center justify-center gap-4 sm:gap-8">
           <div className="flex flex-1 flex-col items-center gap-2">
             <CardFace card={attackerCard} side="attacker" />
-            <HealthBar label="You" current={attackerHp} max={attackerMaxHp} />
+            <HealthBar label="You" current={attackerHp} max={attackerMaxHp} side="attacker" />
           </div>
-          <div className="mt-10 shrink-0 text-xs font-bold text-text-tertiary">VS</div>
+          <div
+            aria-hidden="true"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border-strong bg-surface-2 text-xs font-bold text-text-primary"
+          >
+            VS
+          </div>
           <div className="flex flex-1 flex-col items-center gap-2">
             <CardFace card={defenderCard} side="defender" />
             <HealthBar
               label={result.defenderWallet ? formatShortAddress(result.defenderWallet) : "Opponent"}
               current={defenderHp}
               max={defenderMaxHp}
+              side="defender"
             />
           </div>
         </div>
 
-        <div className="mt-6 flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border-default bg-surface-1/60 p-3">
+        <div className="mt-6 max-h-[50vh] flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border-default bg-surface-1/60 p-3">
           {beats.slice(0, revealedBeats).map((beat, index) => {
             const name = beat.side === "attacker" ? attackerCard.name : (defenderCard?.name ?? "Opponent");
+            // Valence, not just side: a hit you land is good for you: a hit
+            // landed on you is bad for you, regardless of which side of the
+            // screen it's rendered on.
+            const critColor = beat.side === "attacker" ? "text-success" : "text-danger";
             if (beat.result === "miss") {
               return (
                 <p key={index} className="text-xs italic text-text-tertiary">
@@ -185,7 +248,7 @@ export default function BattleResultScreen({
             }
             if (beat.result === "critical") {
               return (
-                <p key={index} className="text-xs font-bold text-accent">
+                <p key={index} className={`text-xs font-bold ${critColor}`}>
                   {beat.side === "attacker"
                     ? `${name} landed a CRITICAL HIT for ${Math.round(beat.damage)}!`
                     : `${name} countered with a CRITICAL HIT for ${Math.round(beat.damage)}!`}

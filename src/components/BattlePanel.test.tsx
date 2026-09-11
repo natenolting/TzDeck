@@ -567,13 +567,13 @@ test("Battle and opt-in controls stay disabled while a battle submission is in f
   );
 
   const battleButton = await screen.findByRole("button", { name: "Battle!" });
-  const optInButton = screen.getByRole("button", { name: "Opt in" });
+  const optInSwitch = screen.getByRole("switch", { name: "Defend against other wallets" });
   fireEvent.click(battleButton);
 
   const submittingButton = await screen.findByRole("button", { name: "Battling…" });
   assert.equal(submittingButton.hasAttribute("disabled"), true);
   assert.equal(
-    optInButton.hasAttribute("disabled"),
+    optInSwitch.hasAttribute("disabled"),
     true,
     "opt-in must be blocked while a battle submission is pending, per item 2",
   );
@@ -684,7 +684,7 @@ test("holdings that have never synced show 'Never synced' and offer a Refresh Ho
   );
 
   assert.ok(await screen.findByText(/Never synced/i));
-  assert.ok(await screen.findByRole("button", { name: "Refresh Holdings" }));
+  assert.ok(await screen.findByRole("button", { name: "Refresh" }));
   assert.equal(refreshCalls, 0, "merely opening a stale panel must never perform an unsigned write");
 });
 
@@ -717,14 +717,18 @@ test("Refresh Holdings signs the refresh action, POSTs the signed body, and upda
   );
 
   await screen.findByText(/Never synced/i);
-  const refreshButton = await screen.findByRole("button", { name: "Refresh Holdings" });
+  const refreshButton = await screen.findByRole("button", { name: "Refresh" });
   fireEvent.click(refreshButton);
 
   await screen.findByText(new RegExp(new Date(refreshedAt).toLocaleString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(refreshCalls, 1);
   assert.equal(refreshRequestBody?.claimedAddress, "tz1PanelWallet00000000000000000000");
   assert.equal(statusCalls, 2, "status is re-fetched after a successful refresh, reflecting the new timestamp");
-  assert.ok(screen.getByText(/Opted in/), "opt-in state must survive a holdings refresh untouched");
+  assert.equal(
+    screen.getByRole("switch", { name: "Defend against other wallets" }).getAttribute("aria-checked"),
+    "true",
+    "opt-in state must survive a holdings refresh untouched",
+  );
 });
 
 test("opt-in and Battle stay disabled while holdings are refreshing", async () => {
@@ -747,20 +751,20 @@ test("opt-in and Battle stay disabled while holdings are refreshing", async () =
     </WalletContext.Provider>,
   );
 
-  const refreshButton = await screen.findByRole("button", { name: "Refresh Holdings" });
-  const optInButton = screen.getByRole("button", { name: "Opt in" });
+  const refreshButton = await screen.findByRole("button", { name: "Refresh" });
+  const optInSwitch = screen.getByRole("switch", { name: "Defend against other wallets" });
   const battleButton = screen.getByRole("button", { name: "Battle!" });
   fireEvent.click(refreshButton);
 
   const refreshingButton = await screen.findByRole("button", { name: "Refreshing…" });
   assert.equal(refreshingButton.hasAttribute("disabled"), true);
-  assert.equal(optInButton.hasAttribute("disabled"), true, "opt-in must be blocked while a holdings refresh is pending");
+  assert.equal(optInSwitch.hasAttribute("disabled"), true, "opt-in must be blocked while a holdings refresh is pending");
   assert.equal(battleButton.hasAttribute("disabled"), true, "battling must be blocked while a holdings refresh is pending");
 
   resolveRefresh!(new Response(JSON.stringify({ refreshed: true }), { status: 200 }));
 
-  await screen.findByRole("button", { name: "Refresh Holdings" });
-  assert.equal(screen.getByRole("button", { name: "Opt in" }).hasAttribute("disabled"), false);
+  await screen.findByRole("button", { name: "Refresh" });
+  assert.equal(screen.getByRole("switch", { name: "Defend against other wallets" }).hasAttribute("disabled"), false);
 });
 
 test("a 202 continuation from Refresh Holdings is resubmitted with the identical signed body until it completes", async () => {
@@ -796,11 +800,11 @@ test("a 202 continuation from Refresh Holdings is resubmitted with the identical
     </WalletContext.Provider>,
   );
 
-  const refreshButton = await screen.findByRole("button", { name: "Refresh Holdings" });
+  const refreshButton = await screen.findByRole("button", { name: "Refresh" });
   fireEvent.click(refreshButton);
 
   await screen.findByRole("button", { name: "Refreshing…" }, { timeout: 5000 });
-  await screen.findByRole("button", { name: "Refresh Holdings" }, { timeout: 5000 });
+  await screen.findByRole("button", { name: "Refresh" }, { timeout: 5000 });
   assert.equal(refreshCalls, 3, "two 202 continuations plus the settling call");
   assert.equal(signChallengeCalls, 1, "bounded continuation resubmits the same signed body -- it never re-signs");
   assert.equal(new Set(bodiesSeen).size, 1, "every resubmission sends byte-identical signed bytes");

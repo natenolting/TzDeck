@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
-import { getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardImageSources, getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, type RoundRecord } from "@/lib/battle/rules";
+import { RARITY_CONFIG } from "./rarityStyles";
+import Switch from "./Switch";
 import BattleResultScreen from "./BattleResultScreen";
 import { SwordsIcon } from "./icons";
 
@@ -320,6 +323,15 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   // state" (item 1).
   const attemptIdRef = useRef(0);
 
+  const rarity = card.rarity || "common";
+  const rarityConfig = RARITY_CONFIG[rarity];
+  const cardImageSources = useMemo(
+    () => getCardImageSources(card.thumbnail_uri, card.display_uri, card.artifact_uri),
+    [card.thumbnail_uri, card.display_uri, card.artifact_uri],
+  );
+  const { imageUrl: cardImageUrl, loaded: cardImageLoaded, failed: cardImageFailed, handleLoad: handleCardImageLoad, handleError: handleCardImageError } =
+    useFailoverImage(cardImageSources);
+
   const loadStatus = useCallback(
     (walletAddress: string) =>
       fetch(`/api/battle/status?address=${encodeURIComponent(walletAddress)}`, { cache: "no-store" })
@@ -358,19 +370,18 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const atDefenseCap = (status?.effectiveDefenseCount ?? 0) >= DEFENSE_CAP_MAX;
   const holdingsStale = isHoldingsStale(status?.holdingsRefreshedAt ?? null, new Date(), HOLDINGS_STALE_MS);
 
+  // One shared busy flag: a battle submission, an opt-in sync, and a
+  // holdings refresh must never run concurrently (item 2), and every
+  // action-triggering control in the panel disables on the same condition.
+  const isBusy =
+    panelState.kind === "awaiting_signature" ||
+    panelState.kind === "syncing" ||
+    panelState.kind === "submitting" ||
+    panelState.kind === "refreshing_holdings";
+
   const toggleOptIn = async () => {
-    if (!status) return;
-    // Duplicate-invocation guard beyond the disabled button (item 2): a
-    // battle submission, an opt-in sync, and a holdings refresh must never
-    // run concurrently.
-    if (
-      panelState.kind === "awaiting_signature" ||
-      panelState.kind === "syncing" ||
-      panelState.kind === "submitting" ||
-      panelState.kind === "refreshing_holdings"
-    ) {
-      return;
-    }
+    // Duplicate-invocation guard beyond the disabled control (item 2).
+    if (isBusy || !status) return;
     const nextOptedIn = !status.optedIn;
     setPanelState({ kind: "awaiting_signature" });
     try {
@@ -423,14 +434,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   // since refresh/route.ts shares the identical materialization pipeline --
   // opt-in state itself is never touched by this call.
   const refreshHoldings = async () => {
-    if (
-      panelState.kind === "awaiting_signature" ||
-      panelState.kind === "syncing" ||
-      panelState.kind === "submitting" ||
-      panelState.kind === "refreshing_holdings"
-    ) {
-      return;
-    }
+    if (isBusy) return;
     setPanelState({ kind: "awaiting_signature" });
     try {
       const signed = await signChallenge("refresh", []);
@@ -495,17 +499,8 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   );
 
   const startBattle = async () => {
-    // Guards the handler itself, not just the disabled button (item 2).
-    // Mutually exclusive with opt-in syncing and a holdings refresh too --
-    // one shared panelState machine, only one action in flight at a time.
-    if (
-      panelState.kind === "awaiting_signature" ||
-      panelState.kind === "submitting" ||
-      panelState.kind === "syncing" ||
-      panelState.kind === "refreshing_holdings"
-    ) {
-      return;
-    }
+    // Guards the handler itself, not just the disabled control (item 2).
+    if (isBusy) return;
     if (isRecovering || atAttackCap) return;
     setPanelState({ kind: "awaiting_signature" });
 
@@ -540,15 +535,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   };
 
   const retryPendingAttempt = async () => {
-    if (!pendingAttempt) return;
-    if (
-      panelState.kind === "awaiting_signature" ||
-      panelState.kind === "submitting" ||
-      panelState.kind === "syncing" ||
-      panelState.kind === "refreshing_holdings"
-    ) {
-      return;
-    }
+    if (!pendingAttempt || isBusy) return;
     await submitAttempt(pendingAttempt);
   };
 
@@ -577,196 +564,195 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
 
   return (
     <div
-      className="rounded-2xl border border-border-default bg-surface-1/90 p-5 backdrop-blur-md"
+      className="overflow-hidden rounded-2xl border border-border-default bg-surface-1/90 backdrop-blur-md"
       aria-live="polite"
     >
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="flex min-w-0 items-center gap-2 text-sm font-bold text-text-primary">
-          <SwordsIcon className="h-4 w-4 shrink-0" />
-          <span className="truncate">Battle — {card.name}</span>
-        </h3>
-        <button
-          onClick={onClose}
-          aria-label="Close battle panel"
-          className="button-secondary h-10 w-10 min-h-10 shrink-0 rounded-full p-0 text-xs"
-        >
-          ✕
-        </button>
-      </div>
-
       {statusLoading ? (
-        <p className="mt-4 text-xs text-text-tertiary">Loading battle status…</p>
+        <p className="p-5 text-xs text-text-tertiary">Loading battle status…</p>
       ) : (
         <>
-          <p className="mt-3 text-xs text-text-tertiary">
-            Battle other wallets&apos; cards for XP and levels. Opting in lets other players challenge you back —
-            winning as a defender earns XP too, and a defensive loss recovers faster than an offensive one.
-          </p>
-
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-border-default bg-surface-2 px-3 py-2">
-            <span className="text-xs text-text-secondary">Defend against other wallets</span>
+          {/* Focal header -- the card itself leads, not a caption naming it. */}
+          <div className="relative flex items-center gap-4 p-5">
             <button
-              onClick={toggleOptIn}
-              disabled={
-                panelState.kind === "awaiting_signature" ||
-                panelState.kind === "syncing" ||
-                panelState.kind === "submitting" ||
-                panelState.kind === "refreshing_holdings"
-              }
-              className={`button-secondary px-3 py-1.5 text-xs font-semibold ${status?.optedIn ? "text-accent" : ""}`}
+              onClick={onClose}
+              aria-label="Close battle panel"
+              className="button-secondary absolute right-4 top-4 h-8 w-8 min-h-8 shrink-0 rounded-full p-0 text-xs"
             >
-              {panelState.kind === "syncing" ? "Syncing your holdings…" : status?.optedIn ? "Opted in" : "Opt in"}
+              ✕
             </button>
-          </div>
-          {status?.optedIn ? (
-            atDefenseCap && (
-              <p className="mt-1 text-xs text-text-tertiary">
-                You&apos;ve reached today&apos;s defense limit — other wallets can&apos;t match against you until it resets.
-              </p>
-            )
-          ) : (
-            <p className="mt-1 text-xs text-text-tertiary">
-              You can still attack without opting in — but your own cards stay invisible as opponents until you do.
-            </p>
-          )}
 
-          <div className="mt-2 flex items-center justify-between rounded-xl border border-border-default bg-surface-2 px-3 py-2">
-            <span className="text-xs text-text-secondary">
-              {status?.holdingsRefreshedAt
-                ? `Holdings last synced ${new Date(status.holdingsRefreshedAt).toLocaleString()}`
-                : "Holdings never synced"}
-              {holdingsStale && (
-                <span className="mt-0.5 block text-2xs text-text-tertiary">
-                  Newly acquired cards may be missing until you refresh.
-                </span>
-              )}
-            </span>
-            <button
-              onClick={refreshHoldings}
-              disabled={
-                panelState.kind === "awaiting_signature" ||
-                panelState.kind === "syncing" ||
-                panelState.kind === "submitting" ||
-                panelState.kind === "refreshing_holdings"
-              }
-              className="button-secondary shrink-0 px-3 py-1.5 text-xs font-semibold"
+            <div
+              className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border-subtle bg-surface-2 transition-all ${rarityConfig.ring} ${rarityConfig.glow}`}
             >
-              {panelState.kind === "refreshing_holdings" ? "Refreshing…" : "Refresh Holdings"}
-            </button>
-          </div>
-
-          {ownCardStatus ? (
-            <div className="mt-3 text-xs text-text-secondary">
-              <p>
-                Level {ownCardStatus.level} · Power {ownCardStatus.power} · HP {ownCardStatus.hp}
-              </p>
-              {isRecovering && (
-                <p className="mt-1 text-danger">{recoveryCopy(ownCardStatus.recoveryReason)}</p>
+              {!cardImageFailed && cardImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cardImageUrl}
+                  alt={card.name}
+                  onLoad={handleCardImageLoad}
+                  onError={handleCardImageError}
+                  className={`h-full w-full object-cover transition-opacity ${cardImageLoaded ? "opacity-100" : "opacity-0"}`}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <SwordsIcon className="h-6 w-6 text-text-muted" />
+                </div>
               )}
             </div>
-          ) : (
-            previewStats && (
-              <p className="mt-3 text-xs text-text-tertiary">
-                Estimated Level 1 · Power {previewStats.power} · HP {previewStats.hp} — never battled, exact stats lock in on your first battle.
-              </p>
-            )
-          )}
 
-          {panelState.kind === "uncertain" ? (
-            <div className="mt-4 rounded-xl border border-danger/40 bg-danger-quiet px-3 py-3 text-xs text-danger">
-              <p>
-                We couldn&apos;t confirm whether this battle completed. Retrying resubmits the exact same signed
-                request — it will never start a second battle.
-              </p>
-              <button
-                onClick={retryPendingAttempt}
-                className="button-secondary mt-2 w-full px-3 py-2 text-xs font-semibold"
+            <div className="min-w-0 flex-1 pr-8">
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider ${rarityConfig.badge}`}
               >
-                Retry
+                {rarityConfig.label}
+              </span>
+              <h3 className="mt-1.5 truncate text-base font-bold text-text-primary">{card.name}</h3>
+              {ownCardStatus ? (
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  Level {ownCardStatus.level} · Power {ownCardStatus.power} · HP {ownCardStatus.hp}
+                </p>
+              ) : (
+                previewStats && (
+                  <p className="mt-0.5 text-xs text-text-tertiary">
+                    Est. Level 1 · Power {previewStats.power} · HP {previewStats.hp}
+                  </p>
+                )
+              )}
+              {isRecovering && (
+                <p className="mt-1 text-xs font-medium text-danger">{recoveryCopy(ownCardStatus?.recoveryReason ?? null)}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Demoted settings -- quieter than the card above and the action below on purpose. */}
+          <div className="divide-y divide-border-subtle border-y border-border-subtle px-5 text-2xs text-text-tertiary">
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <div>
+                <p className="font-medium text-text-secondary">Defend against other wallets</p>
+                {status?.optedIn ? (
+                  atDefenseCap && <p className="mt-0.5">Today&apos;s defense limit reached — opponents can&apos;t match against you until it resets.</p>
+                ) : (
+                  <p className="mt-0.5">You can still attack without opting in, but your cards stay invisible as opponents.</p>
+                )}
+                {panelState.kind === "syncing" && <p className="mt-0.5 text-accent-hover">Syncing your holdings…</p>}
+              </div>
+              <Switch checked={Boolean(status?.optedIn)} onChange={toggleOptIn} disabled={isBusy} label="Defend against other wallets" />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 py-2.5">
+              <div>
+                <p>
+                  {status?.holdingsRefreshedAt
+                    ? `Holdings synced ${new Date(status.holdingsRefreshedAt).toLocaleString()}`
+                    : "Holdings never synced"}
+                </p>
+                {holdingsStale && <p className="mt-0.5">Newly acquired cards may be missing until you refresh.</p>}
+              </div>
+              <button
+                onClick={refreshHoldings}
+                disabled={isBusy}
+                className="button-quiet shrink-0 px-2.5 py-1 text-2xs font-semibold"
+              >
+                {panelState.kind === "refreshing_holdings" ? "Refreshing…" : "Refresh"}
               </button>
             </div>
-          ) : isRecovering ? (
-            <p className="mt-4 rounded-xl border border-danger/40 bg-danger-quiet px-3 py-2 text-xs text-danger">
-              This card is recovering and can&apos;t battle right now.
-            </p>
-          ) : atAttackCap ? (
-            <p className="mt-4 rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary">
-              Daily battle limit reached, resets {status?.attackResetAt ? new Date(status.attackResetAt).toLocaleTimeString() : "soon"}.
-            </p>
-          ) : (
-            <div className="mt-4 space-y-3">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setMode("random")}
-                  className={`button-secondary flex-1 px-3 py-2 text-xs font-semibold ${mode === "random" ? "text-accent" : ""}`}
-                >
-                  Random Battle
-                </button>
-                <button
-                  onClick={() => setMode("challenge")}
-                  className={`button-secondary flex-1 px-3 py-2 text-xs font-semibold ${mode === "challenge" ? "text-accent" : ""}`}
-                >
-                  Challenge Wallet
+          </div>
+
+          {/* Action zone. */}
+          <div className="p-5">
+            {panelState.kind === "uncertain" ? (
+              <div className="rounded-xl border border-danger/40 bg-danger-quiet px-3 py-3 text-xs text-danger">
+                <p>
+                  We couldn&apos;t confirm whether this battle completed. Retrying resubmits the exact same signed
+                  request — it will never start a second battle.
+                </p>
+                <button onClick={retryPendingAttempt} className="button-secondary mt-2 w-full px-3 py-2 text-xs font-semibold">
+                  Retry
                 </button>
               </div>
-              <p className="text-xs text-text-tertiary">
-                {mode === "random"
-                  ? "Automatically matched against a similar-strength opponent."
-                  : "Target one specific wallet's best-matching card instead."}
+            ) : isRecovering ? (
+              <p className="rounded-xl border border-danger/40 bg-danger-quiet px-3 py-2 text-xs text-danger">
+                This card is recovering and can&apos;t battle right now.
               </p>
+            ) : atAttackCap ? (
+              <p className="rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-secondary">
+                Daily battle limit reached, resets {status?.attackResetAt ? new Date(status.attackResetAt).toLocaleTimeString() : "soon"}.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex gap-1 rounded-xl bg-surface-2 p-1">
+                  <button
+                    onClick={() => setMode("random")}
+                    aria-pressed={mode === "random"}
+                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                      mode === "random" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    Random Battle
+                  </button>
+                  <button
+                    onClick={() => setMode("challenge")}
+                    aria-pressed={mode === "challenge"}
+                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                      mode === "challenge" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    Challenge Wallet
+                  </button>
+                </div>
+                <p className="text-xs text-text-tertiary">
+                  {mode === "random"
+                    ? "Automatically matched against a similar-strength opponent."
+                    : "Target one specific wallet's best-matching card instead."}
+                </p>
 
-              {mode === "challenge" && (
-                <input
-                  type="text"
-                  value={targetWallet}
-                  onChange={(e) => setTargetWallet(e.target.value)}
-                  placeholder="Target wallet address (tz1...)"
-                  className="w-full rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:border-accent"
-                />
-              )}
-              {mode === "challenge" && targetWallet === address && (
-                <p className="text-xs text-danger">You can&apos;t challenge your own wallet.</p>
-              )}
+                {mode === "challenge" && (
+                  <input
+                    type="text"
+                    value={targetWallet}
+                    onChange={(e) => setTargetWallet(e.target.value)}
+                    placeholder="Target wallet address (tz1...)"
+                    className="w-full rounded-xl border border-border-default bg-surface-2 px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:border-accent"
+                  />
+                )}
+                {mode === "challenge" && targetWallet === address && (
+                  <p className="text-xs text-danger">You can&apos;t challenge your own wallet.</p>
+                )}
 
-              <button
-                onClick={startBattle}
-                disabled={
-                  panelState.kind === "awaiting_signature" ||
-                  panelState.kind === "submitting" ||
-                  panelState.kind === "syncing" ||
-                  panelState.kind === "refreshing_holdings" ||
-                  (mode === "challenge" && (!targetWallet || targetWallet === address))
-                }
-                className="button-primary w-full px-4 py-2.5 text-xs font-semibold"
-              >
-                {panelState.kind === "awaiting_signature"
-                  ? "Awaiting wallet signature…"
-                  : panelState.kind === "submitting"
-                    ? "Battling…"
-                    : "Battle!"}
-              </button>
-            </div>
-          )}
+                <button
+                  onClick={startBattle}
+                  disabled={isBusy || (mode === "challenge" && (!targetWallet || targetWallet === address))}
+                  className="button-primary w-full px-4 py-2.5 text-xs font-semibold"
+                >
+                  {panelState.kind === "awaiting_signature"
+                    ? "Awaiting wallet signature…"
+                    : panelState.kind === "submitting"
+                      ? "Battling…"
+                      : "Battle!"}
+                </button>
+              </div>
+            )}
 
-          {panelState.kind === "declined" && (
-            <p className="mt-3 text-xs text-danger">Signature declined or cancelled — nothing was sent.</p>
-          )}
-          {panelState.kind === "unsupported_wallet" && (
-            <p className="mt-3 text-xs text-danger">This wallet type is not supported for battles.</p>
-          )}
-          {panelState.kind === "no_match" && (
-            <p className="mt-3 text-xs text-text-secondary">No eligible opponent available right now. No allowance was used.</p>
-          )}
-          {panelState.kind === "cap_reached" && (
-            <p className="mt-3 text-xs text-text-secondary">Daily limit reached.</p>
-          )}
-          {panelState.kind === "expired" && (
-            <p className="mt-3 text-xs text-danger">
-              This battle attempt expired before it could complete. Click Battle! to try again with a fresh
-              signature.
-            </p>
-          )}
-          {panelState.kind === "error" && <p className="mt-3 text-xs text-danger">{panelState.message}</p>}
+            {panelState.kind === "declined" && (
+              <p className="mt-3 text-xs text-danger">Signature declined or cancelled — nothing was sent.</p>
+            )}
+            {panelState.kind === "unsupported_wallet" && (
+              <p className="mt-3 text-xs text-danger">This wallet type is not supported for battles.</p>
+            )}
+            {panelState.kind === "no_match" && (
+              <p className="mt-3 text-xs text-text-secondary">No eligible opponent available right now. No allowance was used.</p>
+            )}
+            {panelState.kind === "cap_reached" && (
+              <p className="mt-3 text-xs text-text-secondary">Daily limit reached.</p>
+            )}
+            {panelState.kind === "expired" && (
+              <p className="mt-3 text-xs text-danger">
+                This battle attempt expired before it could complete. Click Battle! to try again with a fresh
+                signature.
+              </p>
+            )}
+            {panelState.kind === "error" && <p className="mt-3 text-xs text-danger">{panelState.message}</p>}
+          </div>
         </>
       )}
     </div>
