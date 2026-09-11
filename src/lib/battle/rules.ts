@@ -163,6 +163,8 @@ export function mulberry32(seed: number): Rng {
 
 export type BattleOutcome = "A" | "B" | "draw";
 
+export type RoundOutcome = "hit" | "critical" | "miss";
+
 /** One round's damage exchange and the resulting HP for both sides, HP floored at 0 for display. */
 export interface RoundRecord {
   round: number;
@@ -170,6 +172,9 @@ export interface RoundRecord {
   damageB: number;
   hpA: number;
   hpB: number;
+  /** resolveBattle always sets these; optional only so pre-feature stored battle responses (missing both) still type-check. */
+  resultA?: RoundOutcome;
+  resultB?: RoundOutcome;
 }
 
 export interface BattleResult {
@@ -186,11 +191,27 @@ export interface BattleResult {
 
 const MAX_ROUNDS_SAFETY = 1000;
 
+/**
+ * Rolls one shared d100 for a side's round outcome: 1 is always a miss,
+ * anything above `100 - critChance%` is a critical hit, everything else is
+ * a normal hit. One roll (not two independent ones) so the miss zone
+ * (bottom) and crit zone (top) can never overlap by construction.
+ */
+function rollRoundOutcome(level: number, roll: Rng): RoundOutcome {
+  const d100 = Math.floor(roll() * 100) + 1;
+  if (d100 === 1) return "miss";
+  const critSlots = Math.round(criticalHitChance(level) * 100);
+  if (d100 > 100 - critSlots) return "critical";
+  return "hit";
+}
+
 export function resolveBattle(
   attackerStats: { power: number; hp: number },
   defenderStats: { power: number; hp: number },
   variancePct: number,
   rng?: Rng,
+  /** Opt-in: omitting this preserves today's exact behavior (no extra roll, always "hit"). */
+  levels?: { attacker: number; defender: number },
 ): BattleResult {
   const roll = rng || Math.random;
   let hpA = attackerStats.hp;
@@ -204,8 +225,12 @@ export function resolveBattle(
     rounds += 1;
     const swingA = 1 + (roll() * 2 - 1) * variancePct;
     const swingB = 1 + (roll() * 2 - 1) * variancePct;
-    roundDamageA = Math.max(0, attackerStats.power * swingA);
-    roundDamageB = Math.max(0, defenderStats.power * swingB);
+    const resultA: RoundOutcome = levels ? rollRoundOutcome(levels.attacker, roll) : "hit";
+    const resultB: RoundOutcome = levels ? rollRoundOutcome(levels.defender, roll) : "hit";
+    const critMultiplierA = resultA === "critical" ? criticalHitMultiplier(levels!.attacker) : 1;
+    const critMultiplierB = resultB === "critical" ? criticalHitMultiplier(levels!.defender) : 1;
+    roundDamageA = resultA === "miss" ? 0 : Math.max(0, attackerStats.power * swingA * critMultiplierA);
+    roundDamageB = resultB === "miss" ? 0 : Math.max(0, defenderStats.power * swingB * critMultiplierB);
     hpB -= roundDamageA;
     hpA -= roundDamageB;
     history.push({
@@ -214,6 +239,8 @@ export function resolveBattle(
       damageB: roundDamageB,
       hpA: Math.max(0, Math.round(hpA)),
       hpB: Math.max(0, Math.round(hpB)),
+      resultA,
+      resultB,
     });
   }
 

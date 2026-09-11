@@ -23,6 +23,7 @@ import {
   xpThresholdForLevel,
   xpWithinLevel,
   type CandidateCard,
+  type Rng,
 } from "./rules";
 
 const FAR_FUTURE = new Date("2100-01-01");
@@ -150,10 +151,10 @@ test("resolveBattle: both sides reach 0 the same round with unequal round damage
 test("resolveBattle: records a per-round history with damage dealt and resulting HP for both sides", () => {
   const result = resolveBattle({ power: 12, hp: 20 }, { power: 8, hp: 36 }, 0);
   assert.equal(result.history.length, 3);
-  assert.deepEqual(result.history[0], { round: 1, damageA: 12, damageB: 8, hpA: 12, hpB: 24 });
-  assert.deepEqual(result.history[1], { round: 2, damageA: 12, damageB: 8, hpA: 4, hpB: 12 });
+  assert.deepEqual(result.history[0], { round: 1, damageA: 12, damageB: 8, hpA: 12, hpB: 24, resultA: "hit", resultB: "hit" });
+  assert.deepEqual(result.history[1], { round: 2, damageA: 12, damageB: 8, hpA: 4, hpB: 12, resultA: "hit", resultB: "hit" });
   // HP never reported negative even though the losing side's real HP went below zero internally.
-  assert.deepEqual(result.history[2], { round: 3, damageA: 12, damageB: 8, hpA: 0, hpB: 0 });
+  assert.deepEqual(result.history[2], { round: 3, damageA: 12, damageB: 8, hpA: 0, hpB: 0, resultA: "hit", resultB: "hit" });
 });
 
 test("resolveBattle: both sides reach 0 the same round with exactly equal round damage -- true draw", () => {
@@ -174,6 +175,63 @@ test("resolveBattle: seeded-RNG runs at a specific seed reproduce bit-identical 
   const first = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
   const second = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
   assert.deepEqual(first, second);
+});
+
+test("resolveBattle: without a levels argument, every round defaults to result 'hit' for both sides (crit/miss stays opt-in)", () => {
+  const result = resolveBattle({ power: 20, hp: 100 }, { power: 5, hp: 20 }, 0);
+  assert.ok(result.history.length > 0);
+  for (const round of result.history) {
+    assert.equal(round.resultA, "hit");
+    assert.equal(round.resultB, "hit");
+  }
+});
+
+test("resolveBattle: a roll of exactly 1 on the shared d100 is always a miss, dealing zero damage that round", () => {
+  // Roll order per round: swingA, swingB, then (only when levels is given) resultA's d100, resultB's d100.
+  const rolls = [0.5, 0.5, 0, 0.5];
+  let i = 0;
+  const rng: Rng = () => rolls[i++ % rolls.length];
+  const result = resolveBattle({ power: 20, hp: 200 }, { power: 10, hp: 200 }, 0, rng, { attacker: 1, defender: 1 });
+
+  assert.equal(result.history[0].resultA, "miss");
+  assert.equal(result.history[0].damageA, 0);
+  assert.equal(result.history[0].resultB, "hit");
+  assert.equal(result.history[0].damageB, 10);
+});
+
+test("resolveBattle: a roll landing in the top critChance% of the shared d100 multiplies that side's already-varied damage", () => {
+  const rolls = [0.5, 0.5, 0.995, 0.5];
+  let i = 0;
+  const rng: Rng = () => rolls[i++ % rolls.length];
+  const result = resolveBattle({ power: 20, hp: 200 }, { power: 10, hp: 200 }, 0, rng, { attacker: 1, defender: 1 });
+
+  assert.equal(result.history[0].resultA, "critical");
+  assert.equal(result.history[0].damageA, 20 * criticalHitMultiplier(1));
+  assert.equal(result.history[0].resultB, "hit");
+  assert.equal(result.history[0].damageB, 10);
+});
+
+test("resolveBattle: a higher-level side rolls crit/miss against its own, larger, chance", () => {
+  // At level 39 (crit-capped 20%), a roll of 0.995 (d100 = 100) still lands
+  // in the top 20 of 100 slots -- still a crit, same as at level 1, but a
+  // roll near the boundary (d100 = 81, the lowest crit slot at 20%) would
+  // NOT have crit at level 1 (whose crit zone is only the single top slot).
+  const rollsHighLevel = [0.5, 0.5, 0.8, 0.5]; // d100 = 81 -> crit only when critChance is large enough
+  let i = 0;
+  const rngHighLevel: Rng = () => rollsHighLevel[i++ % rollsHighLevel.length];
+  const highLevelResult = resolveBattle({ power: 20, hp: 200 }, { power: 10, hp: 200 }, 0, rngHighLevel, {
+    attacker: 39,
+    defender: 1,
+  });
+  assert.equal(highLevelResult.history[0].resultA, "critical", "level 39's 20% crit zone covers d100 = 81");
+
+  i = 0;
+  const rngLowLevel: Rng = () => rollsHighLevel[i++ % rollsHighLevel.length];
+  const lowLevelResult = resolveBattle({ power: 20, hp: 200 }, { power: 10, hp: 200 }, 0, rngLowLevel, {
+    attacker: 1,
+    defender: 1,
+  });
+  assert.equal(lowLevelResult.history[0].resultA, "hit", "level 1's 1% crit zone (d100 = 100 only) doesn't cover d100 = 81");
 });
 
 test("baseXpAward: defeating a stronger/higher-level opponent yields more XP than a much weaker one", () => {
