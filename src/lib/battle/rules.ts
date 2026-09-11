@@ -63,6 +63,47 @@ export function applyLevel(
   return { power: Math.round(basePower * multiplier), hp: Math.round(baseHp * multiplier) };
 }
 
+// ---------------------------------------------------------------------------
+// Critical hits and misses (docs/plans/2026-09-10-critical-hits-misses-design.md):
+// one shared d100 roll per side per round in resolveBattle, gated behind an
+// optional `levels` argument there. These three formulas are pure functions
+// of level, independently testable from combat resolution itself.
+// ---------------------------------------------------------------------------
+
+const CRIT_CHANCE_BASE = 0.01;
+const CRIT_CHANCE_PER_LEVEL = 0.005;
+const CRIT_CHANCE_CAP = 0.2;
+
+const CRIT_MULTIPLIER_BASE = 1.5;
+const CRIT_MULTIPLIER_PER_LEVEL = 0.05;
+const CRIT_MULTIPLIER_CAP = 3;
+
+const MISS_CHANCE_BASE = 0.1;
+const MISS_CHANCE_PER_LEVEL = 0.003;
+const MISS_CHANCE_FLOOR = 0.01;
+
+/** Rounds to 4 decimal places so level-scaled formulas land on clean, testable values despite binary float arithmetic. */
+function roundToFourDecimals(value: number): number {
+  return Math.round(value * 10000) / 10000;
+}
+
+/** Fraction (e.g. 0.01 = 1%). Caps at 20% at level 39. */
+export function criticalHitChance(level: number): number {
+  return roundToFourDecimals(Math.min(CRIT_CHANCE_CAP, CRIT_CHANCE_BASE + CRIT_CHANCE_PER_LEVEL * (level - 1)));
+}
+
+/** Multiplier applied to an already-varied round's damage on a crit. Caps at 3.0x at level 31. */
+export function criticalHitMultiplier(level: number): number {
+  return roundToFourDecimals(
+    Math.min(CRIT_MULTIPLIER_CAP, CRIT_MULTIPLIER_BASE + CRIT_MULTIPLIER_PER_LEVEL * (level - 1)),
+  );
+}
+
+/** Fraction (e.g. 0.1 = 10%). Floors at 1% at level 31 -- never reaches exactly 0%. */
+export function missChance(level: number): number {
+  return roundToFourDecimals(Math.max(MISS_CHANCE_FLOOR, MISS_CHANCE_BASE - MISS_CHANCE_PER_LEVEL * (level - 1)));
+}
+
 /**
  * Whitespace collapsing and markup stripping so a description's *content*
  * length is what feeds HP, not incidental formatting characters.

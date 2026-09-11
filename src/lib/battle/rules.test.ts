@@ -7,12 +7,15 @@ import {
   baseXpAward,
   bestCardForChallenge,
   candidateStrength,
+  criticalHitChance,
+  criticalHitMultiplier,
   decayScaledAward,
   deriveBaseSeed,
   effectiveStats,
   findMatch,
   hpFromTierAndDescription,
   levelForXp,
+  missChance,
   mulberry32,
   normalizeDescriptionLength,
   powerFromEditions,
@@ -105,6 +108,28 @@ test("applyLevel: Level 1 is the unscaled baseline", () => {
   const { power, hp } = applyLevel(50, 100, 1);
   assert.equal(power, 50);
   assert.equal(hp, 100);
+});
+
+test("criticalHitChance starts at 1% for level 1 and grows 0.5%/level up to a 20% cap at level 39", () => {
+  assert.equal(criticalHitChance(1), 0.01);
+  assert.equal(criticalHitChance(20), 0.105);
+  assert.equal(criticalHitChance(39), 0.2);
+  assert.equal(criticalHitChance(40), 0.2, "capped -- never exceeds 20% past level 39");
+  assert.equal(criticalHitChance(100), 0.2);
+});
+
+test("criticalHitMultiplier starts at 1.5x for level 1 and grows 0.05x/level up to a 3.0x cap at level 31", () => {
+  assert.equal(criticalHitMultiplier(1), 1.5);
+  assert.equal(criticalHitMultiplier(16), 2.25);
+  assert.equal(criticalHitMultiplier(31), 3);
+  assert.equal(criticalHitMultiplier(32), 3, "capped -- never exceeds 3.0x past level 31");
+});
+
+test("missChance starts at 10% for level 1 and decays 0.3%/level down to a 1% floor at level 31", () => {
+  assert.equal(missChance(1), 0.1);
+  assert.equal(missChance(16), 0.055);
+  assert.equal(missChance(31), 0.01);
+  assert.equal(missChance(32), 0.01, "floored -- never drops below 1% past level 31");
 });
 
 test("resolveBattle: one side's HP reaches 0 first -- the surviving side wins, no tiebreak invoked", () => {
