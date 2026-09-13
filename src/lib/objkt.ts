@@ -533,9 +533,9 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
   // others reach deeper than the newest few hundred listings.
   const windowSize = Math.max(count * 2, 10);
   const offsets = [
-    Math.floor(Math.random() * 400),
-    400 + Math.floor(Math.random() * 1_200),
-    1_600 + Math.floor(Math.random() * 2_400),
+    Math.floor(Math.random() * 800),
+    800 + Math.floor(Math.random() * 4_200),
+    5_000 + Math.floor(Math.random() * 15_000),
   ];
 
   const listingFields = `
