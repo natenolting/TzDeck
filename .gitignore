@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local working notes, kept on disk but out of the repo
+docs/brainstorms/
+docs/plans/
