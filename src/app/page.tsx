@@ -107,7 +107,7 @@ export default function Home() {
                   OBJKT Gacha
                 </span>
               </div>
-              <p className="text-xs text-text-secondary">Pull. Collect. Discover.</p>
+              <p className="text-xs text-text-secondary">Pull. Collect. Battle.</p>
             </div>
           </div>
 

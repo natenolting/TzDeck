@@ -14,7 +14,7 @@ export default function Footer() {
         <p className="font-display text-sm font-bold tracking-wide text-text-secondary">
           TzDeck
         </p>
-        <p className="mt-1">Discover art on Tezos. Pull. Collect. Discover.</p>
+        <p className="mt-1">Discover art on Tezos. Pull. Collect. Battle.</p>
       </div>
       <nav aria-label="Footer" className="flex flex-wrap items-center gap-2">
         <SupportLink iconOnly />
