@@ -11,6 +11,7 @@
     "calibrate:rarity": "tsx scripts/calibrate-rarity.ts",
     "check:diversity": "tsx scripts/check-pack-diversity.ts",
     "migrate": "tsx scripts/migrate.ts",
+    "migrate:status": "tsx scripts/migrate.ts --status",
     "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts",
     "simulate": "tsx scripts/simulate-battles.ts"
   },
