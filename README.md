@@ -63,7 +63,9 @@ An applied migration is checksummed, so its file must never be edited afterward.
 
 Production migrations run from `.github/workflows/migrate.yml`, which triggers once CI goes green on `main` and can also be started by hand from the Actions tab. Before it can work, the operator adds a `PRODUCTION_DATABASE_URL` secret to the repository's `production` environment under **Settings > Environments**. That environment is also where required reviewers go if a production migration should need human approval.
 
-Give the secret the **direct**, non-pooled Neon connection string rather than the pooled one. Each migration runs inside a transaction, and the pooler handles transactional DDL badly. When the secret is empty the workflow fails with that instruction instead of connecting to nothing.
+Give the secret the **direct**, non-pooled Neon connection string. A run holds a session-level advisory lock so two migrations cannot overlap, and a transaction-mode pooler can hand each statement a different backend, taking the lock on one connection and releasing it against another. The per-migration transactions themselves are fine through a pooler, which is why this fails silently rather than loudly, so applying through a `-pooler` host is refused outright. Reads never take the lock, so `migrate:status` works against either host. When the secret is empty the workflow fails with that instruction instead of connecting to nothing.
+
+`PRODUCTION_DATABASE_URL` is a GitHub Actions secret, read only by the workflow. It has nothing to do with Vercel's environment variables, where the app reads `DATABASE_URL` at runtime. Vercel wants the pooled endpoint for that one; only migrations need the direct host.
 
 GitHub only offers a workflow once it is on the default branch, so the first production migration has to be dispatched by hand after this lands on `main`.
 
