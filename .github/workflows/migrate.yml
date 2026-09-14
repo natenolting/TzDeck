@@ -1,0 +1,59 @@
+name: Migrate production database
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# Queue overlapping runs instead of cancelling them. An interrupted apply is worse than a late one.
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply migrations
+    runs-on: ubuntu-latest
+
+    # workflow_run fires on every CI completion, and its branch filter matches the head
+    # branch, so a pull_request run from a fork's own main would match without the event check
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+
+    environment: production
+
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+
+    steps:
+      - name: Check the production connection string
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "PRODUCTION_DATABASE_URL is not set." >&2
+            echo "Add it as a repository secret, or as a secret on the production environment," >&2
+            echo "using the direct (non-pooled) Neon connection string." >&2
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # workflow_run otherwise checks out the tip of main, which by the time CI
+          # reports can already be a newer commit than the one CI actually passed
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Show the migration plan
+        run: npm run migrate:status
+
+      - name: Run database migrations
+        run: npm run migrate

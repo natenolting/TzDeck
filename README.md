@@ -30,9 +30,46 @@ The top two tiers require market corroboration for scarcity; the lower tiers use
 
 Booster-pack contents are randomized from active OBJKT listings, but the rarity assigned to each selected card is deterministic. Cards in **My Deck** are classified by edition supply alone because wallet holdings do not include a listing price. As a result, the same NFT can have a different displayed rarity in a booster pack if its listing price raises it into a higher tier.
 
-The deck-only supply ladder is Rare for a 1 of 1, Uncommon for editions of 25 or fewer, and Common for larger editions.
+The deck-only supply ladder is Legendary for a 1 of 1, Epic for editions of 5 or fewer, Rare for editions of 10 or fewer, Uncommon for editions of 25 or fewer, and Common for larger editions -- the same five-tier scale used by My Deck's battle system (see below).
 
 These thresholds were calibrated against 500 active OBJKT listings sampled deterministically across the marketplace's listing-ID range. The measured distribution was 1.6% Legendary, 4.8% Epic, 24.0% Rare, 55.6% Uncommon, and 14.0% Common. Re-run `npm run calibrate:rarity` to verify the live catalogue remains within the design targets.
+
+## Battle system
+
+Connected wallets can pit an owned card against another wallet's card for XP and levels, using the same edition-based Power/HP derivation as the deck rarity ladder above. Battling needs a Postgres database (`DATABASE_URL`) and two additional env vars (`BATTLE_AUTH_SECRET`, `BATTLE_APP_ID`) in `.env.local`; run `npm run migrate` once against that database before battling locally (see [Database migrations](#database-migrations)).
+
+Two scripts explore the combat math without a database or a running server:
+
+```bash
+npm run simulate -- 5000              # run 5000 battles between fresh random cards, report win/draw rates
+npm run simulate -- --help            # see all flags: fixed matchups, variance, seed, CSV export
+npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed acceptance run
+```
+
+`simulate` is the general-purpose tool for exploring balance: it defaults to rolling a new random card for each side every trial, or pins a specific matchup via `--a-editions`/`--a-desc`/`--a-level` (and `--b-*` for the defender). Pass `--seed=N` for a reproducible run or `--csv=path.csv` to export one row per trial.
+
+## Database migrations
+
+The battle system's schema lives in `migrations/` as numbered SQL files. Both commands read `DATABASE_URL`:
+
+```bash
+npm run migrate:status    # print the plan and exit, writing nothing
+npm run migrate           # apply every migration that has not run yet
+```
+
+`migrate` records each applied filename and its checksum, so a second run is a no-op. `migrate:status` neither locks nor writes, so it is safe to point at any database, production included.
+
+An applied migration is checksummed, so its file must never be edited afterward. An edited file makes the next run refuse to apply anything until the file matches what was recorded. Fix a mistake by adding a new numbered migration on top instead.
+
+Production migrations run from `.github/workflows/migrate.yml`, which triggers once CI goes green on `main` and can also be started by hand from the Actions tab. Before it can work, the operator adds a `PRODUCTION_DATABASE_URL` secret to the repository's `production` environment under **Settings > Environments**. That environment is also where required reviewers go if a production migration should need human approval.
+
+Give the secret the **direct**, non-pooled Neon connection string. A run holds a session-level advisory lock so two migrations cannot overlap, and a transaction-mode pooler can hand each statement a different backend, taking the lock on one connection and releasing it against another. The per-migration transactions themselves are fine through a pooler, which is why this fails silently rather than loudly, so applying through a `-pooler` host is refused outright. Reads never take the lock, so `migrate:status` works against either host. When the secret is empty the workflow fails with that instruction instead of connecting to nothing.
+
+`PRODUCTION_DATABASE_URL` is a GitHub Actions secret, read only by the workflow. It has nothing to do with Vercel's environment variables, where the app reads `DATABASE_URL` at runtime. Vercel wants the pooled endpoint for that one; only migrations need the direct host.
+
+GitHub only offers a workflow once it is on the default branch, so the first production migration has to be dispatched by hand after this lands on `main`.
+
+The first production rollout is the one to sequence deliberately. Vercel ships the moment `main` moves and the deployed battle routes need their tables, so migrate immediately before or immediately after the merge.
 
 ## Run locally
 
@@ -42,6 +79,8 @@ Install the dependencies and start the development server:
 npm install
 npm run dev
 ```
+
+Use npm, not pnpm or yarn -- the repo tracks `package-lock.json`, and `pnpm install` will fail on its build-script approval gate for transitive dependencies.
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
@@ -55,12 +94,16 @@ NEXT_PUBLIC_TEZOS_RPC_URL=https://mainnet.api.tez.ie
 ## Development commands
 
 ```bash
-npm test                 # Run the automated test suite
-npm run lint             # Check the code with ESLint
-npm run calibrate:rarity # Verify rarity tiers against 500 live listings
-npm run check:diversity  # Verify packs draw from several artists
-npx tsc --noEmit         # Type-check without emitting files
-npm run build            # Production build
+npm test                  # Run the automated test suite
+npm run lint              # Check the code with ESLint
+npm run calibrate:rarity  # Verify rarity tiers against 500 live listings
+npm run check:diversity   # Verify packs draw from several artists
+npm run migrate           # Apply battle-system database migrations
+npm run migrate:status    # Print the migration plan without writing to the database
+npm run simulate          # Run N ad-hoc battle simulations (see Battle system above)
+npm run validate:tiebreak # The R14 tiebreak's own fixed acceptance run
+npx tsc --noEmit          # Type-check without emitting files
+npm run build             # Production build
 ```
 
 ## Built with

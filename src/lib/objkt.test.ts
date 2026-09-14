@@ -7,6 +7,7 @@ import {
   convertIpfsUrl,
   extractIpfsHash,
   fetchRandomPack,
+  fetchTokenByKey,
   fetchUserHoldings,
   formatShortAddress,
   getCardKey,
@@ -75,7 +76,11 @@ test("rarity legend matches calculateRarity boundaries", () => {
 });
 
 test("calculateSupplyRarity grades wallet holdings without listing prices", () => {
-  assert.equal(calculateSupplyRarity(1), "rare");
+  assert.equal(calculateSupplyRarity(1), "legendary");
+  assert.equal(calculateSupplyRarity(5), "epic");
+  assert.equal(calculateSupplyRarity(6), "rare");
+  assert.equal(calculateSupplyRarity(10), "rare");
+  assert.equal(calculateSupplyRarity(11), "uncommon");
   assert.equal(calculateSupplyRarity(25), "uncommon");
   assert.equal(calculateSupplyRarity(26), "common");
   assert.equal(calculateSupplyRarity(undefined), "common");
@@ -335,6 +340,60 @@ test("fetchUserHoldings orders OBJKT holdings by the schema-supported timestamp"
   }
 });
 
+test("fetchTokenByKey resolves a single token's display metadata by contract and token id", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  let emittedVars: Record<string, unknown> | undefined;
+
+  client.request = async (_document, variables) => {
+    emittedVars = variables;
+    return {
+      token: [
+        {
+          name: "Interference 1",
+          token_id: "0",
+          fa_contract: "KT1Example",
+          display_uri: "ipfs://QmExample",
+          artifact_uri: null,
+          thumbnail_uri: null,
+          supply: 1,
+          description: "a description",
+          creators: [{ holder: { alias: "Example Artist", address: "tz1Example" } }],
+          fa: { name: "Example Collection" },
+        },
+      ],
+    };
+  };
+
+  try {
+    const card = await fetchTokenByKey("KT1Example", "0");
+    assert.equal(card?.name, "Interference 1");
+    assert.equal(card?.contract_address, "KT1Example");
+    assert.equal(card?.token_id, "0");
+    assert.deepEqual(emittedVars, { contract: "KT1Example", tokenId: "0" });
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchTokenByKey returns null when the token can't be found", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => ({ token: [] });
+
+  try {
+    const card = await fetchTokenByKey("KT1Missing", "999");
+    assert.equal(card, null);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
 test("fetchRandomPack samples three staggered windows in one request", async () => {
   const client = objktClient as unknown as {
     request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
@@ -361,7 +420,7 @@ test("fetchRandomPack samples three staggered windows in one request", async () 
     assert.equal(requests.length, 1);
     assert.deepEqual(
       [requests[0]?.o1, requests[0]?.o2, requests[0]?.o3],
-      [200, 1_000, 2_800],
+      [400, 2_900, 12_500],
     );
     assert.equal(cards.length, 3);
   } finally {

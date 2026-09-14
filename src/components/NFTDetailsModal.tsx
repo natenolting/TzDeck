@@ -5,16 +5,64 @@ import { createPortal } from "react-dom";
 
 import { getCardImageSources, getCardKey, type NFTCard } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
-import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon } from "./icons";
+import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
+import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon, SwordsIcon } from "./icons";
 import { RARITY_CONFIG } from "./rarityStyles";
+
+export interface BattleCardStats {
+  xp: number;
+  level: number;
+  power: number;
+  hp: number;
+}
 
 interface NFTDetailsModalProps {
   card: NFTCard;
   isWishlisted: boolean;
   navigationCards?: NFTCard[];
   wishlistIds?: Set<string>;
+  /** undefined outside a battle-aware context (section omitted); a card missing from the map means never battled (estimated preview shown). Resolved per actively displayed card, not just the one that opened the modal. */
+  battleStatsByCardKey?: Map<string, BattleCardStats>;
   onClose: () => void;
   onToggleWishlist?: (card: NFTCard) => void;
+  onBattle?: (card: NFTCard) => void;
+}
+
+function BattleStatsSection({ card, battleStats }: { card: NFTCard; battleStats: BattleCardStats | null }) {
+  if (battleStats) {
+    return (
+      <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
+        <dt className="text-xs text-text-tertiary">Battle Stats</dt>
+        <dd className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm font-bold text-text-primary">
+          <span>Level {battleStats.level}</span>
+          <span className="text-xs font-medium text-text-tertiary">Power</span>
+          <span>{battleStats.power}</span>
+          <span className="text-xs font-medium text-text-tertiary">HP</span>
+          <span>{battleStats.hp}</span>
+        </dd>
+        <dd className="mt-1 text-xs tabular-nums text-text-tertiary">
+          {battleStats.xp} / {xpThresholdForLevel(battleStats.level + 1)} XP
+        </dd>
+      </div>
+    );
+  }
+
+  if (card.editions === undefined) return null;
+  const preview = baseStatsFromSeed(deriveBaseSeed(card.editions, card.description));
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
+      <dt className="text-xs text-text-tertiary">Battle Stats</dt>
+      <dd className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm font-bold text-text-primary">
+        <span>Estimated Level 1</span>
+        <span className="text-xs font-medium text-text-tertiary">Power</span>
+        <span>{preview.power}</span>
+        <span className="text-xs font-medium text-text-tertiary">HP</span>
+        <span>{preview.hp}</span>
+      </dd>
+      <dd className="mt-1 text-xs tabular-nums text-text-tertiary">0 / {xpThresholdForLevel(2)} XP</dd>
+      <dd className="mt-1 text-2xs text-text-muted">Never battled -- exact stats lock in on your first battle.</dd>
+    </div>
+  );
 }
 
 function ModalArtwork({ card }: { card: NFTCard }) {
@@ -68,8 +116,10 @@ export default function NFTDetailsModal({
   isWishlisted,
   navigationCards,
   wishlistIds,
+  battleStatsByCardKey,
   onClose,
   onToggleWishlist,
+  onBattle,
 }: NFTDetailsModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -93,6 +143,7 @@ export default function NFTDetailsModal({
   const rarity = RARITY_CONFIG[activeCard.rarity || "common"];
   const previousCard = cards[activeIndex - 1];
   const nextCard = cards[activeIndex + 1];
+  const battleStats = battleStatsByCardKey ? battleStatsByCardKey.get(activeKey) ?? null : undefined;
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -235,6 +286,12 @@ export default function NFTDetailsModal({
             )}
           </dl>
 
+          {battleStats !== undefined && (
+            <dl>
+              <BattleStatsSection card={activeCard} battleStats={battleStats} />
+            </dl>
+          )}
+
           <dl className="space-y-3 border-t border-border-subtle pt-4 text-xs">
             <div>
               <dt className="text-text-tertiary">Contract</dt>
@@ -249,6 +306,20 @@ export default function NFTDetailsModal({
           </dl>
 
           <div className="mt-auto flex flex-col gap-2">
+            {onBattle && (
+              <button
+                type="button"
+                onClick={() => {
+                  onBattle(activeCard);
+                  onClose();
+                }}
+                aria-label={`Battle with ${activeCard.name}`}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border-default bg-surface-2 px-4 py-3 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface-3"
+              >
+                <SwordsIcon className="h-4 w-4" />
+                Battle
+              </button>
+            )}
             {onToggleWishlist && (
               <button
                 type="button"

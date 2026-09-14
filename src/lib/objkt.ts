@@ -12,6 +12,10 @@ export const RARITY_THRESHOLDS = {
   scarceTierPrice: 180,
   rareEditions: 1,
   rarePrice: 110,
+  // Edition-only "rare" breakpoint for calculateSupplyRarity's 5-tier ladder --
+  // distinct from rareEditions above, which is a price-inclusive threshold.
+  // Placeholder value (Open Questions: exact epic/legendary edition thresholds).
+  supplyRareEditions: 10,
   uncommonEditions: 25,
   uncommonPrice: 5,
 } as const;
@@ -191,7 +195,11 @@ export function calculateRarity(editions?: number, priceXtz?: number): CardRarit
 }
 
 export function calculateSupplyRarity(editions?: number): CardRarity {
-  if (editions === 1) return "rare";
+  if (editions === 1) return "legendary";
+  if (editions !== undefined
+    && editions <= RARITY_THRESHOLDS.epicEditions) return "epic";
+  if (editions !== undefined
+    && editions <= RARITY_THRESHOLDS.supplyRareEditions) return "rare";
   if (editions !== undefined
     && editions <= RARITY_THRESHOLDS.uncommonEditions) return "uncommon";
   return "common";
@@ -405,6 +413,58 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
   return [];
 }
 
+interface ObjktTokenByKeyResponse {
+  token: ObjktRawToken[];
+}
+
+/**
+ * Resolves one token's display metadata (name/art/collection) by contract
+ * and token id alone, independent of any wallet holding it -- for
+ * rendering a card the current client doesn't already have data for (e.g.
+ * a battle opponent's card, only known by key from a battle response).
+ */
+export async function fetchTokenByKey(contractAddress: string, tokenId: string): Promise<NFTCard | null> {
+  const query = `
+    query TokenByKey($contract: String!, $tokenId: String!) {
+      token(
+        where: { fa_contract: { _eq: $contract }, token_id: { _eq: $tokenId } },
+        limit: 1
+      ) {
+        name
+        token_id
+        fa_contract
+        display_uri
+        artifact_uri
+        thumbnail_uri
+        supply
+        description
+        creators {
+          holder {
+            alias
+            address
+          }
+        }
+        fa {
+          name
+        }
+      }
+    }
+  `;
+
+  try {
+    const data = await objktClient.request<ObjktTokenByKeyResponse>(query, {
+      contract: contractAddress,
+      tokenId,
+    });
+    const token = data?.token?.[0];
+    if (!token) return null;
+    return normalizeObjktToken(token);
+  } catch (err) {
+    console.warn("OBJKT token-by-key query failed:", err);
+    return null;
+  }
+}
+
 /** At most this many cards from one artist, so a bulk lister cannot fill a pack. */
 export const PACK_MAX_PER_ARTIST = 2;
 
@@ -473,9 +533,9 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
   // others reach deeper than the newest few hundred listings.
   const windowSize = Math.max(count * 2, 10);
   const offsets = [
-    Math.floor(Math.random() * 400),
-    400 + Math.floor(Math.random() * 1_200),
-    1_600 + Math.floor(Math.random() * 2_400),
+    Math.floor(Math.random() * 800),
+    800 + Math.floor(Math.random() * 4_200),
+    5_000 + Math.floor(Math.random() * 15_000),
   ];
 
   const listingFields = `
@@ -570,6 +630,6 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
     }));
   } catch (err) {
     console.error("Failed to fetch random listings from OBJKT:", err);
-    return [];
+    throw err;
   }
 }
