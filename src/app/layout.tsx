@@ -19,7 +19,7 @@ const textFont = Inter({
 
 export const metadata: Metadata = {
   title: "TzDeck",
-  description: "OBJKT booster packs and deck",
+  description: "Open OBJKT booster packs, build a deck, and battle other collectors on Tezos.",
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },

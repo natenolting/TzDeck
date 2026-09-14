@@ -1,8 +1,8 @@
 # TzDeck
 
-**Pull. Collect. Discover.**
+**Pull. Collect. Battle.**
 
-TzDeck is a gamified discovery and collection viewer for Tezos NFTs. It turns artwork from [OBJKT](https://objkt.com/) into a trading-card experience where collectors can open virtual booster packs, inspect new finds, and browse the NFTs already held in their wallet as a personal deck.
+TzDeck is a gamified discovery, collection, and battling layer for Tezos NFTs. It turns artwork from [OBJKT](https://objkt.com/) into a trading-card experience where collectors can open virtual booster packs, inspect new finds, browse the NFTs already held in their wallet as a personal deck, and pit those cards against other collectors' for XP and levels.
 
 ## How it works
 
@@ -10,6 +10,7 @@ TzDeck is a gamified discovery and collection viewer for Tezos NFTs. It turns ar
 - **Discover Tezos art:** See the artist, collection, edition size, listed price, and a rarity graded from the token's supply and its market listing.
 - **Inspect every card:** Open a larger artwork view with token metadata and a direct link to its OBJKT page.
 - **Browse your deck:** Connect a Beacon-compatible Tezos wallet to load, search, filter, and sort the NFTs it owns.
+- **Battle other collectors:** Pit a card you own against another opted-in wallet's card for XP and levels that persist across sessions.
 - **Build a wishlist:** Save interesting pulls in your browser and return to them later.
 
 TzDeck is a discovery layer, not a marketplace. It does not mint, sell, or transfer NFTs. Collection activity happens through OBJKT and its Tezos marketplace contracts.
