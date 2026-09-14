@@ -59,9 +59,9 @@ npm run migrate           # apply every migration that has not run yet
 
 `migrate` records each applied filename and its checksum, so a second run is a no-op. `migrate:status` neither locks nor writes, so it is safe to point at any database, production included.
 
-An applied migration is checksummed, so its file must never be edited afterwards. An edited file makes the next run refuse to apply anything until the file matches what was recorded. Fix a mistake by adding a new numbered migration on top instead.
+An applied migration is checksummed, so its file must never be edited afterward. An edited file makes the next run refuse to apply anything until the file matches what was recorded. Fix a mistake by adding a new numbered migration on top instead.
 
-Production migrations run from [`.github/workflows/migrate.yml`](.github/workflows/migrate.yml), which triggers once CI goes green on `main` and can also be started by hand from the Actions tab. Before it can work, the operator adds a `PRODUCTION_DATABASE_URL` secret to the repository's `production` environment under **Settings > Environments**. That environment is also where required reviewers go if a production migration should need human approval.
+Production migrations run from `.github/workflows/migrate.yml`, which triggers once CI goes green on `main` and can also be started by hand from the Actions tab. Before it can work, the operator adds a `PRODUCTION_DATABASE_URL` secret to the repository's `production` environment under **Settings > Environments**. That environment is also where required reviewers go if a production migration should need human approval.
 
 Give the secret the **direct**, non-pooled Neon connection string rather than the pooled one. Each migration runs inside a transaction, and the pooler handles transactional DDL badly. When the secret is empty the workflow fails with that instruction instead of connecting to nothing.
 
@@ -97,7 +97,7 @@ npm run lint              # Check the code with ESLint
 npm run calibrate:rarity  # Verify rarity tiers against 500 live listings
 npm run check:diversity   # Verify packs draw from several artists
 npm run migrate           # Apply battle-system database migrations
-npm run migrate:status    # Print the migration plan without touching the database
+npm run migrate:status    # Print the migration plan without writing to the database
 npm run simulate          # Run N ad-hoc battle simulations (see Battle system above)
 npm run validate:tiebreak # The R14 tiebreak's own fixed acceptance run
 npx tsc --noEmit          # Type-check without emitting files
