@@ -36,7 +36,7 @@ These thresholds were calibrated against 500 active OBJKT listings sampled deter
 
 ## Battle system
 
-Connected wallets can pit an owned card against another wallet's card for XP and levels, using the same edition-based Power/HP derivation as the deck rarity ladder above. Battling needs a Postgres database (`DATABASE_URL`) and two additional env vars (`BATTLE_AUTH_SECRET`, `BATTLE_APP_ID`) in `.env.local`; run `npm run migrate` once against that database before battling locally.
+Connected wallets can pit an owned card against another wallet's card for XP and levels, using the same edition-based Power/HP derivation as the deck rarity ladder above. Battling needs a Postgres database (`DATABASE_URL`) and two additional env vars (`BATTLE_AUTH_SECRET`, `BATTLE_APP_ID`) in `.env.local`; run `npm run migrate` once against that database before battling locally (see [Database migrations](#database-migrations)).
 
 Two scripts explore the combat math without a database or a running server:
 
@@ -47,6 +47,27 @@ npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed ac
 ```
 
 `simulate` is the general-purpose tool for exploring balance: it defaults to rolling a new random card for each side every trial, or pins a specific matchup via `--a-editions`/`--a-desc`/`--a-level` (and `--b-*` for the defender). Pass `--seed=N` for a reproducible run or `--csv=path.csv` to export one row per trial.
+
+## Database migrations
+
+The battle system's schema lives in `migrations/` as numbered SQL files. Both commands read `DATABASE_URL`:
+
+```bash
+npm run migrate:status    # print the plan and exit, writing nothing
+npm run migrate           # apply every migration that has not run yet
+```
+
+`migrate` records each applied filename and its checksum, so a second run is a no-op. `migrate:status` neither locks nor writes, so it is safe to point at any database, production included.
+
+An applied migration is checksummed, so its file must never be edited afterwards. An edited file makes the next run refuse to apply anything until the file matches what was recorded. Fix a mistake by adding a new numbered migration on top instead.
+
+Production migrations run from [`.github/workflows/migrate.yml`](.github/workflows/migrate.yml), which triggers once CI goes green on `main` and can also be started by hand from the Actions tab. Before it can work, the operator adds a `PRODUCTION_DATABASE_URL` secret to the repository's `production` environment under **Settings > Environments**. That environment is also where required reviewers go if a production migration should need human approval.
+
+Give the secret the **direct**, non-pooled Neon connection string rather than the pooled one. Each migration runs inside a transaction, and the pooler handles transactional DDL badly. When the secret is empty the workflow fails with that instruction instead of connecting to nothing.
+
+GitHub only offers a workflow once it is on the default branch, so the first production migration has to be dispatched by hand after this lands on `main`.
+
+The first production rollout is the one to sequence deliberately. Vercel ships the moment `main` moves and the deployed battle routes need their tables, so migrate immediately before or immediately after the merge.
 
 ## Run locally
 
@@ -76,6 +97,7 @@ npm run lint              # Check the code with ESLint
 npm run calibrate:rarity  # Verify rarity tiers against 500 live listings
 npm run check:diversity   # Verify packs draw from several artists
 npm run migrate           # Apply battle-system database migrations
+npm run migrate:status    # Print the migration plan without touching the database
 npm run simulate          # Run N ad-hoc battle simulations (see Battle system above)
 npm run validate:tiebreak # The R14 tiebreak's own fixed acceptance run
 npx tsc --noEmit          # Type-check without emitting files
