@@ -1,0 +1,54 @@
+name: Migrate production database
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# Queue overlapping runs instead of cancelling them. An interrupted apply is worse than a late one.
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply migrations
+    runs-on: ubuntu-latest
+
+    # workflow_run fires on every CI completion, failures and cancellations included.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+
+    environment: production
+
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the production connection string
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "PRODUCTION_DATABASE_URL is empty." >&2
+            echo "Add it under Settings > Secrets and variables > Actions, scoped to the production environment," >&2
+            echo "using the direct (non-pooled) Neon connection string." >&2
+            exit 1
+          fi
+
+      - name: Show the migration plan
+        run: npm run migrate:status
+
+      - name: Run database migrations
+        run: npm run migrate
