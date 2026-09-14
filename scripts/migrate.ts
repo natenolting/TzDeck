@@ -103,6 +103,19 @@ async function applyMigration(pool: Pool, migration: DiskMigration) {
   }
 }
 
+// PgBouncer in transaction mode can hand each statement a different backend, so
+// a session-level pg_advisory_lock is taken on one connection and released
+// against another: serialization silently stops working and the lock leaks.
+// Reads never take the lock, so --status through the pooler is fine.
+function poolerHost(databaseUrl: string): string | null {
+  try {
+    const { hostname } = new URL(databaseUrl);
+    return hostname.includes("-pooler.") ? hostname : null;
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -111,6 +124,14 @@ async function main() {
 
   const dryRun = process.argv.includes("--dry-run") || process.argv.includes("--status");
   const disk = readDiskMigrations(join(import.meta.dirname, "..", "migrations"));
+
+  const pooled = dryRun ? null : poolerHost(databaseUrl);
+  if (pooled) {
+    throw new Error(
+      `refusing to apply through the connection pooler at ${pooled}; ` +
+        `re-run against the direct endpoint ${pooled.replace("-pooler.", ".")}`,
+    );
+  }
 
   const pool = new Pool({ connectionString: databaseUrl });
   try {
