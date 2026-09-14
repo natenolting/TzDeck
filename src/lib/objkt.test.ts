@@ -420,7 +420,7 @@ test("fetchRandomPack samples three staggered windows in one request", async () 
     assert.equal(requests.length, 1);
     assert.deepEqual(
       [requests[0]?.o1, requests[0]?.o2, requests[0]?.o3],
-      [200, 1_000, 2_800],
+      [400, 2_900, 12_500],
     );
     assert.equal(cards.length, 3);
   } finally {
