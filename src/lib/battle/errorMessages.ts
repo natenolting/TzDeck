@@ -1,5 +1,6 @@
 export const BATTLE_ERROR_MESSAGES = new Map<string, string>([
   ["attacker_card_self_minted", "You can't battle with a card you minted yourself while you still hold it."],
+  ["attacker_card_not_held", "That card is no longer in your wallet, so you can't battle with it."],
 ]);
 
 export function battleErrorMessage(code: string): string {

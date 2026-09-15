@@ -10,7 +10,14 @@ test("battleErrorMessage translates a code that has copy", () => {
   );
 });
 
+test("battleErrorMessage translates the attacker's card leaving their wallet", () => {
+  assert.equal(
+    battleErrorMessage("attacker_card_not_held"),
+    "That card is no longer in your wallet, so you can't battle with it.",
+  );
+});
+
 test("battleErrorMessage returns an unmapped code unchanged", () => {
-  assert.equal(battleErrorMessage("attacker_card_not_held"), "attacker_card_not_held");
+  assert.equal(battleErrorMessage("self_challenge"), "self_challenge");
   assert.equal(battleErrorMessage("toString"), "toString");
 });
