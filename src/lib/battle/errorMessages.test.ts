@@ -28,6 +28,10 @@ test("battleErrorMessage translates a wallet challenging itself", () => {
   assert.equal(battleErrorMessage("self_challenge"), "You can't challenge your own wallet to a battle.");
 });
 
+test("battleErrorMessage translates a challenged wallet with nothing able to defend", () => {
+  assert.equal(battleErrorMessage("target_not_eligible"), "That wallet has no card available to defend right now.");
+});
+
 test("battleErrorMessage returns an unmapped code unchanged", () => {
   assert.equal(battleErrorMessage("missing_required_fields"), "missing_required_fields");
   assert.equal(battleErrorMessage("toString"), "toString");
