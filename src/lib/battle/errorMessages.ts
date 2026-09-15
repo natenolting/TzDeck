@@ -7,6 +7,8 @@ export const BATTLE_ERROR_MESSAGES = new Map<string, string>([
   ["defender_card_not_held", "Your opponent no longer holds that card, so the battle can't go ahead."],
   ["internal_error", "Something went wrong on our end, so please try that again."],
   ["internal_matchmaking_error", "Something went wrong while finding you an opponent, so please try again."],
+  ["trainer_tier_locked", "You haven't reached the level needed to challenge that trainer yet."],
+  ["trainer_attack_cap_reached", "You've used up today's trainer battles. Come back after the daily reset."],
 ]);
 
 export function battleErrorMessage(code: string): string {
