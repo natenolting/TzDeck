@@ -353,6 +353,19 @@ test("applyBattleOutcome: any other terminal rejection surfaces its own message 
   assert.equal(clearPendingAttempt, true);
 });
 
+test("applyBattleOutcome: a terminal rejection with a language key surfaces the human copy, not the raw code", () => {
+  const { panelState, clearPendingAttempt } = applyBattleOutcome({
+    kind: "terminal",
+    status: 409,
+    error: "attacker_card_self_minted",
+  });
+  assert.deepEqual(panelState, {
+    kind: "error",
+    message: "You can't battle with a card you minted yourself while you still hold it.",
+  });
+  assert.equal(clearPendingAttempt, true);
+});
+
 test("applyBattleOutcome: expiry clears the pending attempt -- a fresh signature is required, retrying it is pointless", () => {
   const { panelState, clearPendingAttempt } = applyBattleOutcome({ kind: "expired" });
   assert.deepEqual(panelState, { kind: "expired" });
