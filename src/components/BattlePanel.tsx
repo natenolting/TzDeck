@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
 import { getCardImageSources, getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
+import { battleErrorMessage } from "@/lib/battle/errorMessages";
 import { baseStatsFromSeed, deriveBaseSeed, type RoundRecord } from "@/lib/battle/rules";
 import { RARITY_CONFIG } from "./rarityStyles";
 import Switch from "./Switch";
@@ -291,7 +292,7 @@ export function applyBattleOutcome(outcome: BattleAttemptOutcome): {
       if (outcome.error === "attack_cap_reached" || outcome.error === "defense_cap_reached") {
         return { panelState: { kind: "cap_reached" }, clearPendingAttempt: true };
       }
-      return { panelState: { kind: "error", message: outcome.error }, clearPendingAttempt: true };
+      return { panelState: { kind: "error", message: battleErrorMessage(outcome.error) }, clearPendingAttempt: true };
     case "expired":
       return { panelState: { kind: "expired" }, clearPendingAttempt: true };
     case "uncertain":
