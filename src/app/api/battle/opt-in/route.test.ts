@@ -205,8 +205,26 @@ test("participation: a failure saving the response rolls back participation and 
   const { signer, publicKey, address } = await testSigner();
   const sql = getSql();
   try {
-    // A CHECK constraint supplies a real failure after promotion and opted_in update.
-    await sql`ALTER TABLE battle_attempts ADD CONSTRAINT review_reject_participation_completion CHECK (status != 'completed' OR action != 'opt-in')`;
+    // A CHECK constraint supplies a real failure after promotion and opted_in
+    // update. Scoped to this test's own wallet -- unscoped, this fails to
+    // even attach against a database with any other real completed opt-in
+    // row in its history (a shared dev DB, unlike a fresh empty one). A
+    // CHECK expression can't take a bind parameter (there's nothing to bind
+    // against once it's persisted for future rows), so the address is
+    // inlined as a literal -- safe here since it's this file's own
+    // deterministic, alphanumeric test-signer address, never external input.
+    const scopedConstraintSql = `ALTER TABLE battle_attempts ADD CONSTRAINT review_reject_participation_completion CHECK (status != 'completed' OR action != 'opt-in' OR wallet != '${address.replace(/'/g, "''")}')`;
+    // neon()'s tagged-template function refuses a hand-built strings array
+    // (it validates the call is genuine backtick syntax), so a literal-only
+    // statement with no bind parameters goes through its lower-level
+    // .query() escape hatch instead -- the pg fallback (local Postgres)
+    // never does that validation, so the plain array call still works there.
+    const sqlWithQuery = sql as unknown as { query?: (text: string, params?: unknown[]) => Promise<unknown> };
+    if (sqlWithQuery.query) {
+      await sqlWithQuery.query(scopedConstraintSql);
+    } else {
+      await sql([scopedConstraintSql] as unknown as TemplateStringsArray);
+    }
     const enable = await buildSignedBody(signer, publicKey, address, "opt-in", [true]);
     await withObjktStub(async () => ({ token_holder: [{ quantity: 1, token: { fa_contract: "KT1Rollback", token_id: "1", supply: 5, description: "" } }] }), async () => {
       assert.equal((await POST(postRequest({ ...enable, optedIn: true }))).status, 500);

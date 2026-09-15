@@ -1,0 +1,6 @@
+# Migration checksums (scripts/migrate-plan.ts) are a raw SHA-256 over file
+# bytes -- Windows checkouts with core.autocrlf=true silently rewrite these
+# to CRLF, which drifts the checksum away from whatever was recorded when
+# the file was first applied. Forcing LF here keeps the checksum stable
+# across every contributor's OS.
+migrations/*.sql text eol=lf
