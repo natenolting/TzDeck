@@ -24,7 +24,11 @@ test("battleErrorMessage translates an attacking card that is still in recovery"
   );
 });
 
+test("battleErrorMessage translates a wallet challenging itself", () => {
+  assert.equal(battleErrorMessage("self_challenge"), "You can't challenge your own wallet to a battle.");
+});
+
 test("battleErrorMessage returns an unmapped code unchanged", () => {
-  assert.equal(battleErrorMessage("self_challenge"), "self_challenge");
+  assert.equal(battleErrorMessage("missing_required_fields"), "missing_required_fields");
   assert.equal(battleErrorMessage("toString"), "toString");
 });
