@@ -32,6 +32,13 @@ test("battleErrorMessage translates a challenged wallet with nothing able to def
   assert.equal(battleErrorMessage("target_not_eligible"), "That wallet has no card available to defend right now.");
 });
 
+test("battleErrorMessage translates the defending card leaving its owner's wallet", () => {
+  assert.equal(
+    battleErrorMessage("defender_card_not_held"),
+    "Your opponent no longer holds that card, so the battle can't go ahead.",
+  );
+});
+
 test("battleErrorMessage returns an unmapped code unchanged", () => {
   assert.equal(battleErrorMessage("missing_required_fields"), "missing_required_fields");
   assert.equal(battleErrorMessage("toString"), "toString");
