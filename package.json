@@ -12,6 +12,7 @@
     "check:diversity": "tsx scripts/check-pack-diversity.ts",
     "migrate": "tsx scripts/migrate.ts",
     "migrate:status": "tsx scripts/migrate.ts --status",
+    "db:health": "tsx scripts/db-health-check.ts",
     "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts",
     "simulate": "tsx scripts/simulate-battles.ts"
   },

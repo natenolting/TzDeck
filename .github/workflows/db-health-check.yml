@@ -1,0 +1,42 @@
+name: Database health check
+
+# Dispatched by hand only -- unlike migrate.yml this never runs automatically.
+# Keeps PRODUCTION_DATABASE_URL inside the trusted workflow runner instead of
+# handing it to a local shell. The script it runs (db-health-check.ts) only
+# issues SELECTs.
+on:
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: Report row counts and staleness
+    runs-on: ubuntu-latest
+
+    environment: production
+
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+
+    steps:
+      - name: Check the production connection string
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "PRODUCTION_DATABASE_URL is not set." >&2
+            echo "Add it as a repository secret, or as a secret on the production environment." >&2
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run health check
+        run: npm run db:health
