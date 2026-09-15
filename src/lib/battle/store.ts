@@ -597,6 +597,56 @@ export async function commitBattle(params: CommitBattleParams): Promise<CommitBa
   return { response: row.response, statusCode: row.status_code };
 }
 
+export interface CommitTrainerBattleParams {
+  nonce: string;
+  generation: string;
+  attackerWallet: string;
+  attackerCardKey: string;
+  /** null means "expected absent" -- a first-use commit-time upsert. */
+  attackerExpectedVersion: string | null;
+  attackerSeedEditions: number;
+  attackerSeedDescriptionLength: number;
+  attackerSeedSource: string;
+  trainerTier: string;
+  outcome: "win" | "draw";
+  /** Meaningless when outcome is "draw". */
+  attackerWon: boolean;
+  baseXpAward: number;
+  rulesVersion: string;
+  rngSeed: string;
+  inputs: unknown;
+}
+
+export interface CommitTrainerBattleResult {
+  response: unknown;
+  statusCode: number;
+}
+
+export async function commitTrainerBattle(params: CommitTrainerBattleParams): Promise<CommitTrainerBattleResult> {
+  const sql = getSql();
+  const rows = await sql<{ response: unknown; status_code: number }>`
+    SELECT * FROM commit_trainer_battle(
+      ${params.nonce},
+      ${params.generation}::bigint,
+      ${params.attackerWallet},
+      ${params.attackerCardKey},
+      ${params.attackerExpectedVersion}::bigint,
+      ${params.attackerSeedEditions},
+      ${params.attackerSeedDescriptionLength},
+      ${params.attackerSeedSource},
+      ${params.trainerTier},
+      ${params.outcome},
+      ${params.attackerWon},
+      ${params.baseXpAward},
+      ${params.rulesVersion},
+      ${params.rngSeed},
+      ${JSON.stringify(params.inputs)}::jsonb
+    )
+  `;
+  const row = rows[0];
+  return { response: row.response, statusCode: row.status_code };
+}
+
 /**
  * Application-layer request budget, independent of the daily attack/defense
  * caps -- Vercel's own WAF rate-limit rule is IP-keyed and shared across all
