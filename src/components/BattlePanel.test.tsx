@@ -343,13 +343,13 @@ test("applyBattleOutcome: attack_cap_reached and defense_cap_reached map to the 
   assert.deepEqual(defense.panelState, { kind: "cap_reached" });
 });
 
-test("applyBattleOutcome: any other terminal rejection surfaces its own message and clears the pending attempt", () => {
+test("applyBattleOutcome: a terminal rejection with no language key surfaces the raw code and clears the pending attempt", () => {
   const { panelState, clearPendingAttempt } = applyBattleOutcome({
     kind: "terminal",
-    status: 409,
-    error: "attacker_card_not_held",
+    status: 400,
+    error: "missing_required_fields",
   });
-  assert.deepEqual(panelState, { kind: "error", message: "attacker_card_not_held" });
+  assert.deepEqual(panelState, { kind: "error", message: "missing_required_fields" });
   assert.equal(clearPendingAttempt, true);
 });
 
@@ -551,7 +551,7 @@ test("a terminal POST-phase business rejection shows its own error, never the si
   const battleButton = await screen.findByRole("button", { name: "Battle!" });
   fireEvent.click(battleButton);
 
-  assert.ok(await screen.findByText(/attacker_card_not_held/));
+  assert.ok(await screen.findByText(/no longer in your wallet/));
   assert.equal(
     screen.queryByText(/Signature declined or cancelled/),
     null,
@@ -593,7 +593,7 @@ test("Battle and opt-in controls stay disabled while a battle submission is in f
 
   resolveRandom!(new Response(JSON.stringify({ error: "attacker_card_not_held" }), { status: 409 }));
 
-  await screen.findByText(/attacker_card_not_held/);
+  await screen.findByText(/no longer in your wallet/);
   assert.equal(
     screen.getByRole("button", { name: "Battle!" }).hasAttribute("disabled"),
     false,
