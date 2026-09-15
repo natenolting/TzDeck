@@ -49,6 +49,26 @@ npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed ac
 
 `simulate` is the general-purpose tool for exploring balance: it defaults to rolling a new random card for each side every trial, or pins a specific matchup via `--a-editions`/`--a-desc`/`--a-level` (and `--b-*` for the defender). Pass `--seed=N` for a reproducible run or `--csv=path.csv` to export one row per trial.
 
+### Frequently asked questions
+
+**Does battling ever cost Tezos?** No. Every battle action -- matchmaking, direct challenges, opting in, refreshing holdings -- is authenticated by asking your wallet to sign a message (`wallet.client.requestSignPayload` in `WalletContext.tsx`), never by broadcasting an on-chain operation. Nothing is transferred and no gas or storage fee is paid.
+
+**Does the daily attack limit reset at a specific time?** Yes, at midnight UTC. `commit_battle` resets a wallet's `attack_count` to 1 the first time it attacks after its `attack_reset_at` has passed, and sets the next reset to `date_trunc('day', now()) + interval '1 day'`. The reset is lazy (evaluated the next time that wallet attacks, not on a schedule) and shared across every card the wallet owns.
+
+**Does the defense cap reset the same way?** Yes, identically -- same per-wallet `date_trunc('day', ...) + interval '1 day'` boundary, just evaluated when the wallet is picked as a defender instead of when it attacks.
+
+**Does the recovery cooldown work the same way?** No. Recovery is a fixed duration counted from the moment a card loses, not aligned to midnight: `recovery_until = settled_at + interval`, with the interval hardcoded as 4 hours for an attacker's loss and 1 hour for a defender's loss. It is also per-card, not per-wallet.
+
+**Is the recovery duration configurable anywhere?** No. It lives only as PL/pgSQL constants (`v_offensive_recovery`, `v_defensive_recovery`) inside the `commit_battle` function in `migrations/`. Changing it means shipping a new migration that redefines the function.
+
+**Does the XP/leveling system have a similar cap?** Level itself is uncapped -- `levelForXp` in `rules.ts` keeps climbing against a quadratic XP threshold with no ceiling, and the Power/HP level multiplier scales with it forever. Three of the combat modifiers built on top of level do cap out, each a plain constant in `rules.ts`: critical-hit chance caps at 20% (level 39), critical-hit multiplier caps at 3.0x (level 31), and miss chance floors at 1% (also around level 31).
+
+**Does the SQL side duplicate and test those caps?** No. `commit_battle` never recomputes combat stats -- it takes the client-computed `attackerStats`/`defenderStats`/`combat` as opaque input and only records them. The one server-side formula SQL *does* recompute independently (so a client can't lie about it) is the anti-farming XP decay, which is why it's the only one with a parity test (`commitBattle.test.ts`'s `"decay parity"` case).
+
+**Does that anti-farming decay reset per opponent?** Per opponent *wallet pair*, and it's a rolling window rather than a hard reset: `commit_battle` counts your wins against that specific wallet in the trailing 7 days and scales the XP award down by `0.5 ^ count` (floored at 10%). Beating a different wallet starts back at full XP; wins against the same wallet older than 7 days simply age out of the count on their own.
+
+**Does the win/loss battle log ever get pruned?** Yes -- `battle_log` rows older than 30 days are swept opportunistically inside `commit_battle`, the same pattern `check_rate_limit` uses for `rate_limits` (see [Database migrations](#database-migrations)). Nothing reads `battle_log` beyond that 7-day decay window in production, so 30 days is a comfortable margin, not a hard functional requirement.
+
 ## Database migrations
 
 The battle system's schema lives in `migrations/` as numbered SQL files. Both commands read `DATABASE_URL`:
