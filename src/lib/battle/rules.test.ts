@@ -22,6 +22,15 @@ import {
   resolveBattle,
   xpThresholdForLevel,
   xpWithinLevel,
+  TRAINER_TIER_ORDER,
+  TRAINER_LEVEL_UNLOCK,
+  trainerId,
+  trainerStats,
+  highestUnlockedTrainerTier,
+  isTrainerTierUnlocked,
+  trainerTierGap,
+  trainerBaseXpAward,
+  trainerXpAward,
   type CandidateCard,
   type Rng,
 } from "./rules";
@@ -389,4 +398,56 @@ test("bestCardForChallenge: F2 reuses the same closest-card selection for a sing
 
   const best = bestCardForChallenge(attackerStrength, targetCards, NOW);
   assert.equal(best?.cardKey, "KT1:2", "the closer-level card should be selected");
+});
+
+test("trainerId: namespaces a tier as a synthetic id, never a real tz/KT1 address", () => {
+  assert.equal(trainerId("common"), "trainer:common");
+  assert.equal(trainerId("legendary"), "trainer:legendary");
+});
+
+test("trainerStats: fixed, deterministic per tier, strictly increasing power/hp/level up the roster", () => {
+  const stats = TRAINER_TIER_ORDER.map((tier) => trainerStats(tier));
+  for (let i = 1; i < stats.length; i++) {
+    assert.ok(stats[i].power > stats[i - 1].power, `power should increase at index ${i}`);
+    assert.ok(stats[i].hp > stats[i - 1].hp, `hp should increase at index ${i}`);
+    assert.ok(stats[i].level > stats[i - 1].level, `level should increase at index ${i}`);
+  }
+  assert.deepEqual(trainerStats("common"), trainerStats("common"));
+});
+
+test("highestUnlockedTrainerTier: a card below every threshold is stuck at common", () => {
+  assert.equal(highestUnlockedTrainerTier(1), "common");
+  assert.equal(highestUnlockedTrainerTier(TRAINER_LEVEL_UNLOCK.uncommon - 1), "common");
+});
+
+test("highestUnlockedTrainerTier: unlocks exactly at each tier's threshold", () => {
+  for (const tier of TRAINER_TIER_ORDER) {
+    assert.equal(highestUnlockedTrainerTier(TRAINER_LEVEL_UNLOCK[tier]), tier);
+  }
+});
+
+test("isTrainerTierUnlocked: legendary is locked for a level-1 card, common never is", () => {
+  assert.equal(isTrainerTierUnlocked("legendary", 1), false);
+  assert.equal(isTrainerTierUnlocked("common", 1), true);
+  assert.equal(isTrainerTierUnlocked("legendary", TRAINER_LEVEL_UNLOCK.legendary), true);
+});
+
+test("trainerTierGap: zero at your own ceiling, positive below it", () => {
+  const cardLevel = TRAINER_LEVEL_UNLOCK.epic;
+  assert.equal(trainerTierGap("epic", cardLevel), 0);
+  assert.equal(trainerTierGap("common", cardLevel), TRAINER_TIER_ORDER.indexOf("epic") - TRAINER_TIER_ORDER.indexOf("common"));
+});
+
+test("trainerBaseXpAward: fighting at your ceiling pays more than fighting two tiers below it", () => {
+  const atCeiling = trainerBaseXpAward("epic", 0);
+  const twoBelow = trainerBaseXpAward("epic", 2);
+  assert.ok(twoBelow < atCeiling);
+  assert.ok(twoBelow >= 1);
+});
+
+test("trainerXpAward: repeat wins against the same trainer decay on top of the gap discount", () => {
+  const first = trainerXpAward("common", 0, 0);
+  const fifth = trainerXpAward("common", 0, 4);
+  assert.ok(fifth < first);
+  assert.ok(fifth >= 1);
 });

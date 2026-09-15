@@ -328,6 +328,94 @@ export function xpWithinLevel(xp: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Battle trainers: a fixed NPC roster, one per rarity tier, fought instead of
+// a real wallet's card. See docs/brainstorms/2026-09-15-battle-trainers-design.md.
+// ---------------------------------------------------------------------------
+
+export const TRAINER_TIER_ORDER: readonly CardRarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+
+/** Level a card must reach before it can challenge this tier's trainer. Tuning placeholder. */
+export const TRAINER_LEVEL_UNLOCK: Record<CardRarity, number> = {
+  common: 1,
+  uncommon: 5,
+  rare: 10,
+  epic: 20,
+  legendary: 35,
+};
+
+/**
+ * Trainers have no real NFT, so there's no seed to derive stats from --
+ * these representative edition counts feed the existing baseStatsFromSeed
+ * formula purely to produce a fixed, sensible stat block per tier. Matches
+ * the deck rarity ladder's own edition breakpoints (README's Battle system
+ * section), not an arbitrary choice.
+ */
+const TRAINER_REPRESENTATIVE_EDITIONS: Record<CardRarity, number> = {
+  legendary: 1,
+  epic: 5,
+  rare: 10,
+  uncommon: 25,
+  common: 100,
+};
+
+const TRAINER_XP_DISCOUNT = 0.5;
+
+export function trainerId(tier: CardRarity): string {
+  return `trainer:${tier}`;
+}
+
+export interface TrainerStats {
+  power: number;
+  hp: number;
+  level: number;
+}
+
+/** Fixed per tier -- same trainer, same stats, every time. Not derived from a real card's seed. */
+export function trainerStats(tier: CardRarity): TrainerStats {
+  const seed: BaseSeed = { editions: TRAINER_REPRESENTATIVE_EDITIONS[tier], descriptionLength: 0 };
+  const level = TRAINER_LEVEL_UNLOCK[tier];
+  const { power, hp } = effectiveStats(seed, level);
+  return { power, hp, level };
+}
+
+/** The highest trainer tier a card at this level may challenge. */
+export function highestUnlockedTrainerTier(cardLevel: number): CardRarity {
+  let unlocked: CardRarity = "common";
+  for (const tier of TRAINER_TIER_ORDER) {
+    if (TRAINER_LEVEL_UNLOCK[tier] <= cardLevel) unlocked = tier;
+  }
+  return unlocked;
+}
+
+export function isTrainerTierUnlocked(tier: CardRarity, cardLevel: number): boolean {
+  return TRAINER_TIER_ORDER.indexOf(tier) <= TRAINER_TIER_ORDER.indexOf(highestUnlockedTrainerTier(cardLevel));
+}
+
+/** Always >= 0: a player can never choose a tier above what's unlocked. */
+export function trainerTierGap(tier: CardRarity, cardLevel: number): number {
+  const ceiling = highestUnlockedTrainerTier(cardLevel);
+  return TRAINER_TIER_ORDER.indexOf(ceiling) - TRAINER_TIER_ORDER.indexOf(tier);
+}
+
+/**
+ * Pre-repeat-decay trainer XP: the existing baseXpAward weight, discounted
+ * flat (trainers are never the optimal grind vs. PvP of the same tier), then
+ * reduced by the same decay shape repeat-win decay uses -- fighting well
+ * below your unlocked ceiling pays little, without a hard access block. This
+ * is exactly what the route passes to commit_trainer_battle as
+ * p_base_xp_award; the SQL function applies only the repeat-win stage.
+ */
+export function trainerBaseXpAward(tier: CardRarity, gap: number): number {
+  const base = Math.round(baseXpAward(tier, TRAINER_LEVEL_UNLOCK[tier]) * TRAINER_XP_DISCOUNT);
+  return decayScaledAward(base, gap);
+}
+
+/** Full reference formula (both decay stages) -- for tests/parity only; the route never calls this directly. */
+export function trainerXpAward(tier: CardRarity, gap: number, recentWinsAgainstThisTrainer: number): number {
+  return decayScaledAward(trainerBaseXpAward(tier, gap), recentWinsAgainstThisTrainer);
+}
+
+// ---------------------------------------------------------------------------
 // U7: matchmaking -- candidate pool reduction and Power x HP band search.
 // Pure math only; store.ts's query returns the full eligible pool (no
 // product-based SQL filter, since stats are derived from base_seed on read,
