@@ -17,6 +17,13 @@ test("battleErrorMessage translates the attacker's card leaving their wallet", (
   );
 });
 
+test("battleErrorMessage translates an attacking card that is still in recovery", () => {
+  assert.equal(
+    battleErrorMessage("attacker_recovering"),
+    "That card is still recovering from its last battle, so it can't start another one yet.",
+  );
+});
+
 test("battleErrorMessage returns an unmapped code unchanged", () => {
   assert.equal(battleErrorMessage("self_challenge"), "self_challenge");
   assert.equal(battleErrorMessage("toString"), "toString");
