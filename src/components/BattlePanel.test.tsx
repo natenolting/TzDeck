@@ -347,9 +347,9 @@ test("applyBattleOutcome: a terminal rejection with no language key surfaces the
   const { panelState, clearPendingAttempt } = applyBattleOutcome({
     kind: "terminal",
     status: 400,
-    error: "self_challenge",
+    error: "missing_required_fields",
   });
-  assert.deepEqual(panelState, { kind: "error", message: "self_challenge" });
+  assert.deepEqual(panelState, { kind: "error", message: "missing_required_fields" });
   assert.equal(clearPendingAttempt, true);
 });
 
