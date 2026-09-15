@@ -39,6 +39,10 @@ test("battleErrorMessage translates the defending card leaving its owner's walle
   );
 });
 
+test("battleErrorMessage translates an unexpected server failure", () => {
+  assert.equal(battleErrorMessage("internal_error"), "Something went wrong on our end, so please try that again.");
+});
+
 test("battleErrorMessage returns an unmapped code unchanged", () => {
   assert.equal(battleErrorMessage("missing_required_fields"), "missing_required_fields");
   assert.equal(battleErrorMessage("toString"), "toString");
