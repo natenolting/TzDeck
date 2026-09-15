@@ -6,6 +6,7 @@ export const BATTLE_ERROR_MESSAGES = new Map<string, string>([
   ["target_not_eligible", "That wallet has no card available to defend right now."],
   ["defender_card_not_held", "Your opponent no longer holds that card, so the battle can't go ahead."],
   ["internal_error", "Something went wrong on our end, so please try that again."],
+  ["internal_matchmaking_error", "Something went wrong while finding you an opponent, so please try again."],
 ]);
 
 export function battleErrorMessage(code: string): string {

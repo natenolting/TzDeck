@@ -43,6 +43,13 @@ test("battleErrorMessage translates an unexpected server failure", () => {
   assert.equal(battleErrorMessage("internal_error"), "Something went wrong on our end, so please try that again.");
 });
 
+test("battleErrorMessage translates an unexpected matchmaking failure", () => {
+  assert.equal(
+    battleErrorMessage("internal_matchmaking_error"),
+    "Something went wrong while finding you an opponent, so please try again.",
+  );
+});
+
 test("battleErrorMessage returns an unmapped code unchanged", () => {
   assert.equal(battleErrorMessage("missing_required_fields"), "missing_required_fields");
   assert.equal(battleErrorMessage("toString"), "toString");
