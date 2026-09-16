@@ -23,12 +23,15 @@ test("trainerAvatarSvg: returns a well-formed inline SVG string", () => {
 });
 
 test("trainerAvatarSvg: is symmetric left-to-right within its 5x5 grid (an identicon property)", () => {
-  // A mirrored identicon draws each left-half cell and its mirror together,
-  // so the same fill color must appear an even number of times per row
-  // pair -- cheap to check structurally: every tier's output has a
-  // non-trivial rect count in the double digits (5 rows x up to 3 unique
-  // columns x up to 2 mirrored rects), not zero and not degenerate.
   const svg = trainerAvatarSvg("uncommon");
-  const rectCount = (svg.match(/<rect/g) ?? []).length;
-  assert.ok(rectCount > 1, "expected more than just the background rect");
+  const xs = [...svg.matchAll(/<rect x="([\d.]+)"/g)].map((m) => Number(m[1]));
+  assert.ok(xs.length > 0, "expected at least one foreground cell");
+
+  const CELL = 44 / 5;
+  const counts = new Map<number, number>();
+  for (const x of xs) counts.set(x, (counts.get(x) ?? 0) + 1);
+  for (const x of xs) {
+    const mirrorX = 4 * CELL - x;
+    assert.equal(counts.get(mirrorX), counts.get(x), `column at x=${x} should mirror column at x=${mirrorX}`);
+  }
 });
