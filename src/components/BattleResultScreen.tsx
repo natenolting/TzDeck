@@ -13,6 +13,10 @@ export const DEFAULT_BEAT_DELAY_MS = 650;
 /** A bar's fill hue carries meaning: identity (yours vs theirs) normally, danger once either side is running out. */
 const LOW_HP_THRESHOLD_PCT = 25;
 
+function trainerDisplayName(tier: CardRarity): string {
+  return `${RARITY_CONFIG[tier].label} Trainer`;
+}
+
 interface BattleResultScreenProps {
   attackerCard: NFTCardType;
   result: BattleResult;
@@ -64,7 +68,7 @@ function CardFace({ card, side, trainerTier }: { card: NFTCardType | null; side:
   );
   const { imageUrl, loaded, failed, handleLoad, handleError } = useFailoverImage(sources);
   const rarityConfig = RARITY_CONFIG[trainerTier ?? card?.rarity ?? "common"];
-  const trainerName = trainerTier ? `${RARITY_CONFIG[trainerTier].label} Trainer` : null;
+  const trainerName = trainerTier ? trainerDisplayName(trainerTier) : null;
   const avatarSvg = useMemo(() => (trainerTier ? trainerAvatarSvg(trainerTier) : null), [trainerTier]);
 
   return (
@@ -231,7 +235,7 @@ export default function BattleResultScreen({
             <HealthBar
               label={
                 result.trainerTier
-                  ? `${RARITY_CONFIG[result.trainerTier].label} Trainer`
+                  ? trainerDisplayName(result.trainerTier)
                   : result.defenderWallet
                     ? formatShortAddress(result.defenderWallet)
                     : "Opponent"
@@ -245,7 +249,12 @@ export default function BattleResultScreen({
 
         <div className="mt-6 max-h-[50vh] flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border-default bg-surface-1/60 p-3">
           {beats.slice(0, revealedBeats).map((beat, index) => {
-            const name = beat.side === "attacker" ? attackerCard.name : (defenderCard?.name ?? "Opponent");
+            const name =
+              beat.side === "attacker"
+                ? attackerCard.name
+                : result.trainerTier
+                  ? trainerDisplayName(result.trainerTier)
+                  : (defenderCard?.name ?? "Opponent");
             // Valence, not just side: a hit you land is good for you: a hit
             // landed on you is bad for you, regardless of which side of the
             // screen it's rendered on.
