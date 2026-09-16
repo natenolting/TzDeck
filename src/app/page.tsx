@@ -258,7 +258,7 @@ export default function Home() {
                     <CardsIcon className="h-6 w-6 text-accent-hover" />
                     <h4 className="font-bold text-text-primary mt-2">1. Open Packs</h4>
                     <p className="text-xs text-text-tertiary mt-1">
-                      Pull 5 random active OBJKT listings. Cards are graded by edition size and listed price — the pull is random, the rarity is not.
+                      Pull 5 random active OBJKT listings. Cards are graded by edition size and listed price — the pull is random; the rarity is not.
                     </p>
                   </div>
 
@@ -266,7 +266,7 @@ export default function Home() {
                     <SparklesIcon className="h-6 w-6 text-accent-hover" />
                     <h4 className="font-bold text-text-primary mt-2">2. Discover Art</h4>
                     <p className="text-xs text-text-tertiary mt-1">
-                      Discover new artists and collections. Like a piece? Click through to collect it directly on OBJKT.com.
+                      Discover new artists and collections. If you like a piece, click through to collect it directly on OBJKT.com.
                     </p>
                   </div>
 
@@ -289,7 +289,7 @@ export default function Home() {
                     How rarity is graded
                   </h3>
                   <p className="mt-2 max-w-[68ch]">
-                    Pack rarity reflects edition size and listed price. The pull is random; the grade follows these rules.
+                    Pack rarity reflects edition size and listed price. Pulls are random; the grade follows these rules.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-text-secondary">
                     {RARITY_LEGEND.map(({ tier, label, rule }) => (
