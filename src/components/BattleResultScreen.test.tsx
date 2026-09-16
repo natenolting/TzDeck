@@ -230,6 +230,29 @@ test("defender hits fall back to 'Opponent' while the card name is still loading
   assert.equal(screen.queryByText(/Opponent hit back for/), null, "the fallback text is fully replaced once the name resolves");
 });
 
+test("a trainer battle labels the defender's hits with the trainer's name, never 'Opponent'", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+  // No NFT to fetch for a trainer opponent -- if the log ever falls back to
+  // defenderCard?.name, this stays permanently unresolved and the line would
+  // incorrectly read "Opponent" for the whole battle.
+  objktClient.request = (async () => {
+    throw new Error("a trainer battle must never fetch NFT metadata for its opponent");
+  }) as typeof objktClient.request;
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({ trainerTier: "common", defenderWallet: undefined, defenderCardKey: undefined })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+    />,
+  );
+
+  assert.ok(await screen.findByText(/Common Trainer hit back for 28/), "the defender's hit is labeled with the trainer's name");
+  assert.equal(screen.queryByText(/Opponent hit back for/), null, "never falls back to the generic 'Opponent' label for a trainer");
+});
+
 test("a missed attacker beat shows a miss line, not a damage number", async () => {
   const { render, screen, BattleResultScreen } = await loadTestHarness();
   stubDefenderTokenFetch("Rival Card");
