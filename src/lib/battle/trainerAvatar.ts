@@ -26,7 +26,7 @@ function hashSeed(str: string): number {
 export function trainerAvatarSvg(tier: CardRarity): string {
   const rng = mulberry32(hashSeed(trainerId(tier)));
   const color = `var(--rarity-${tier})`;
-  let cells = `<rect width="${GRID}" height="${GRID}" fill="#0d0f19" rx="5"/>`;
+  let cells = `<rect width="${GRID}" height="${GRID}" fill="var(--surface-1)" rx="5"/>`;
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < Math.ceil(COLS / 2); x++) {
       if (rng() <= 0.55) continue;

@@ -768,7 +768,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                             dangerouslySetInnerHTML={{ __html: trainerAvatarSvg(tier) }}
                           />
                           <span className={`text-2xs capitalize ${unlocked ? "text-text-secondary" : "text-text-muted"}`}>{tier}</span>
-                          {!unlocked && <span className="text-[9px] text-text-muted">Lv {TRAINER_LEVEL_UNLOCK[tier]}</span>}
+                          {!unlocked && <span className="text-2xs text-text-muted">Lv {TRAINER_LEVEL_UNLOCK[tier]}</span>}
                         </button>
                       );
                     })}
