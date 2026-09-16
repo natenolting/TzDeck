@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchTokenByKey, formatShortAddress, getCardImageSources, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { fetchTokenByKey, formatShortAddress, getCardImageSources, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { RARITY_CONFIG } from "./rarityStyles";
 import type { RoundOutcome, RoundRecord } from "@/lib/battle/rules";
+import { trainerAvatarSvg } from "@/lib/battle/trainerAvatar";
 import type { BattleResult } from "./BattlePanel";
 
 export const DEFAULT_BEAT_DELAY_MS = 650;
@@ -56,20 +57,24 @@ function combatBeats(history: RoundRecord[] | undefined, attackerMaxHp: number, 
   return beats;
 }
 
-function CardFace({ card, side }: { card: NFTCardType | null; side: "attacker" | "defender" }) {
+function CardFace({ card, side, trainerTier }: { card: NFTCardType | null; side: "attacker" | "defender"; trainerTier?: CardRarity }) {
   const sources = useMemo(
     () => (card ? getCardImageSources(card.thumbnail_uri, card.display_uri, card.artifact_uri) : []),
     [card],
   );
   const { imageUrl, loaded, failed, handleLoad, handleError } = useFailoverImage(sources);
-  const rarityConfig = RARITY_CONFIG[card?.rarity || "common"];
+  const rarityConfig = RARITY_CONFIG[trainerTier ?? card?.rarity ?? "common"];
+  const trainerName = trainerTier ? `${RARITY_CONFIG[trainerTier].label} Trainer` : null;
+  const avatarSvg = useMemo(() => (trainerTier ? trainerAvatarSvg(trainerTier) : null), [trainerTier]);
 
   return (
     <div className="flex flex-col items-center gap-2 text-center">
       <div
-        className={`flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border border-border-subtle bg-surface-2 transition-all sm:h-36 sm:w-36 ${card ? rarityConfig.ring : ""} ${card ? rarityConfig.glow : ""}`}
+        className={`flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border border-border-subtle bg-surface-2 transition-all sm:h-36 sm:w-36 ${trainerTier || card ? rarityConfig.ring : ""} ${trainerTier || card ? rarityConfig.glow : ""}`}
       >
-        {card && imageUrl && !failed ? (
+        {avatarSvg ? (
+          <div className="h-full w-full [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: avatarSvg }} />
+        ) : card && imageUrl && !failed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
@@ -83,7 +88,7 @@ function CardFace({ card, side }: { card: NFTCardType | null; side: "attacker" |
         )}
       </div>
       <p className="max-w-[9rem] truncate text-xs font-semibold text-text-primary">
-        {card ? card.name : side === "defender" ? "Loading…" : ""}
+        {trainerName ?? (card ? card.name : side === "defender" ? "Loading…" : "")}
       </p>
     </div>
   );
@@ -162,7 +167,7 @@ export default function BattleResultScreen({
 
   useEffect(() => {
     let cancelled = false;
-    if (!result.defenderCardKey) return;
+    if (result.trainerTier || !result.defenderCardKey) return;
     const separatorIndex = result.defenderCardKey.lastIndexOf(":");
     if (separatorIndex === -1) return;
     const contractAddress = result.defenderCardKey.slice(0, separatorIndex);
@@ -174,7 +179,7 @@ export default function BattleResultScreen({
     return () => {
       cancelled = true;
     };
-  }, [result.defenderCardKey]);
+  }, [result.trainerTier, result.defenderCardKey]);
 
   const attackerMaxHp = result.attackerStats?.hp ?? result.combat?.finalHpA ?? 0;
   const defenderMaxHp = result.defenderStats?.hp ?? result.combat?.finalHpB ?? 0;
@@ -222,9 +227,15 @@ export default function BattleResultScreen({
             VS
           </div>
           <div className="flex flex-1 flex-col items-center gap-2">
-            <CardFace card={defenderCard} side="defender" />
+            <CardFace card={defenderCard} side="defender" trainerTier={result.trainerTier} />
             <HealthBar
-              label={result.defenderWallet ? formatShortAddress(result.defenderWallet) : "Opponent"}
+              label={
+                result.trainerTier
+                  ? `${RARITY_CONFIG[result.trainerTier].label} Trainer`
+                  : result.defenderWallet
+                    ? formatShortAddress(result.defenderWallet)
+                    : "Opponent"
+              }
               current={defenderHp}
               max={defenderMaxHp}
               side="defender"

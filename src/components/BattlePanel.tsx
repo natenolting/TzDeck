@@ -2,10 +2,18 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
-import { getCardImageSources, getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardImageSources, getCardKey, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { battleErrorMessage } from "@/lib/battle/errorMessages";
-import { baseStatsFromSeed, deriveBaseSeed, type RoundRecord } from "@/lib/battle/rules";
+import {
+  baseStatsFromSeed,
+  deriveBaseSeed,
+  isTrainerTierUnlocked,
+  TRAINER_LEVEL_UNLOCK,
+  TRAINER_TIER_ORDER,
+  type RoundRecord,
+} from "@/lib/battle/rules";
+import { trainerAvatarSvg } from "@/lib/battle/trainerAvatar";
 import { RARITY_CONFIG } from "./rarityStyles";
 import Switch from "./Switch";
 import BattleResultScreen from "./BattleResultScreen";
@@ -39,6 +47,7 @@ export interface BattleResult {
   loserRecoveryUntil?: string | null;
   defenderWallet?: string;
   defenderCardKey?: string;
+  trainerTier?: CardRarity;
   attackerStats?: { power: number; hp: number };
   defenderStats?: { power: number; hp: number };
   combat?: {
@@ -314,7 +323,8 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [statusUnavailable, setStatusUnavailable] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
-  const [mode, setMode] = useState<"random" | "challenge">("random");
+  const [mode, setMode] = useState<"random" | "challenge" | "trainer">("random");
+  const [trainerTier, setTrainerTier] = useState<CardRarity>("common");
   const [targetWallet, setTargetWallet] = useState("");
   const [panelState, setPanelState] = useState<PanelState>({ kind: "idle" });
   const [pendingAttempt, setPendingAttempt] = useState<PendingBattleAttempt | null>(null);
@@ -507,8 +517,8 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
 
     let signed: Awaited<ReturnType<typeof signChallenge>>;
     try {
-      const action = mode === "random" ? "random" : "challenge";
-      const params = mode === "random" ? [cardKey] : [cardKey, targetWallet];
+      const action = mode === "random" ? "random" : mode === "challenge" ? "challenge" : "trainer";
+      const params = mode === "random" ? [cardKey] : mode === "challenge" ? [cardKey, targetWallet] : [cardKey, trainerTier];
       signed = await signChallenge(action, params);
     } catch (error) {
       // Only a wallet-signing rejection/cancellation reaches this catch --
@@ -525,7 +535,9 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
     const body =
       mode === "random"
         ? { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey }
-        : { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey, defenderWallet: targetWallet };
+        : mode === "challenge"
+          ? { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey, defenderWallet: targetWallet }
+          : { ...signed, claimedAddress: signed.address, attackerCardKey: cardKey, trainerTier };
     const attempt: PendingBattleAttempt = {
       wallet: signed.address,
       endpoint: `/api/battle/${mode}`,
@@ -577,7 +589,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
             <button
               onClick={onClose}
               aria-label="Close battle panel"
-              className="button-secondary absolute right-4 top-4 h-8 w-8 min-h-8 shrink-0 rounded-full p-0 text-xs"
+              className="button-secondary absolute right-4 top-4 h-10 w-10 min-h-10 shrink-0 rounded-full p-0 text-xs"
             >
               ✕
             </button>
@@ -685,7 +697,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   <button
                     onClick={() => setMode("random")}
                     aria-pressed={mode === "random"}
-                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                    className={`min-h-10 flex-1 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
                       mode === "random" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
                     }`}
                   >
@@ -694,17 +706,28 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   <button
                     onClick={() => setMode("challenge")}
                     aria-pressed={mode === "challenge"}
-                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                    className={`min-h-10 flex-1 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
                       mode === "challenge" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
                     }`}
                   >
                     Challenge Wallet
                   </button>
+                  <button
+                    onClick={() => setMode("trainer")}
+                    aria-pressed={mode === "trainer"}
+                    className={`min-h-10 flex-1 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
+                      mode === "trainer" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    Train
+                  </button>
                 </div>
                 <p className="text-xs text-text-tertiary">
                   {mode === "random"
                     ? "Automatically matched against a similar-strength opponent."
-                    : "Target one specific wallet's best-matching card instead."}
+                    : mode === "challenge"
+                      ? "Target one specific wallet's best-matching card instead."
+                      : "Fight a fixed NPC trainer — always available, no opponent needed."}
                 </p>
 
                 {mode === "challenge" && (
@@ -720,9 +743,45 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   <p className="text-xs text-danger">You can&apos;t challenge your own wallet.</p>
                 )}
 
+                {mode === "trainer" && (
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {TRAINER_TIER_ORDER.map((tier) => {
+                      const unlocked = isTrainerTierUnlocked(tier, ownCardStatus?.level ?? 1);
+                      return (
+                        <button
+                          key={tier}
+                          type="button"
+                          disabled={!unlocked}
+                          onClick={() => setTrainerTier(tier)}
+                          aria-pressed={trainerTier === tier}
+                          title={unlocked ? tier : `Unlocks at level ${TRAINER_LEVEL_UNLOCK[tier]}`}
+                          className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 transition-colors ${
+                            trainerTier === tier
+                              ? "border-accent bg-accent-quiet"
+                              : unlocked
+                                ? "border-border-default bg-surface-2 hover:border-border-strong"
+                                : "cursor-not-allowed border-border-subtle bg-surface-1"
+                          }`}
+                        >
+                          <div
+                            className={`h-8 w-8 overflow-hidden rounded [&>svg]:h-full [&>svg]:w-full ${unlocked ? "" : "opacity-50 grayscale"}`}
+                            dangerouslySetInnerHTML={{ __html: trainerAvatarSvg(tier) }}
+                          />
+                          <span className={`text-2xs capitalize ${unlocked ? "text-text-secondary" : "text-text-muted"}`}>{tier}</span>
+                          {!unlocked && <span className="text-2xs text-text-muted">Lv {TRAINER_LEVEL_UNLOCK[tier]}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <button
                   onClick={startBattle}
-                  disabled={isBusy || (mode === "challenge" && (!targetWallet || targetWallet === address))}
+                  disabled={
+                    isBusy ||
+                    (mode === "challenge" && (!targetWallet || targetWallet === address)) ||
+                    (mode === "trainer" && !isTrainerTierUnlocked(trainerTier, ownCardStatus?.level ?? 1))
+                  }
                   className="button-primary w-full px-4 py-2.5 text-xs font-semibold"
                 >
                   {panelState.kind === "awaiting_signature"

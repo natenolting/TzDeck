@@ -53,6 +53,8 @@ npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed ac
 
 **Does battling ever cost Tezos?** No. Every battle action -- matchmaking, direct challenges, opting in, refreshing holdings -- is authenticated by asking your wallet to sign a message (`wallet.client.requestSignPayload` in `WalletContext.tsx`), never by broadcasting an on-chain operation. Nothing is transferred and no gas or storage fee is paid.
 
+**Can I battle an NPC instead of another wallet?** Yes -- five fixed "trainer" opponents, one per rarity tier, always available with no opt-in required on their side. Higher tiers unlock as your card levels up, you may still challenge any tier you've already unlocked, and trainer battles draw from their own separate daily allowance (`trainer_attack_count`/`trainer_attack_reset_at`) rather than the PvP one. A loss to a trainer still costs the normal recovery cooldown, just like a PvP loss.
+
 **Does the daily attack limit reset at a specific time?** Yes, at midnight UTC. `commit_battle` resets a wallet's `attack_count` to 1 the first time it attacks after its `attack_reset_at` has passed, and sets the next reset to `date_trunc('day', now()) + interval '1 day'`. The reset is lazy (evaluated the next time that wallet attacks, not on a schedule) and shared across every card the wallet owns.
 
 **Does the defense cap reset the same way?** Yes, identically -- same per-wallet `date_trunc('day', ...) + interval '1 day'` boundary, just evaluated when the wallet is picked as a defender instead of when it attacks.
