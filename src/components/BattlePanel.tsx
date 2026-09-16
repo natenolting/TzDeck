@@ -589,7 +589,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
             <button
               onClick={onClose}
               aria-label="Close battle panel"
-              className="button-secondary absolute right-4 top-4 h-8 w-8 min-h-8 shrink-0 rounded-full p-0 text-xs"
+              className="button-secondary absolute right-4 top-4 h-10 w-10 min-h-10 shrink-0 rounded-full p-0 text-xs"
             >
               ✕
             </button>
@@ -697,7 +697,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   <button
                     onClick={() => setMode("random")}
                     aria-pressed={mode === "random"}
-                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                    className={`min-h-10 flex-1 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
                       mode === "random" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
                     }`}
                   >
@@ -706,7 +706,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   <button
                     onClick={() => setMode("challenge")}
                     aria-pressed={mode === "challenge"}
-                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                    className={`min-h-10 flex-1 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
                       mode === "challenge" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
                     }`}
                   >
@@ -715,7 +715,7 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                   <button
                     onClick={() => setMode("trainer")}
                     aria-pressed={mode === "trainer"}
-                    className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                    className={`min-h-10 flex-1 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors ${
                       mode === "trainer" ? "tab-button-active" : "text-text-secondary hover:text-text-primary"
                     }`}
                   >
