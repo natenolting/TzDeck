@@ -3,8 +3,16 @@ import { calculateSupplyRarity, type CardRarity } from "@/lib/objkt";
 // ---------------------------------------------------------------------------
 // U4: card stat derivation (Power/HP), ported directly from the validated
 // prototype (docs/brainstorms/battle-system-combat-prototype.html) rather
-// than redesigned. Every constant below is a tuning placeholder (Open
-// Questions: exact Power/HP formula constants), not a structural choice.
+// than redesigned. Power is untouched from that port; TIER_HP_BASELINE and
+// HP_FLOOR are calibrated (scripts/simulate-battles.ts) to an ~5-round
+// average fight between two random level-1 cards -- the original values
+// (legendary=200 ... common=70, floor=50) averaged 2.07 rounds, over
+// nearly every matchup decided in round 1 or 2. The HP:Power ratio, not
+// variance or crit chance, is what drives round count; level scaling
+// preserves the ratio, so this calibration holds at every level. A large
+// rarity gap still resolves in ~2-3 rounds rather than the flat 1 round it
+// did before -- still a clear, fast stomp relative to an ~5-round even
+// fight, just no longer instant.
 // ---------------------------------------------------------------------------
 
 export interface BaseSeed {
@@ -22,16 +30,16 @@ export function powerFromEditions(editions: number): number {
 }
 
 const TIER_HP_BASELINE: Record<CardRarity, number> = {
-  legendary: 200,
-  epic: 160,
-  rare: 120,
-  uncommon: 90,
-  common: 70,
+  legendary: 600,
+  epic: 480,
+  rare: 360,
+  uncommon: 270,
+  common: 210,
 };
 
 const DESC_MODIFIER_CAP = 0.2;
 const DESC_DECAY_CHARS = 200;
-const HP_FLOOR = 50;
+const HP_FLOOR = 150;
 
 /**
  * Rarity-tier baseline + a bounded, diminishing-returns modifier from
