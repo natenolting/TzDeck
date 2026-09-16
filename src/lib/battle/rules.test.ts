@@ -60,12 +60,12 @@ test("powerFromEditions: an extremely high edition count never drops below its f
 
 test("hpFromTierAndDescription: a missing description still produces the floor HP, not zero", () => {
   const hp = hpFromTierAndDescription("common", 0);
-  assert.equal(hp, 70); // common baseline, zero modifier
+  assert.equal(hp, 210); // common baseline, zero modifier
 });
 
 test("hpFromTierAndDescription: an extremely long description never exceeds the modifier cap", () => {
   const hpAt2000Chars = hpFromTierAndDescription("legendary", 2000);
-  const hpAtCap = Math.round(200 * 1.2);
+  const hpAtCap = Math.round(600 * 1.2);
   assert.equal(hpAt2000Chars, hpAtCap, "modifier should have converged to its 20% cap");
 });
 
@@ -91,7 +91,7 @@ test("a card's Power and HP derive correctly from a given edition count and desc
   const stats = baseStatsFromSeed(seed);
   assert.equal(stats.tier, "legendary");
   assert.equal(stats.power, 100);
-  assert.equal(stats.hp, 200);
+  assert.equal(stats.hp, 600);
 });
 
 test("two callers computing stats from the same seed and level get identical Power/HP", () => {
