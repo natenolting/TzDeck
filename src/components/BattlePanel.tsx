@@ -758,14 +758,16 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
                           className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 transition-colors ${
                             trainerTier === tier
                               ? "border-accent bg-accent-quiet"
-                              : "border-border-default bg-surface-2 hover:border-border-strong"
-                          } ${unlocked ? "" : "opacity-40"}`}
+                              : unlocked
+                                ? "border-border-default bg-surface-2 hover:border-border-strong"
+                                : "cursor-not-allowed border-border-subtle bg-surface-1"
+                          }`}
                         >
                           <div
-                            className="h-8 w-8 overflow-hidden rounded [&>svg]:h-full [&>svg]:w-full"
+                            className={`h-8 w-8 overflow-hidden rounded [&>svg]:h-full [&>svg]:w-full ${unlocked ? "" : "opacity-50 grayscale"}`}
                             dangerouslySetInnerHTML={{ __html: trainerAvatarSvg(tier) }}
                           />
-                          <span className="text-2xs capitalize text-text-secondary">{tier}</span>
+                          <span className={`text-2xs capitalize ${unlocked ? "text-text-secondary" : "text-text-muted"}`}>{tier}</span>
                           {!unlocked && <span className="text-[9px] text-text-muted">Lv {TRAINER_LEVEL_UNLOCK[tier]}</span>}
                         </button>
                       );
