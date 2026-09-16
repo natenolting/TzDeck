@@ -229,17 +229,6 @@ export default function PackOpening({
                 {error}
               </div>
             )}
-
-            <p className="mt-8 max-w-sm text-xs text-text-tertiary">
-              Rarity reflects edition size and listed price.{" "}
-              <button
-                type="button"
-                onClick={onShowRarity}
-                className="cursor-pointer text-accent-hover underline underline-offset-4 hover:text-text-primary"
-              >
-                How grading works <span aria-hidden="true">→</span>
-              </button>
-            </p>
           </motion.div>
         )}
 
@@ -341,6 +330,19 @@ export default function PackOpening({
                 );
               })}
             </div>
+
+            {flippedIndices.size > 0 && (
+              <p className="mt-6 max-w-sm text-center text-xs text-text-tertiary">
+                Rarity reflects edition size and listed price.{" "}
+                <button
+                  type="button"
+                  onClick={onShowRarity}
+                  className="cursor-pointer text-accent-hover underline underline-offset-4 hover:text-text-primary"
+                >
+                  How grading works <span aria-hidden="true">→</span>
+                </button>
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
