@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { getCardImageSources, getCardKey, type NFTCard } from "@/lib/objkt";
+import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, type NFTCard } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
 import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon, SwordsIcon } from "./icons";
@@ -143,6 +143,7 @@ export default function NFTDetailsModal({
   const rarity = RARITY_CONFIG[activeCard.rarity || "common"];
   const previousCard = cards[activeIndex - 1];
   const nextCard = cards[activeIndex + 1];
+  const artistProfileUrl = getArtistProfileUrl(activeCard.artist_address);
   const battleStats = battleStatsByCardKey ? battleStatsByCardKey.get(activeKey) ?? null : undefined;
 
   useEffect(() => {
@@ -249,13 +250,35 @@ export default function NFTDetailsModal({
               {rarity.label}
             </span>
             <h2 id={titleId} className="mt-3 text-2xl font-extrabold text-text-primary sm:text-3xl">
-              {activeCard.name}
+              <a
+                href={activeCard.objkt_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors hover:text-accent-hover"
+              >
+                {activeCard.name}
+              </a>
             </h2>
             <p className="mt-2 text-sm font-medium text-accent-hover">
-              {activeCard.artist_alias || "Unknown Artist"}
+              {artistProfileUrl ? (
+                <a href={artistProfileUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  {activeCard.artist_alias || "Unknown Artist"}
+                </a>
+              ) : (
+                activeCard.artist_alias || "Unknown Artist"
+              )}
             </p>
             {activeCard.collection_name && (
-              <p className="mt-1 text-xs text-text-muted">{activeCard.collection_name}</p>
+              <p className="mt-1 text-xs text-text-muted">
+                <a
+                  href={getCollectionUrl(activeCard.contract_address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-text-secondary hover:underline"
+                >
+                  {activeCard.collection_name}
+                </a>
+              </p>
             )}
           </div>
 

@@ -81,6 +81,14 @@ export function formatShortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+export function getArtistProfileUrl(artistAddress?: string): string | undefined {
+  return artistAddress ? `https://objkt.com/users/${artistAddress}` : undefined;
+}
+
+export function getCollectionUrl(contractAddress: string): string {
+  return `https://objkt.com/collection/${contractAddress}`;
+}
+
 export function getCardKey(
   card: Pick<NFTCard, "contract_address" | "token_id">,
 ): string {

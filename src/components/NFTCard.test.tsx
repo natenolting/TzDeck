@@ -283,6 +283,9 @@ test("the modal traps keyboard focus and restores the page after closing", async
   const dialog = screen.getByRole("dialog", { name: card.name });
   const modal = within(dialog);
   const closeButton = modal.getByRole("button", { name: "Close token details" });
+  const titleLink = modal.getByRole("link", { name: card.name });
+  const artistLink = modal.getByRole("link", { name: card.artist_alias! });
+  const collectionLink = modal.getByRole("link", { name: card.collection_name! });
   const wishlistButton = modal.getByRole("button", { name: "Add to Wishlist" });
   const objktLink = modal.getByRole("link", { name: "Collect on OBJKT" });
 
@@ -290,6 +293,12 @@ test("the modal traps keyboard focus and restores the page after closing", async
   assert.notEqual((container as HTMLElement & { inert?: boolean }).inert, true);
   assert.equal(container.hasAttribute("aria-hidden"), false);
 
+  await user.tab();
+  assert.equal(document.activeElement, titleLink);
+  await user.tab();
+  assert.equal(document.activeElement, artistLink);
+  await user.tab();
+  assert.equal(document.activeElement, collectionLink);
   await user.tab();
   assert.equal(document.activeElement, wishlistButton);
   await user.tab();
