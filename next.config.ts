@@ -12,4 +12,11 @@ export default withSentryConfig(nextConfig, {
   widenClientFileUpload: true,
   tunnelRoute: "/monitoring",
   silent: !process.env.CI,
+  // The plugin documents throwing by default, but Next's runAfterProductionCompile
+  // swallows that throw, so a 401 on SENTRY_AUTH_TOKEN shipped a green build with no
+  // source maps. Rethrowing here does escape the hook. A build with no token attempts
+  // no upload and stays green, so local and fork builds are unaffected.
+  errorHandler: (err) => {
+    throw err;
+  },
 });
