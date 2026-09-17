@@ -23,6 +23,7 @@
     "@airgap/beacon-sdk": "^4.8.1",
     "@ecadlabs/beacon-types": "^4.8.4-ecad",
     "@neondatabase/serverless": "^1.1.0",
+    "@sentry/nextjs": "^10.75.0",
     "@taquito/beacon-wallet": "^25.0.0",
     "@taquito/michel-codec": "^25.0.0",
     "@taquito/taquito": "^25.0.0",
