@@ -473,6 +473,106 @@ export async function fetchTokenByKey(contractAddress: string, tokenId: string):
   }
 }
 
+interface ObjktCardsByKeysResponse {
+  listing: ObjktListingRow[];
+  token: ObjktRawToken[];
+}
+
+/** Keys per request. Keeps a large wishlist off a single oversized query. */
+const CARDS_BY_KEYS_CHUNK = 50;
+
+/**
+ * Re-resolves a set of tokens by key, pairing each with its cheapest active
+ * listing so price and rarity reflect the market now rather than whenever the
+ * caller last stored them. A token with no active listing still comes back,
+ * priced as undefined and graded on supply alone.
+ *
+ * Returns only what OBJKT answered for: a failed request or a vanished token
+ * yields a missing entry, leaving the caller free to keep its own copy.
+ */
+export async function fetchCardsByKeys(
+  keys: Array<Pick<NFTCard, "contract_address" | "token_id">>,
+): Promise<Map<string, NFTCard>> {
+  const resolved = new Map<string, NFTCard>();
+  if (keys.length === 0) return resolved;
+
+  const tokenFields = `
+    name
+    token_id
+    fa_contract
+    display_uri
+    artifact_uri
+    thumbnail_uri
+    supply
+    description
+    creators {
+      holder {
+        alias
+        address
+      }
+    }
+    fa {
+      name
+    }
+  `;
+
+  // Filtering contract and token id with independent `_in` lists can match pairs
+  // nobody asked for, so the requested keys are re-checked below. The
+  // alternative -- an `_or` of exact pairs -- would have to be interpolated into
+  // the query string, and these ids can come from a user-supplied file.
+  const query = `
+    query CardsByKeys($contracts: [String!], $tokenIds: [String!], $limit: Int!) {
+      listing(
+        where: {
+          status: { _eq: "active" },
+          price: { _gt: 0 },
+          token: { fa_contract: { _in: $contracts }, token_id: { _in: $tokenIds } }
+        },
+        limit: $limit,
+        order_by: { price: asc }
+      ) {
+        id
+        price
+        token { ${tokenFields} }
+      }
+      token(
+        where: { fa_contract: { _in: $contracts }, token_id: { _in: $tokenIds } },
+        limit: $limit
+      ) { ${tokenFields} }
+    }
+  `;
+
+  for (let start = 0; start < keys.length; start += CARDS_BY_KEYS_CHUNK) {
+    const chunk = keys.slice(start, start + CARDS_BY_KEYS_CHUNK);
+    const wanted = new Set(chunk.map(getCardKey));
+
+    try {
+      const data = await objktClient.request<ObjktCardsByKeysResponse>(query, {
+        contracts: [...new Set(chunk.map((key) => key.contract_address))],
+        tokenIds: [...new Set(chunk.map((key) => key.token_id))],
+        limit: chunk.length * 20,
+      });
+
+      for (const token of data?.token || []) {
+        const card = normalizeObjktToken(token);
+        if (wanted.has(getCardKey(card))) resolved.set(getCardKey(card), card);
+      }
+
+      for (const item of cheapestPerToken(data?.listing || [])) {
+        const card = normalizeObjktToken(item.token, {
+          listingId: item.id,
+          priceMutez: item.price,
+        });
+        if (wanted.has(getCardKey(card))) resolved.set(getCardKey(card), card);
+      }
+    } catch (err) {
+      console.warn("OBJKT cards-by-keys query failed:", err);
+    }
+  }
+
+  return resolved;
+}
+
 /** At most this many cards from one artist, so a bulk lister cannot fill a pack. */
 export const PACK_MAX_PER_ARTIST = 2;
 

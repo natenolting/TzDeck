@@ -6,6 +6,7 @@ import {
   calculateSupplyRarity,
   convertIpfsUrl,
   extractIpfsHash,
+  fetchCardsByKeys,
   fetchRandomPack,
   fetchTokenByKey,
   fetchUserHoldings,
@@ -389,6 +390,141 @@ test("fetchTokenByKey returns null when the token can't be found", async () => {
   try {
     const card = await fetchTokenByKey("KT1Missing", "999");
     assert.equal(card, null);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+function rawToken(tokenId: string, contract = "KT1Example", supply = 1) {
+  return {
+    name: `Token ${tokenId}`,
+    token_id: tokenId,
+    fa_contract: contract,
+    display_uri: "ipfs://QmExample",
+    artifact_uri: null,
+    thumbnail_uri: null,
+    supply,
+    description: null,
+    creators: [{ holder: { alias: "Example Artist", address: "tz1Example" } }],
+    fa: { name: "Example Collection" },
+  };
+}
+
+test("fetchCardsByKeys resolves a whole wishlist in one request", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  let requestCount = 0;
+  let emittedVars: Record<string, unknown> | undefined;
+
+  client.request = async (_document, variables) => {
+    requestCount += 1;
+    emittedVars = variables;
+    return {
+      listing: [{ id: 9, price: 600_000_000, token: rawToken("0") }],
+      token: [rawToken("0"), rawToken("1", "KT1Example", 40)],
+    };
+  };
+
+  try {
+    const cards = await fetchCardsByKeys([
+      { contract_address: "KT1Example", token_id: "0" },
+      { contract_address: "KT1Example", token_id: "1" },
+    ]);
+
+    assert.equal(requestCount, 1);
+    assert.deepEqual(emittedVars?.contracts, ["KT1Example"]);
+    assert.deepEqual(emittedVars?.tokenIds, ["0", "1"]);
+    assert.equal(cards.size, 2);
+    // Listed: price refreshes and rarity re-derives from supply plus price.
+    assert.equal(cards.get("KT1Example:0")?.price_xtz, 600);
+    assert.equal(cards.get("KT1Example:0")?.rarity, "legendary");
+    // Unlisted: no price, so rarity falls back to the supply ladder.
+    assert.equal(cards.get("KT1Example:1")?.price_xtz, undefined);
+    assert.equal(cards.get("KT1Example:1")?.rarity, "common");
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchCardsByKeys takes the cheapest active listing for a token", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => ({
+    listing: [
+      { id: 9, price: 900_000_000, token: rawToken("0") },
+      { id: 4, price: 120_000_000, token: rawToken("0") },
+    ],
+    token: [rawToken("0")],
+  });
+
+  try {
+    const cards = await fetchCardsByKeys([{ contract_address: "KT1Example", token_id: "0" }]);
+    assert.equal(cards.get("KT1Example:0")?.price_xtz, 120);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchCardsByKeys ignores tokens the caller didn't ask for", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  // `_in` on contract and token id independently can match pairs that were never
+  // requested -- a second contract that happens to reuse token id "0".
+  client.request = async () => ({
+    listing: [],
+    token: [rawToken("0"), rawToken("0", "KT1Other")],
+  });
+
+  try {
+    const cards = await fetchCardsByKeys([{ contract_address: "KT1Example", token_id: "0" }]);
+    assert.deepEqual([...cards.keys()], ["KT1Example:0"]);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchCardsByKeys returns an empty map when OBJKT is unreachable", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => {
+    throw new Error("network down");
+  };
+
+  try {
+    const cards = await fetchCardsByKeys([{ contract_address: "KT1Example", token_id: "0" }]);
+    assert.equal(cards.size, 0);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchCardsByKeys makes no request for an empty wishlist", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  let requestCount = 0;
+
+  client.request = async () => {
+    requestCount += 1;
+    return { listing: [], token: [] };
+  };
+
+  try {
+    const cards = await fetchCardsByKeys([]);
+    assert.equal(requestCount, 0);
+    assert.equal(cards.size, 0);
   } finally {
     client.request = originalRequest;
   }

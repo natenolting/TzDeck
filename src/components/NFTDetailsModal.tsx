@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, type NFTCard } from "@/lib/objkt";
+import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
 import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon, SwordsIcon } from "./icons";
@@ -122,8 +123,7 @@ export default function NFTDetailsModal({
   onBattle,
 }: NFTDetailsModalProps) {
   const titleId = useId();
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const { dialogRef, initialFocusRef: closeButtonRef } = useDialogBehavior<HTMLButtonElement>(onClose);
   const initialCardKey = getCardKey(card);
   const cards = navigationCards?.some(
     (navigationCard) => getCardKey(navigationCard) === initialCardKey,
@@ -145,49 +145,6 @@ export default function NFTDetailsModal({
   const nextCard = cards[activeIndex + 1];
   const artistProfileUrl = getArtistProfileUrl(activeCard.artist_address);
   const battleStats = battleStatsByCardKey ? battleStatsByCardKey.get(activeKey) ?? null : undefined;
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-        return;
-      }
-
-      if (event.key !== "Tab") return;
-
-      const dialog = dialogRef.current;
-      const focusable = Array.from(
-        dialog?.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ) || [],
-      );
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const activeElement = document.activeElement;
-
-      if (event.shiftKey && (activeElement === first || !dialog?.contains(activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (activeElement === last || !dialog?.contains(activeElement))) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", handleKeyDown);
-    closeButtonRef.current?.focus();
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-      previouslyFocused?.focus();
-    };
-  }, [onClose]);
 
   return createPortal(
     <div

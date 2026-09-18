@@ -229,6 +229,7 @@ export default function Home() {
               wishlist={wishlist}
               onWishlistToggle={handleWishlistToggle}
               onClearWishlist={handleClearWishlist}
+              onImport={saveWishlist}
               onBrowsePacks={() => setActiveTab("packs")}
             />
           )}

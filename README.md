@@ -11,7 +11,7 @@ TzDeck is a gamified discovery, collection, and battling layer for Tezos NFTs. I
 - **Inspect every card:** Open a larger artwork view with token metadata and a direct link to its OBJKT page.
 - **Browse your deck:** Connect a Beacon-compatible Tezos wallet to load, search, filter, and sort the NFTs it owns.
 - **Battle other collectors:** Pit a card you own against another opted-in wallet's card for XP and levels that persist across sessions.
-- **Build a wishlist:** Save interesting pulls in your browser and return to them later.
+- **Build a wishlist:** Save interesting pulls in your browser, back them up to a file, and return to them later.
 
 TzDeck is a discovery layer, not a marketplace. It does not mint, sell, or transfer NFTs. Collection activity happens through OBJKT and its Tezos marketplace contracts.
 
@@ -34,6 +34,16 @@ Booster-pack contents are randomized from active OBJKT listings, but the rarity 
 The deck-only supply ladder is Legendary for a 1 of 1, Epic for editions of 5 or fewer, Rare for editions of 10 or fewer, Uncommon for editions of 25 or fewer, and Common for larger editions -- the same five-tier scale used by My Deck's battle system (see below).
 
 These thresholds were calibrated against 500 active OBJKT listings sampled deterministically across the marketplace's listing-ID range. The measured distribution was 1.6% Legendary, 4.8% Epic, 24.0% Rare, 55.6% Uncommon, and 14.0% Common. Re-run `npm run calibrate:rarity` to verify the live catalogue remains within the design targets.
+
+## Wishlist backup
+
+The wishlist lives in the browser's `localStorage` under `tzdeck_wishlist`, so clearing site data or switching browsers loses it. **Export** downloads the saved cards as a dated `tzdeck-wishlist-YYYY-MM-DD.json` file; **Import** reads one back, including from the empty-wishlist screen.
+
+An import merges rather than replaces -- cards already saved keep their place, and new ones are appended. The file's own `contract_address` and `token_id` are the only identity TzDeck trusts from it: every card is re-resolved against OBJKT on import, so prices and rarities reflect the market now rather than whenever the file was written. A card OBJKT no longer lists keeps its artwork and loses its price, falling back to the supply-only rarity ladder; if OBJKT can't be reached at all, the import still succeeds on the file's stored values and says which cards may be out of date.
+
+**Clear Wishlist** asks for confirmation before it wipes anything, naming how many cards are at stake; the prompt opens with focus on Cancel, and Escape or a click outside backs out.
+
+Entries the file can't justify are dropped instead of failing the whole import: a card with no contract or token id, a repeat of one already read, or an image URL that isn't `https:` or `ipfs:`. The OBJKT link on each imported card is rebuilt from its contract and token id rather than taken from the file.
 
 ## Battle system
 
