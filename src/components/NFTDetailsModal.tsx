@@ -200,7 +200,13 @@ export default function NFTDetailsModal({
         {/* The panel reserves horizontal gutters from sm up so the arrows sit
             beside the artwork rather than on top of it. A phone has no room to
             spare for that, so there the arrows drop to a row underneath and the
-            image keeps the full width. */}
+            image keeps the full width.
+
+            The arrows are centred in that gutter rather than offset from the
+            panel edge: the gutter is sm:px-16 (4rem) and a button is w-11
+            (2.75rem), so each side gets (4 - 2.75) / 2 = 0.625rem, which is
+            sm:left-2.5 / sm:right-2.5. Change either value and this one moves
+            with it. */}
         <div className="relative flex min-h-[320px] flex-col items-center justify-center gap-4 bg-black/50 p-4 sm:flex-row sm:gap-0 sm:px-16 sm:py-6">
           <ModalArtwork key={activeKey} card={activeCard} />
 
@@ -214,7 +220,7 @@ export default function NFTDetailsModal({
                   onClick={() => setActiveCardKey(getCardKey(previousCard))}
                   aria-label="View previous card"
                   title="Previous card"
-                  className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:absolute sm:left-4 sm:top-1/2 sm:-translate-y-1/2"
+                  className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:absolute sm:left-2.5 sm:top-1/2 sm:-translate-y-1/2"
                 >
                   <ChevronLeftIcon className="h-6 w-6" />
                 </button>
@@ -226,7 +232,7 @@ export default function NFTDetailsModal({
                   onClick={() => setActiveCardKey(getCardKey(nextCard))}
                   aria-label="View next card"
                   title="Next card"
-                  className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2"
+                  className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:absolute sm:right-2.5 sm:top-1/2 sm:-translate-y-1/2"
                 >
                   <ChevronRightIcon className="h-6 w-6" />
                 </button>
