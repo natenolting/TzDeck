@@ -62,9 +62,14 @@ export default function WishlistGrid({
 
     link.href = url;
     link.download = wishlistExportFilename();
-    link.click();
 
-    URL.revokeObjectURL(url);
+    // The anchor has to be in the document for Firefox to honour the click at
+    // all, and the blob URL has to outlive it: a download is asynchronous, so
+    // revoking in this same tick can abort or truncate the file.
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
