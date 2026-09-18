@@ -171,31 +171,41 @@ export default function NFTDetailsModal({
           <span aria-hidden="true">×</span>
         </button>
 
-        <div className="relative flex min-h-[320px] items-center justify-center bg-black/50 p-4 sm:p-6">
+        {/* The panel reserves horizontal gutters from sm up so the arrows sit
+            beside the artwork rather than on top of it. A phone has no room to
+            spare for that, so there the arrows drop to a row underneath and the
+            image keeps the full width. */}
+        <div className="relative flex min-h-[320px] flex-col items-center justify-center gap-4 bg-black/50 p-4 sm:flex-row sm:gap-0 sm:px-16 sm:py-6">
           <ModalArtwork key={activeKey} card={activeCard} />
 
-          {previousCard && (
-            <button
-              type="button"
-              onClick={() => setActiveCardKey(getCardKey(previousCard))}
-              aria-label="View previous card"
-              title="Previous card"
-              className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:left-5"
-            >
-              <ChevronLeftIcon className="h-6 w-6" />
-            </button>
-          )}
+          {(previousCard || nextCard) && (
+            // sm:contents dissolves this row at desktop width, so the buttons
+            // below become absolute children of the panel itself.
+            <div className="flex items-center justify-center gap-4 sm:contents">
+              {previousCard && (
+                <button
+                  type="button"
+                  onClick={() => setActiveCardKey(getCardKey(previousCard))}
+                  aria-label="View previous card"
+                  title="Previous card"
+                  className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:absolute sm:left-4 sm:top-1/2 sm:-translate-y-1/2"
+                >
+                  <ChevronLeftIcon className="h-6 w-6" />
+                </button>
+              )}
 
-          {nextCard && (
-            <button
-              type="button"
-              onClick={() => setActiveCardKey(getCardKey(nextCard))}
-              aria-label="View next card"
-              title="Next card"
-              className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:right-5"
-            >
-              <ChevronRightIcon className="h-6 w-6" />
-            </button>
+              {nextCard && (
+                <button
+                  type="button"
+                  onClick={() => setActiveCardKey(getCardKey(nextCard))}
+                  aria-label="View next card"
+                  title="Next card"
+                  className="z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong bg-black/65 text-text-primary shadow-lg backdrop-blur-md transition-colors hover:bg-black/85 sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2"
+                >
+                  <ChevronRightIcon className="h-6 w-6" />
+                </button>
+              )}
+            </div>
           )}
         </div>
 
