@@ -8,7 +8,9 @@ async function main() {
   let short = 0;
 
   for (let index = 0; index < PACKS; index += 1) {
-    const cards = await fetchRandomPack(5);
+    // No denylist argument: this script measures diversity against the OBJKT
+    // rules alone, so it needs no database.
+    const { cards } = await fetchRandomPack(5);
     if (cards.length < 5) short += 1;
 
     const counts = new Map<string, number>();

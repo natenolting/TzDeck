@@ -1,6 +1,13 @@
 import { GraphQLClient } from "graphql-request";
 import { CID } from "multiformats/cid";
 
+import {
+  ALLOW_ALL,
+  partitionListings,
+  type DenylistIndex,
+  type ExclusionRecord,
+} from "./pullFilter";
+
 const OBJKT_API_URL = process.env.NEXT_PUBLIC_OBJKT_API_URL || "https://data.objkt.com/v3/graphql";
 export const objktClient = new GraphQLClient(OBJKT_API_URL);
 
@@ -222,14 +229,22 @@ export interface ObjktRawToken {
   thumbnail_uri: string | null;
   supply: number | null;
   description?: string | null;
+  // Pull-filter fields. Optional because fetchUserHoldings and fetchTokenByKey
+  // share this interface and deliberately do not select them -- a wallet's own
+  // holdings and a known battle opponent's card are not discovery surfaces.
+  pk?: number | null;
+  flag?: string | null;
   creators?: Array<{
+    verified?: boolean;
     holder: {
       alias: string | null;
       address: string;
+      flag?: string | null;
     };
   }>;
   fa?: {
     name: string | null;
+    live?: boolean | null;
   };
 }
 
@@ -633,7 +648,15 @@ function cheapestPerToken(listings: ObjktListingRow[]): ObjktListingRow[] {
   return [...byToken.values()];
 }
 
-export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
+export interface PackDraw {
+  cards: NFTCard[];
+  excluded: ExclusionRecord[];
+}
+
+export async function fetchRandomPack(
+  count = 5,
+  denylist: DenylistIndex = ALLOW_ALL,
+): Promise<PackDraw> {
   // Three windows rather than one contiguous block. A single offset+limit over
   // `id desc` returns adjacent listing IDs, so an artist who bulk-lists fills
   // the whole window -- which is how a pack ends up being one collection. The
@@ -650,6 +673,8 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
     id
     price
     token {
+      pk
+      flag
       name
       token_id
       fa_contract
@@ -659,13 +684,16 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
       supply
       description
       creators {
+        verified
         holder {
           alias
           address
+          flag
         }
       }
       fa {
         name
+        live
       }
     }
   `;
@@ -729,13 +757,21 @@ export async function fetchRandomPack(count = 5): Promise<NFTCard[]> {
       throw new Error("No active listings found");
     }
 
-    const unique = cheapestPerToken(shuffleArray(listings));
+    // Before cheapestPerToken and selectDiverseListings: an excluded token must
+    // not consume a pack slot, and must not win the cheapest-per-token tiebreak
+    // and thereby suppress a legitimate listing of the same token.
+    const { eligible, excluded } = partitionListings(listings, denylist);
+
+    const unique = cheapestPerToken(shuffleArray(eligible));
     const selected = selectDiverseListings(unique, count);
 
-    return selected.map((item) => normalizeObjktToken(item.token, {
-      listingId: item.id,
-      priceMutez: item.price,
-    }));
+    return {
+      cards: selected.map((item) => normalizeObjktToken(item.token, {
+        listingId: item.id,
+        priceMutez: item.price,
+      })),
+      excluded,
+    };
   } catch (err) {
     console.error("Failed to fetch random listings from OBJKT:", err);
     throw err;

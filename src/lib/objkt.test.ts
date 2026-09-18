@@ -33,6 +33,11 @@ function listingRow(
     id,
     price: 2_000_000,
     token: {
+      // Eligible under every pull-filter rule, so the tests using this helper
+      // stay about windowing, fallback and diversity rather than the filter.
+      // Filter behaviour has its own helper, filterableRow, below.
+      pk: id * 10,
+      flag: "none",
       name,
       token_id: tokenId,
       fa_contract: contract,
@@ -41,8 +46,49 @@ function listingRow(
       thumbnail_uri: null,
       supply: 50,
       description: null,
-      creators: [{ holder: { alias: artistAddress, address: artistAddress } }],
-      fa: { name: "Test Collection" },
+      creators: [{ holder: { alias: artistAddress, address: artistAddress, flag: "none" } }],
+      fa: { name: "Test Collection", live: true },
+    },
+  };
+}
+
+function filterableRow(
+  id: number,
+  contract: string,
+  tokenId: string,
+  overrides: {
+    flag?: string | null;
+    live?: boolean | null;
+    creatorFlag?: string | null;
+    price?: number;
+    pk?: number;
+  } = {},
+) {
+  return {
+    id,
+    price: overrides.price ?? 2_000_000,
+    token: {
+      pk: overrides.pk ?? id * 10,
+      flag: overrides.flag === undefined ? "none" : overrides.flag,
+      name: `Token ${tokenId}`,
+      token_id: tokenId,
+      fa_contract: contract,
+      display_uri: `https://example.com/${tokenId}.jpg`,
+      artifact_uri: null,
+      thumbnail_uri: null,
+      supply: 50,
+      description: null,
+      creators: [
+        {
+          verified: true,
+          holder: {
+            alias: "Artist",
+            address: `tz1Artist${tokenId}`,
+            flag: overrides.creatorFlag === undefined ? "none" : overrides.creatorFlag,
+          },
+        },
+      ],
+      fa: { name: "Test Collection", live: overrides.live === undefined ? true : overrides.live },
     },
   };
 }
@@ -530,6 +576,124 @@ test("fetchCardsByKeys makes no request for an empty wishlist", async () => {
   }
 });
 
+test("fetchRandomPack requests the fields the filter reads", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+  let emittedQuery = "";
+
+  client.request = async (document) => {
+    emittedQuery = document;
+    return {
+      w1: [filterableRow(1, "KT1A", "1")],
+      w2: [filterableRow(2, "KT1B", "2")],
+      w3: [filterableRow(3, "KT1C", "3")],
+    };
+  };
+
+  try {
+    await fetchRandomPack(3);
+
+    assert.match(emittedQuery, /\bpk\b/);
+    assert.match(emittedQuery, /\bflag\b/);
+    assert.match(emittedQuery, /live/);
+    // activeWhere must NOT have grown moderation filters -- the rules run in code.
+    assert.doesNotMatch(emittedQuery, /_not:\s*{\s*creators/);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchRandomPack drops flagged listings and reports them as exclusions", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => ({
+    w1: [
+      filterableRow(1, "KT1A", "1"),
+      filterableRow(2, "KT1B", "2", { flag: "banned", pk: 222 }),
+    ],
+    w2: [
+      filterableRow(3, "KT1C", "3", { live: false }),
+      filterableRow(4, "KT1D", "4", { creatorFlag: "banned" }),
+    ],
+    w3: [filterableRow(5, "KT1E", "5")],
+  });
+
+  try {
+    const { cards, excluded } = await fetchRandomPack(5);
+
+    assert.deepEqual(
+      cards.map((card) => card.contract_address).sort(),
+      ["KT1A", "KT1E"],
+    );
+    assert.deepEqual(
+      excluded.map((record) => record.reason).sort(),
+      ["creator_flag", "fa_not_live", "token_flag"],
+    );
+    assert.equal(excluded.find((r) => r.reason === "token_flag")?.tokenPk, 222);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchRandomPack applies the denylist it is given", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => ({
+    w1: [filterableRow(1, "KT1A", "1"), filterableRow(2, "KT1Bad", "9")],
+    w2: [],
+    w3: [],
+  });
+
+  try {
+    const { cards, excluded } = await fetchRandomPack(2, {
+      has: (contract) => contract === "KT1Bad",
+    });
+
+    assert.deepEqual(cards.map((card) => card.contract_address), ["KT1A"]);
+    assert.deepEqual(excluded, [
+      { faContract: "KT1Bad", tokenId: "9", tokenPk: 20, reason: "denylist" },
+    ]);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
+test("fetchRandomPack filters before the cheapest-per-token tiebreak", async () => {
+  // A banned cheap listing of a token must not suppress the same token's clean,
+  // pricier listing -- which is what would happen if the filter ran after
+  // cheapestPerToken picked the cheapest row.
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => ({
+    w1: [
+      filterableRow(1, "KT1A", "1", { price: 5_000_000 }),
+      filterableRow(2, "KT1A", "1", { price: 1_000_000, flag: "banned" }),
+    ],
+    w2: [],
+    w3: [],
+  });
+
+  try {
+    const { cards } = await fetchRandomPack(1);
+
+    assert.equal(cards.length, 1);
+    assert.equal(cards[0].price_mutez, 5_000_000);
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
 test("fetchRandomPack samples three staggered windows in one request", async () => {
   const client = objktClient as unknown as {
     request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
@@ -549,7 +713,7 @@ test("fetchRandomPack samples three staggered windows in one request", async () 
   Math.random = () => 0.5;
 
   try {
-    const cards = await fetchRandomPack(3);
+    const { cards } = await fetchRandomPack(3);
 
     // One round trip, three offsets, each drawn from its own band so the
     // sample is not a single contiguous block of listing IDs.
@@ -583,7 +747,7 @@ test("fetchRandomPack falls back to the newest listings when windows overrun", a
   console.error = () => undefined;
 
   try {
-    const cards = await fetchRandomPack(1);
+    const { cards } = await fetchRandomPack(1);
 
     assert.equal(calls, 2);
     assert.equal(cards.length, 1);
@@ -641,7 +805,11 @@ test("fetchRandomPack returns unique tokens using their cheapest listing", async
   const originalRequest = client.request;
   const originalRandom = Math.random;
 
+  // Eligible under the pull filter, so this stays a test about the
+  // cheapest-per-token tiebreak rather than about exclusion.
   const token = (tokenId: string) => ({
+    pk: 1,
+    flag: "none",
     name: `Token ${tokenId}`,
     token_id: tokenId,
     fa_contract: "KT1DuplicateFixture",
@@ -651,7 +819,7 @@ test("fetchRandomPack returns unique tokens using their cheapest listing", async
     supply: 50,
     description: null,
     creators: [],
-    fa: { name: "Duplicate Fixture" },
+    fa: { name: "Duplicate Fixture", live: true },
   });
 
   client.request = async () => ({
@@ -665,7 +833,7 @@ test("fetchRandomPack returns unique tokens using their cheapest listing", async
   Math.random = () => 0.999;
 
   try {
-    const cards = await fetchRandomPack(3);
+    const { cards } = await fetchRandomPack(3);
     const keys = cards.map(getCardKey);
     const duplicate = cards.find(({ token_id }) => token_id === "duplicate");
 
