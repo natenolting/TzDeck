@@ -11,6 +11,7 @@ import SupportLink from "@/components/SupportLink";
 import { useWallet } from "@/context/WalletContext";
 import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@/lib/objkt";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
+import { useWishlistMimeBackfill } from "@/hooks/useWishlistMimeBackfill";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,6 +37,10 @@ export default function Home() {
   const { address } = useWallet();
   const [activeTab, setActiveTab] = useState<ActiveTab>("packs");
   const wishlist = useWishlist();
+  // Cards saved before OBJKT's mime was stored render video tokens as stills,
+  // so a wishlist entry and a freshly pulled one disagree about the same NFT.
+  // This re-resolves them once, quietly.
+  useWishlistMimeBackfill(wishlist);
   const rarityHeadingRef = useRef<HTMLHeadingElement>(null);
   const focusRarityRef = useRef(false);
 
