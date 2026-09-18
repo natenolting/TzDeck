@@ -15,6 +15,22 @@ TzDeck is a gamified discovery, collection, and battling layer for Tezos NFTs. I
 
 TzDeck is a discovery layer, not a marketplace. It does not mint, sell, or transfer NFTs. Collection activity happens through OBJKT and its Tezos marketplace contracts.
 
+### Booster pack filtering
+
+Booster packs exclude tokens that OBJKT has flagged, tokens from collections that are no longer live, tokens with a flagged creator, and anything on TzDeck's own denylist. Roughly 99% of active listings pass, and every exclusion is recorded with the rule that caused it. See `docs/pull-filter-spec.md`.
+
+The filter needs no database. Losing `DATABASE_URL` degrades it to the three OBJKT rules rather than failing a pack -- the denylist is a manual override on top, not the main protection.
+
+Manage the denylist with `npm run denylist` against `DATABASE_URL`:
+
+```bash
+npm run denylist -- --list
+npm run denylist -- --add KT1… [--token <id>] --reason "confirmed impersonation"
+npm run denylist -- --remove KT1… [--token <id>]
+```
+
+Entries take effect within 60 seconds, across instances, without a deploy. A `--token` id denylists one token; omitting it denylists the whole contract.
+
 ## Rarity system
 
 TzDeck rarity is a deterministic display classification, not an on-chain NFT trait or a weighted pull probability. After a card is selected, TzDeck assigns the first matching tier from highest to lowest using the token's total edition supply and current OBJKT listing price:
@@ -133,6 +149,7 @@ npm run calibrate:rarity  # Verify rarity tiers against 500 live listings
 npm run check:diversity   # Verify packs draw from several artists
 npm run migrate           # Apply battle-system database migrations
 npm run migrate:status    # Print the migration plan without writing to the database
+npm run denylist          # Manage the booster-pack denylist (--list, --add, --remove)
 npm run simulate          # Run N ad-hoc battle simulations (see Battle system above)
 npm run validate:tiebreak # The R14 tiebreak's own fixed acceptance run
 npx tsc --noEmit          # Type-check without emitting files
