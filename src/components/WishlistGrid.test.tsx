@@ -213,6 +213,44 @@ test("exporting downloads the wishlist as a dated JSON file", async () => {
   }
 });
 
+test("the download's blob URL outlives the click that starts it", async () => {
+  const { fireEvent, render, screen, WishlistGrid } = await loadTestHarness();
+  let href: string | undefined;
+  let connectedAtClick: boolean | undefined;
+
+  const originalClick = dom.window.HTMLAnchorElement.prototype.click;
+  dom.window.HTMLAnchorElement.prototype.click = function click(this: HTMLAnchorElement) {
+    href = this.href;
+    // Firefox ignores a click on a detached anchor, and Safari is unreliable.
+    connectedAtClick = this.isConnected;
+  };
+
+  try {
+    render(
+      <WishlistGrid
+        wishlist={[card()]}
+        onWishlistToggle={() => undefined}
+        onClearWishlist={() => undefined}
+        onImport={() => undefined}
+        onBrowsePacks={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    assert.equal(connectedAtClick, true, "the anchor must be in the document when clicked");
+    // A download is asynchronous. Revoking in the same tick as the click can
+    // abort or truncate it, which is what an intermittently empty file looks like.
+    assert.ok(objectUrls.has(href ?? ""), "the blob URL must still be live when the click returns");
+
+    // ...and it must not leak: once the download has started, it is released.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(objectUrls.has(href ?? ""), false, "the blob URL must be released afterwards");
+  } finally {
+    dom.window.HTMLAnchorElement.prototype.click = originalClick;
+  }
+});
+
 test("importing merges new cards and hands back current prices", async () => {
   const { fireEvent, render, waitFor, WishlistGrid, objktClient } = await loadTestHarness();
   const originalRequest = objktClient.request;
