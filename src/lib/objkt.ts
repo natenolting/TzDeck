@@ -82,6 +82,37 @@ export interface NFTCard {
   objkt_url: string;
   rarity: CardRarity;
   quantity_owned?: number;
+  /** OBJKT's media type for the artifact, e.g. "image/png" or "video/mp4". */
+  mime?: string;
+}
+
+/**
+ * Container formats the browser `<video>` element can actually decode. About
+ * 6.5% of active listings are video, and nearly all of that is mp4 -- but
+ * video/quicktime (0.6%) frequently will not play, so it is deliberately absent
+ * here and those tokens keep showing their poster image instead of a dead
+ * player.
+ */
+const PLAYABLE_VIDEO_MIMES = new Set(["video/mp4", "video/webm", "video/ogg"]);
+
+export function isPlayableVideo(
+  card: Pick<NFTCard, "mime" | "artifact_uri">,
+): boolean {
+  if (!card.mime || !card.artifact_uri) return false;
+  return PLAYABLE_VIDEO_MIMES.has(card.mime.toLowerCase());
+}
+
+/**
+ * Whether a token's artifact is worth keeping in an <img> failover chain.
+ *
+ * An unknown mime stays true on purpose: wishlists saved before the field
+ * existed carry none, and that is exactly the behaviour they had. A known
+ * non-image artifact is dropped -- handing a 124MB mp4 to an <img> can only
+ * fail, slowly, on whatever connection the viewer happens to have.
+ */
+export function isImageArtifact(card: Pick<NFTCard, "mime">): boolean {
+  if (!card.mime) return true;
+  return card.mime.toLowerCase().startsWith("image/");
 }
 
 export function formatShortAddress(address: string): string {
@@ -229,6 +260,8 @@ export interface ObjktRawToken {
   thumbnail_uri: string | null;
   supply: number | null;
   description?: string | null;
+  /** Optional: only the pack draw and holdings queries select it. */
+  mime?: string | null;
   // Pull-filter fields. Optional because fetchUserHoldings and fetchTokenByKey
   // share this interface and deliberately do not select them -- a wallet's own
   // holdings and a known battle opponent's card are not discovery surfaces.
@@ -287,6 +320,7 @@ export function normalizeObjktToken(
       ? calculateSupplyRarity(editions)
       : calculateRarity(editions, priceXtz),
     quantity_owned: options.quantityOwned,
+    mime: token.mime || undefined,
   };
 }
 
@@ -366,6 +400,7 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
           artifact_uri
           thumbnail_uri
           supply
+          mime
           description
           creators {
             holder {
@@ -460,6 +495,7 @@ export async function fetchTokenByKey(contractAddress: string, tokenId: string):
         artifact_uri
         thumbnail_uri
         supply
+        mime
         description
         creators {
           holder {
@@ -519,6 +555,7 @@ export async function fetchCardsByKeys(
     artifact_uri
     thumbnail_uri
     supply
+    mime
     description
     creators {
       holder {
@@ -682,6 +719,7 @@ export async function fetchRandomPack(
       artifact_uri
       thumbnail_uri
       supply
+      mime
       description
       creators {
         verified

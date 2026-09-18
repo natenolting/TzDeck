@@ -80,6 +80,9 @@ function readCard(entry: unknown): NFTCard | null {
         ? calculateSupplyRarity(editions)
         : calculateRarity(editions, priceXtz)),
     quantity_owned: readFiniteNumber(raw.quantity_owned),
+    // Absent on every wishlist saved before video playback existed, which is
+    // correct: no mime means the card renders as an image, exactly as before.
+    mime: readString(raw.mime),
   };
 }
 

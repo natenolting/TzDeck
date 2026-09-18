@@ -94,3 +94,89 @@ test("the artist name renders as plain text, not a link, when the card has no ar
   assert.equal(screen.queryByRole("link", { name: card.artist_alias }), null);
   assert.ok(screen.getByText(card.artist_alias!));
 });
+
+test("a video token plays in the modal instead of rendering as a still image", async () => {
+  const { render, NFTDetailsModal } = await loadTestHarness();
+  const card = createCard({
+    mime: "video/mp4",
+    artifact_uri: "https://ipfs.example/movie.mp4",
+    display_uri: "https://ipfs.example/poster.png",
+  });
+
+  render(
+    <NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />,
+  );
+
+  const video = document.body.querySelector("video");
+  assert.ok(video, "expected a video element for a video/mp4 token");
+  assert.equal(video.hasAttribute("controls"), true);
+  // The artifact can be enormous -- this token is 124MB -- so nothing may be
+  // fetched until the viewer actually presses play.
+  assert.equal(video.getAttribute("preload"), "none");
+  assert.equal(video.getAttribute("poster"), card.display_uri);
+  assert.equal(video.querySelector("source")?.getAttribute("src"), card.artifact_uri);
+  assert.equal(document.body.querySelector("img"), null);
+});
+
+test("an image token still renders as an image", async () => {
+  const { render, NFTDetailsModal } = await loadTestHarness();
+  const card = createCard({
+    mime: "image/png",
+    display_uri: "https://ipfs.example/art.png",
+  });
+
+  render(
+    <NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />,
+  );
+
+  assert.equal(document.body.querySelector("video"), null);
+  assert.ok(document.body.querySelector("img"));
+});
+
+test("a card with no mime renders as an image, as it always did", async () => {
+  const { render, NFTDetailsModal } = await loadTestHarness();
+  const card = createCard({ display_uri: "https://ipfs.example/art.png" });
+
+  render(
+    <NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />,
+  );
+
+  assert.equal(document.body.querySelector("video"), null);
+  assert.ok(document.body.querySelector("img"));
+});
+
+test("a video format the browser cannot decode falls back to the poster image", async () => {
+  const { render, NFTDetailsModal } = await loadTestHarness();
+  const card = createCard({
+    mime: "video/quicktime",
+    artifact_uri: "https://ipfs.example/movie.mov",
+    display_uri: "https://ipfs.example/poster.png",
+  });
+
+  render(
+    <NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />,
+  );
+
+  assert.equal(document.body.querySelector("video"), null);
+  assert.ok(document.body.querySelector("img"));
+});
+
+test("the video player is reachable by keyboard from inside the modal", async () => {
+  const { render, NFTDetailsModal } = await loadTestHarness();
+  const card = createCard({
+    mime: "video/mp4",
+    artifact_uri: "https://ipfs.example/movie.mp4",
+    display_uri: "https://ipfs.example/poster.png",
+  });
+
+  render(
+    <NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />,
+  );
+
+  const dialog = document.body.querySelector("[role=dialog]");
+  const focusable = dialog?.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), video[controls], [tabindex]:not([tabindex="-1"])',
+  );
+  const tags = [...(focusable ?? [])].map((el) => el.tagName.toLowerCase());
+  assert.ok(tags.includes("video"), `focus trap skipped the player: ${tags.join(", ")}`);
+});

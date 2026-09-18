@@ -315,7 +315,10 @@ test("the modal traps keyboard focus and restores the page after closing", async
   assert.equal(container.hasAttribute("aria-hidden"), false);
 });
 
-test("an unavailable card image cannot open token details", async () => {
+test("a card whose preview never loads can still be opened", async () => {
+  // The preview and the token are different things. A video token's poster is
+  // often the heaviest thing on the card, and losing it used to make the token
+  // unreachable -- you could never open the modal that plays it.
   const { fireEvent, render, screen, NFTCard } = await loadTestHarness();
   render(<NFTCard card={card} />);
 
@@ -323,12 +326,21 @@ test("an unavailable card image cannot open token details", async () => {
   fireEvent.error(screen.getByRole("img", { name: card.name }));
   fireEvent.error(screen.getByRole("img", { name: card.name }));
 
-  assert.equal(
-    screen.queryByRole("button", { name: `View details for ${card.name}` }),
-    null,
-  );
-  assert.ok(screen.getByText("Media unavailable"));
-  assert.equal(screen.queryByRole("dialog"), null);
+  assert.ok(screen.getByText("Media unavailable"), "the placeholder still shows");
+
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+
+  assert.ok(screen.getByRole("dialog"));
+});
+
+test("a card can be opened while its preview is still loading", async () => {
+  const { fireEvent, render, screen, NFTCard } = await loadTestHarness();
+  render(<NFTCard card={card} />);
+
+  // No load event fired: the spinner is still up.
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+
+  assert.ok(screen.getByRole("dialog"));
 });
 
 test("card pointer movement updates foil position through CSS variables", async () => {

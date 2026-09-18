@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useState, useMemo } from "react";
-import { NFTCard as NFTCardType, getCardImageSources } from "@/lib/objkt";
+import { NFTCard as NFTCardType, getCardImageSources, isImageArtifact } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -46,9 +46,11 @@ export default function NFTCard({
     return getCardImageSources(
       card.thumbnail_uri,
       card.display_uri,
-      card.artifact_uri,
+      // Only when the artifact is itself an image -- a video or interactive
+      // artifact can only fail here, and can be very large.
+      isImageArtifact(card) ? card.artifact_uri : undefined,
     );
-  }, [card.display_uri, card.thumbnail_uri, card.artifact_uri]);
+  }, [card]);
 
   const {
     imageUrl: currentImageUrl,
@@ -191,36 +193,48 @@ export default function NFTCard({
 
       {/* Card Artwork Display */}
       <div className="relative z-10 aspect-square w-full overflow-hidden rounded-xl bg-surface-0 shadow-inner border border-border-subtle">
-        {!imageError && currentImageUrl ? (
-          <button
-            type="button"
-            aria-label={`View details for ${card.name}`}
-            disabled={!imageLoaded}
-            onClick={() => setIsDetailsOpen(true)}
-            className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover disabled:cursor-default"
-          >
-            {!imageLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80">
-                <div
-                  aria-hidden="true"
-                  className="h-10 w-10 animate-spin rounded-full border-4 border-accent border-t-transparent"
-                />
-              </div>
-            )}
-            {/* NFT hosts are unbounded; useFailoverImage drives gateway failover
-                on both an error event and a load timeout. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={currentImageUrl}
-              alt={card.name}
-              onLoad={handleLoad}
-              onError={handleImageError}
-              loading="lazy"
-              decoding="async"
-              className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
-                imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
-              }`}
-            />
+        {/* The preview and the token are different things: the card stays
+            openable even when the artwork is still loading or never arrives.
+            A video token's poster is often the heaviest asset on the card, and
+            gating on it made exactly those tokens unreachable. */}
+        <button
+          type="button"
+          aria-label={`View details for ${card.name}`}
+          onClick={() => setIsDetailsOpen(true)}
+          className="relative block h-full w-full cursor-zoom-in overflow-hidden text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-hover"
+        >
+          {!imageError && currentImageUrl ? (
+            <>
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80">
+                  <div
+                    aria-hidden="true"
+                    className="h-10 w-10 animate-spin rounded-full border-4 border-accent border-t-transparent"
+                  />
+                </div>
+              )}
+              {/* NFT hosts are unbounded; useFailoverImage drives gateway failover
+                  on both an error event and a load timeout. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentImageUrl}
+                alt={card.name}
+                onLoad={handleLoad}
+                onError={handleImageError}
+                loading="lazy"
+                decoding="async"
+                className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                  imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
+                }`}
+              />
+            </>
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-text-tertiary bg-surface-1">
+              <ImageOffIcon className="mb-1 h-8 w-8 text-text-muted" />
+              <span className="text-xs font-medium text-text-secondary line-clamp-1">{card.name}</span>
+              <span className="text-2xs text-text-muted mt-0.5">Media unavailable</span>
+            </div>
+          )}
 
             {card.editions !== undefined && (
               <div className="art-chip pointer-events-none absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-2xs font-medium tabular-nums text-text-primary">
@@ -234,14 +248,7 @@ export default function NFTCard({
                 <span>{card.price_xtz}</span>
               </div>
             )}
-          </button>
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-text-tertiary bg-surface-1">
-            <ImageOffIcon className="mb-1 h-8 w-8 text-text-muted" />
-            <span className="text-xs font-medium text-text-secondary line-clamp-1">{card.name}</span>
-            <span className="text-2xs text-text-muted mt-0.5">Media unavailable</span>
-          </div>
-        )}
+        </button>
 
       </div>
 

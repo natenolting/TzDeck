@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 
+// video[controls] is focusable but matches none of the usual selectors, so a
+// media token's player would be skipped entirely when tabbing through a dialog.
 const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), video[controls], [tabindex]:not([tabindex="-1"])';
 
 export interface DialogBehavior<T extends HTMLElement> {
   /** Attach to the dialog element -- bounds the focus trap. */
