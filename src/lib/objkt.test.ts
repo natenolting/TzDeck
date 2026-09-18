@@ -13,6 +13,8 @@ import {
   formatShortAddress,
   getCardKey,
   getCardImageSources,
+  isImageArtifact,
+  isPlayableVideo,
   normalizeObjktToken,
   objktClient,
   PACK_MAX_PER_ARTIST,
@@ -182,6 +184,58 @@ test("normalizeObjktToken maps shared OBJKT metadata and listing options", () =>
   assert.equal(card.price_xtz, 25);
   assert.equal(card.rarity, "uncommon");
   assert.equal(card.quantity_owned, 2);
+});
+
+test("normalizeObjktToken carries the token's mime through", () => {
+  const card = normalizeObjktToken({
+    name: "A video",
+    token_id: "20",
+    fa_contract: "KT1Video",
+    display_uri: "ipfs://QmPoster",
+    artifact_uri: "ipfs://QmMovie",
+    thumbnail_uri: null,
+    supply: 1,
+    mime: "video/mp4",
+  });
+
+  assert.equal(card.mime, "video/mp4");
+});
+
+test("normalizeObjktToken leaves mime undefined when OBJKT does not report one", () => {
+  const card = normalizeObjktToken({
+    name: "No mime",
+    token_id: "1",
+    fa_contract: "KT1Unknown",
+    display_uri: "ipfs://QmStill",
+    artifact_uri: null,
+    thumbnail_uri: null,
+    supply: 1,
+  });
+
+  assert.equal(card.mime, undefined);
+});
+
+test("isPlayableVideo only accepts video tokens that carry a playable artifact", () => {
+  const base = { artifact_uri: "https://example.com/a.mp4" };
+  assert.equal(isPlayableVideo({ ...base, mime: "video/mp4" }), true);
+  assert.equal(isPlayableVideo({ ...base, mime: "video/webm" }), true);
+  // Browsers routinely cannot decode QuickTime; the poster is the safer default.
+  assert.equal(isPlayableVideo({ ...base, mime: "video/quicktime" }), false);
+  assert.equal(isPlayableVideo({ ...base, mime: "image/png" }), false);
+  assert.equal(isPlayableVideo({ ...base, mime: undefined }), false);
+  // A video token with nothing to play is not playable.
+  assert.equal(isPlayableVideo({ artifact_uri: undefined, mime: "video/mp4" }), false);
+});
+
+test("isImageArtifact keeps the artifact in the image fallback chain only when it is one", () => {
+  assert.equal(isImageArtifact({ mime: "image/png" }), true);
+  assert.equal(isImageArtifact({ mime: "image/gif" }), true);
+  assert.equal(isImageArtifact({ mime: "video/mp4" }), false);
+  assert.equal(isImageArtifact({ mime: "application/x-directory" }), false);
+  assert.equal(isImageArtifact({ mime: "model/gltf-binary" }), false);
+  // Unknown mime keeps the pre-existing behaviour: cards saved before the field
+  // existed, and any token OBJKT reports nothing for.
+  assert.equal(isImageArtifact({ mime: undefined }), true);
 });
 
 test("shuffleArray applies Fisher-Yates without mutating its input", () => {

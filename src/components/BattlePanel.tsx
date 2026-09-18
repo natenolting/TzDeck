@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
-import { getCardImageSources, getCardKey, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardImageSources, getCardKey, isImageArtifact, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { battleErrorMessage } from "@/lib/battle/errorMessages";
 import {
@@ -337,8 +337,12 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   const rarity = card.rarity || "common";
   const rarityConfig = RARITY_CONFIG[rarity];
   const cardImageSources = useMemo(
-    () => getCardImageSources(card.thumbnail_uri, card.display_uri, card.artifact_uri),
-    [card.thumbnail_uri, card.display_uri, card.artifact_uri],
+    () => getCardImageSources(
+      card.thumbnail_uri,
+      card.display_uri,
+      isImageArtifact(card) ? card.artifact_uri : undefined,
+    ),
+    [card],
   );
   const { imageUrl: cardImageUrl, loaded: cardImageLoaded, failed: cardImageFailed, handleLoad: handleCardImageLoad, handleError: handleCardImageError } =
     useFailoverImage(cardImageSources);

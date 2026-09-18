@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, type NFTCard } from "@/lib/objkt";
+import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
@@ -66,11 +66,37 @@ function BattleStatsSection({ card, battleStats }: { card: NFTCard; battleStats:
   );
 }
 
+function ModalVideo({ card }: { card: NFTCard }) {
+  return (
+    <video
+      controls
+      // Artifacts are unbounded -- one sampled token is 124MB -- so nothing is
+      // fetched until the viewer presses play. The poster carries the still.
+      preload="none"
+      poster={card.display_uri}
+      aria-label={card.name}
+      className="max-h-[75vh] w-full rounded-2xl object-contain shadow-2xl"
+    >
+      <source src={card.artifact_uri} type={card.mime} />
+    </video>
+  );
+}
+
 function ModalArtwork({ card }: { card: NFTCard }) {
+  // Hooks below run unconditionally for image tokens; a video takes its own
+  // branch first because it shares none of the failover machinery.
+  if (isPlayableVideo(card)) return <ModalVideo card={card} />;
+
+  return <ModalImage card={card} />;
+}
+
+function ModalImage({ card }: { card: NFTCard }) {
   const sources = getCardImageSources(
     card.display_uri,
     card.thumbnail_uri,
-    card.artifact_uri,
+    // A non-image artifact is useless as an <img> fallback and can be huge, so
+    // it only belongs in this chain when it is itself an image.
+    isImageArtifact(card) ? card.artifact_uri : undefined,
   );
   const { imageUrl, loaded, failed, handleLoad, handleError } = useFailoverImage(sources);
 

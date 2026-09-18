@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchTokenByKey, formatShortAddress, getCardImageSources, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { fetchTokenByKey, formatShortAddress, getCardImageSources, isImageArtifact, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { RARITY_CONFIG } from "./rarityStyles";
 import type { RoundOutcome, RoundRecord } from "@/lib/battle/rules";
@@ -63,7 +63,13 @@ function combatBeats(history: RoundRecord[] | undefined, attackerMaxHp: number, 
 
 function CardFace({ card, side, trainerTier }: { card: NFTCardType | null; side: "attacker" | "defender"; trainerTier?: CardRarity }) {
   const sources = useMemo(
-    () => (card ? getCardImageSources(card.thumbnail_uri, card.display_uri, card.artifact_uri) : []),
+    () => (card
+      ? getCardImageSources(
+        card.thumbnail_uri,
+        card.display_uri,
+        isImageArtifact(card) ? card.artifact_uri : undefined,
+      )
+      : []),
     [card],
   );
   const { imageUrl, loaded, failed, handleLoad, handleError } = useFailoverImage(sources);

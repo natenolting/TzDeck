@@ -176,6 +176,31 @@ test("non-numeric prices and edition counts are discarded", () => {
   assert.equal(imported.editions, undefined);
 });
 
+test("a video token's mime survives the export round-trip", () => {
+  const video = card({ mime: "video/mp4" });
+
+  const parsed = parseWishlistExport(serializeWishlist([video]));
+
+  assert.equal(parsed.cards[0].mime, "video/mp4");
+});
+
+test("a card saved before mime existed still imports", () => {
+  // Wishlists already in localStorage predate the field entirely; absent must
+  // mean "treat as an image", which is exactly the old behaviour.
+  const raw = JSON.stringify({ version: 1, cards: [card()] });
+
+  assert.equal(parseWishlistExport(raw).cards[0].mime, undefined);
+});
+
+test("a non-string mime is discarded rather than trusted", () => {
+  const raw = JSON.stringify({
+    version: 1,
+    cards: [card({ mime: { evil: true } as unknown as string })],
+  });
+
+  assert.equal(parseWishlistExport(raw).cards[0].mime, undefined);
+});
+
 test("merging keeps the existing wishlist order and appends what's new", () => {
   const existing = [card({ token_id: "1" }), card({ token_id: "2" })];
   const incoming = [card({ token_id: "2" }), card({ token_id: "3" })];
