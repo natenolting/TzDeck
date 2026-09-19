@@ -15,7 +15,8 @@
     "db:health": "tsx scripts/db-health-check.ts",
     "denylist": "tsx scripts/denylist.ts",
     "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts",
-    "simulate": "tsx scripts/simulate-battles.ts"
+    "simulate": "tsx scripts/simulate-battles.ts",
+    "sample:og-artwork": "tsx scripts/sample-og-artwork.ts"
   },
   "engines": {
     "node": "24.x"
