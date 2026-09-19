@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { RARITY_CONFIG } from "@/components/rarityStyles";
+import ShareCardButton from "@/components/ShareCardButton";
 import {
   getArtistProfileUrl,
   getCollectionUrl,
@@ -72,12 +73,17 @@ export default async function SharedCardPage({ params }: Props) {
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-surface-0 px-4 py-8 sm:py-14">
-      <Link
-        href="/"
-        className="font-display text-xl font-bold tracking-tight text-text-primary transition-colors hover:text-accent-hover"
-      >
-        TzDeck
-      </Link>
+      {/* Aligned to the card rather than centred above it, so the share control
+          has a corner to sit in and the wordmark has an edge to start from. */}
+      <header className="flex w-full max-w-[420px] items-center justify-between">
+        <Link
+          href="/"
+          className="font-display text-xl font-bold tracking-tight text-text-primary transition-colors hover:text-accent-hover"
+        >
+          TzDeck
+        </Link>
+        <ShareCardButton card={card} variant="corner" />
+      </header>
 
       <article
         className={`mt-8 w-full max-w-[420px] overflow-hidden rounded-2xl bg-surface-1 ${rarity.ring} ${rarity.glow}`}
