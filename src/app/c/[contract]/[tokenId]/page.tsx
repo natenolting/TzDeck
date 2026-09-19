@@ -141,7 +141,11 @@ export default async function SharedCardPage({ params }: Props) {
             </div>
             <div>
               <dt className="text-xs text-text-tertiary">Listed</dt>
-              <dd className="mt-1 font-bold tabular-nums text-accent-hover">
+              <dd
+                className={`mt-1 font-bold tabular-nums ${
+                  card.price_xtz !== undefined ? rarity.text : "text-text-tertiary"
+                }`}
+              >
                 {card.price_xtz !== undefined ? `ꜩ ${card.price_xtz}` : "Not listed"}
               </dd>
             </div>
