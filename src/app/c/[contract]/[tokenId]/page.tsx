@@ -134,7 +134,7 @@ export default async function SharedCardPage({ params }: Props) {
             <div>
               <dt className="text-xs text-text-tertiary">Listed</dt>
               <dd className="mt-1 font-bold tabular-nums text-accent-hover">
-                {card.price_xtz !== undefined ? `ឩ ${card.price_xtz}` : "Not listed"}
+                {card.price_xtz !== undefined ? `ꜩ ${card.price_xtz}` : "Not listed"}
               </dd>
             </div>
           </dl>
