@@ -139,18 +139,21 @@ export default async function SharedCardPage({ params }: Props) {
             </div>
           </dl>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex items-stretch gap-2">
+            <Link
+              href="/"
+              className="button-primary flex-1 px-3 py-3 text-center text-sm font-bold"
+            >
+              Open a pack
+            </Link>
             <a
               href={card.objkt_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="button-primary w-full px-4 py-3 text-sm font-bold"
+              className="button-secondary flex-1 px-3 py-3 text-center text-sm font-bold text-text-primary"
             >
               Collect on OBJKT
             </a>
-            <Link href="/" className="button-secondary w-full px-4 py-3 text-sm font-semibold">
-              Open a pack on TzDeck
-            </Link>
           </div>
         </div>
       </article>
