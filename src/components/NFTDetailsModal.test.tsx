@@ -237,16 +237,3 @@ test("sharing hands off to the OS share sheet where there is one, and copies not
   assert.deepEqual(spies.clipboard, []);
 });
 
-test("sharing warms the preview image before anyone pastes the link", async () => {
-  const { fireEvent, render, screen, NFTDetailsModal } = await loadTestHarness();
-  const spies = stubShareEnvironment({ withShareSheet: false });
-  const card = createCard();
-
-  render(<NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: `Share ${card.name}` }));
-  await screen.findByText("Copied");
-
-  assert.deepEqual(spies.fetched, [
-    "https://tzdeck.xyz/c/KT1DetailsModalCollection/1/opengraph-image",
-  ]);
-});

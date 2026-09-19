@@ -7,7 +7,7 @@ import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl,
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
-import { shareImageUrl, shareLink } from "@/lib/share";
+import { shareLink } from "@/lib/share";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CopyIcon, ImageOffIcon, SwordsIcon } from "./icons";
 import { RARITY_CONFIG } from "./rarityStyles";
 
@@ -159,11 +159,6 @@ function ShareCardButton({ card }: { card: NFTCard }) {
   async function share() {
     const url = shareLink(card);
 
-    // The crawler could be the first request the preview image ever gets, and a
-    // cold render costs an OBJKT round trip plus the artwork fetch. Sharing and
-    // pasting are seconds apart at best, which is plenty of head start. Opaque
-    // and unawaited on purpose: this must never delay or fail the share.
-    void fetch(shareImageUrl(card), { mode: "no-cors" }).catch(() => {});
 
     if (navigator.share) {
       try {

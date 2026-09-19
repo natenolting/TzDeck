@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseCardRef, shareImageUrl, shareLink } from "./share";
+import { parseCardRef, shareLink } from "./share";
 
 const CONTRACT = "KT1FxbWmoiGmsyeUih4D6GPFFeAcb4J6nNwp";
 
@@ -50,9 +50,3 @@ test("shareLink is the absolute card URL and nothing else", () => {
   );
 });
 
-test("shareImageUrl is the card URL plus the metadata route segment", () => {
-  assert.equal(
-    shareImageUrl({ contract_address: CONTRACT, token_id: "55" }),
-    "https://tzdeck.xyz/c/KT1FxbWmoiGmsyeUih4D6GPFFeAcb4J6nNwp/55/opengraph-image",
-  );
-});

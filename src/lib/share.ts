@@ -73,16 +73,3 @@ export function shareLink(
   return `${SITE_ORIGIN}/c/${card.contract_address}/${card.token_id}`;
 }
 
-/**
- * Absolute URL of a card's generated preview image.
- *
- * Only the warm ping uses this; crawlers read the real URL off `og:image`,
- * which carries a cache-busting query this deliberately omits. It lives here
- * so the route's shape stays in one file rather than being re-assembled by a
- * client component.
- */
-export function shareImageUrl(
-  card: Pick<NFTCard, "contract_address" | "token_id">,
-): string {
-  return `${shareLink(card)}/opengraph-image`;
-}
