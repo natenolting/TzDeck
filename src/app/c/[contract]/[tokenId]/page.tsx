@@ -6,6 +6,7 @@ import { RARITY_CONFIG } from "@/components/rarityStyles";
 import {
   getArtistProfileUrl,
   getCollectionUrl,
+  distinctCollectionName,
   getObjktThumbnailUrl,
   type NFTCard,
 } from "@/lib/objkt";
@@ -67,6 +68,7 @@ export default async function SharedCardPage({ params }: Props) {
 
   const rarity = RARITY_CONFIG[card.rarity];
   const artistUrl = getArtistProfileUrl(card.artist_address);
+  const collection = distinctCollectionName(card);
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-surface-0 px-4 py-8 sm:py-14">
@@ -110,7 +112,7 @@ export default async function SharedCardPage({ params }: Props) {
                 card.artist_alias
               )}
             </p>
-            {card.collection_name && (
+            {collection && (
               <p className="mt-1 text-xs text-text-muted">
                 <a
                   href={getCollectionUrl(card.contract_address)}
@@ -118,7 +120,7 @@ export default async function SharedCardPage({ params }: Props) {
                   rel="noopener noreferrer"
                   className="hover:underline"
                 >
-                  {card.collection_name}
+                  {collection}
                 </a>
               </p>
             )}

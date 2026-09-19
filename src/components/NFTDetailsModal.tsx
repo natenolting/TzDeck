@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
+import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, distinctCollectionName, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
@@ -224,6 +224,7 @@ export default function NFTDetailsModal({
   const previousCard = cards[activeIndex - 1];
   const nextCard = cards[activeIndex + 1];
   const artistProfileUrl = getArtistProfileUrl(activeCard.artist_address);
+  const activeCollection = distinctCollectionName(activeCard);
   const battleStats = battleStatsByCardKey ? battleStatsByCardKey.get(activeKey) ?? null : undefined;
 
   return createPortal(
@@ -321,7 +322,7 @@ export default function NFTDetailsModal({
                 activeCard.artist_alias || "Unknown Artist"
               )}
             </p>
-            {activeCard.collection_name && (
+            {activeCollection && (
               <p className="mt-1 text-xs text-text-muted">
                 <a
                   href={getCollectionUrl(activeCard.contract_address)}
@@ -329,7 +330,7 @@ export default function NFTDetailsModal({
                   rel="noopener noreferrer"
                   className="hover:text-text-secondary hover:underline"
                 >
-                  {activeCard.collection_name}
+                  {activeCollection}
                 </a>
               </p>
             )}

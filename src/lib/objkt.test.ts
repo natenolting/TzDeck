@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  distinctCollectionName,
   calculateRarity,
   calculateSupplyRarity,
   convertIpfsUrl,
@@ -899,4 +900,27 @@ test("fetchRandomPack returns unique tokens using their cheapest listing", async
     client.request = originalRequest;
     Math.random = originalRandom;
   }
+});
+
+test("distinctCollectionName hides a collection named after its own artist", () => {
+  assert.equal(
+    distinctCollectionName({ artist_alias: "Marie & Laveau ", collection_name: "Marie & Laveau" }),
+    undefined,
+  );
+  assert.equal(
+    distinctCollectionName({ artist_alias: "arghavan", collection_name: "ARGHAVAN" }),
+    undefined,
+  );
+});
+
+test("distinctCollectionName keeps a collection that says something new", () => {
+  assert.equal(
+    distinctCollectionName({ artist_alias: "Arghavan", collection_name: "Persian Paper Tales " }),
+    "Persian Paper Tales",
+  );
+});
+
+test("distinctCollectionName treats a blank collection as absent", () => {
+  assert.equal(distinctCollectionName({ artist_alias: "Janis", collection_name: "   " }), undefined);
+  assert.equal(distinctCollectionName({ artist_alias: "Janis" }), undefined);
 });

@@ -123,6 +123,22 @@ export function getArtistProfileUrl(artistAddress?: string): string | undefined 
   return artistAddress ? `https://objkt.com/users/${artistAddress}` : undefined;
 }
 
+/**
+ * The collection name worth showing beside the artist, if any.
+ *
+ * Solo artists routinely name a collection after themselves, so rendering both
+ * prints the same words twice in a row, which reads as a fault rather than a
+ * fact. Roughly one active listing in five does this.
+ */
+export function distinctCollectionName(
+  card: Pick<NFTCard, "artist_alias" | "collection_name">,
+): string | undefined {
+  const collection = card.collection_name?.trim();
+  if (!collection) return undefined;
+  const artist = card.artist_alias?.trim() ?? "";
+  return collection.toLowerCase() === artist.toLowerCase() ? undefined : collection;
+}
+
 export function getCollectionUrl(contractAddress: string): string {
   return `https://objkt.com/collection/${contractAddress}`;
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useState, useMemo } from "react";
-import { NFTCard as NFTCardType, getCardImageSources, isImageArtifact } from "@/lib/objkt";
+import {
+  distinctCollectionName, NFTCard as NFTCardType, getCardImageSources, isImageArtifact } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -64,6 +65,7 @@ export default function NFTCard({
 
   const rarity = card.rarity || "common";
   const config = RARITY_CONFIG[rarity];
+  const collection = distinctCollectionName(card);
   const revealDuration = rarity === "legendary"
     ? 0.65
     : rarity === "epic"
@@ -262,9 +264,9 @@ export default function NFTCard({
           <p className="truncate font-medium text-text-secondary">
             {card.artist_alias || "Unknown Artist"}
           </p>
-          {card.collection_name && (
+          {collection && (
             <p className="truncate text-2xs text-text-muted">
-              {card.collection_name}
+              {collection}
             </p>
           )}
         </div>
