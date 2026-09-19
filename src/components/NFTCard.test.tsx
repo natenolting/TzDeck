@@ -288,6 +288,7 @@ test("the modal traps keyboard focus and restores the page after closing", async
   const collectionLink = modal.getByRole("link", { name: card.collection_name! });
   const wishlistButton = modal.getByRole("button", { name: "Add to Wishlist" });
   const objktLink = modal.getByRole("link", { name: "Collect on OBJKT" });
+  const shareButton = modal.getByRole("button", { name: `Share ${card.name}` });
 
   assert.equal(document.activeElement, closeButton);
   assert.notEqual((container as HTMLElement & { inert?: boolean }).inert, true);
@@ -304,9 +305,11 @@ test("the modal traps keyboard focus and restores the page after closing", async
   await user.tab();
   assert.equal(document.activeElement, objktLink);
   await user.tab();
+  assert.equal(document.activeElement, shareButton);
+  await user.tab();
   assert.equal(document.activeElement, closeButton);
   await user.tab({ shift: true });
-  assert.equal(document.activeElement, objktLink);
+  assert.equal(document.activeElement, shareButton);
 
   fireEvent.keyDown(document, { key: "Escape" });
   assert.equal(document.activeElement, openButton);

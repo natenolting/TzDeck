@@ -1,13 +1,14 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
-import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon, SwordsIcon } from "./icons";
+import { shareImageUrl, shareLink } from "@/lib/share";
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CopyIcon, ImageOffIcon, SwordsIcon } from "./icons";
 import { RARITY_CONFIG } from "./rarityStyles";
 
 export interface BattleCardStats {
@@ -135,6 +136,64 @@ function ModalImage({ card }: { card: NFTCard }) {
         }`}
       />
     </>
+  );
+}
+
+/**
+ * Puts the card's link where a person can paste it.
+ *
+ * The clipboard gets the bare URL: no caption, no campaign parameter. The
+ * preview itself already carries the name, the artist and the rarity, and X,
+ * Discord and Telegram each autolink surrounding text differently, so prefixed
+ * copy would be a tone decision made on the recipient's behalf.
+ */
+function ShareCardButton({ card }: { card: NFTCard }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1800);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  async function share() {
+    const url = shareLink(card);
+
+    // The crawler could be the first request the preview image ever gets, and a
+    // cold render costs an OBJKT round trip plus the artwork fetch. Sharing and
+    // pasting are seconds apart at best, which is plenty of head start. Opaque
+    // and unawaited on purpose: this must never delay or fail the share.
+    void fetch(shareImageUrl(card), { mode: "no-cors" }).catch(() => {});
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ url });
+        return;
+      } catch (err) {
+        // A dismissed share sheet is a decision, not a failure.
+        if (err instanceof Error && err.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      // No clipboard permission and no share sheet leaves nothing to do but
+      // leave the button alone, rather than claim a copy that did not happen.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={share}
+      aria-label={`Share ${card.name}`}
+      className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-border-default bg-surface-2 px-4 py-3 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface-3"
+    >
+      {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
+      {copied ? "Copied" : "Share"}
+    </button>
   );
 }
 
@@ -355,14 +414,17 @@ export default function NFTDetailsModal({
                 {activeIsWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
               </button>
             )}
-            <a
-              href={activeCard.objkt_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="button-primary w-full px-4 py-3 text-sm font-bold"
-            >
-              Collect on OBJKT
-            </a>
+            <div className="flex gap-2">
+              <a
+                href={activeCard.objkt_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="button-primary flex-1 px-4 py-3 text-sm font-bold"
+              >
+                Collect on OBJKT
+              </a>
+              <ShareCardButton key={activeKey} card={activeCard} />
+            </div>
           </div>
         </div>
       </div>
