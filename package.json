@@ -16,7 +16,8 @@
     "denylist": "tsx scripts/denylist.ts",
     "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts",
     "simulate": "tsx scripts/simulate-battles.ts",
-    "sample:og-artwork": "tsx scripts/sample-og-artwork.ts"
+    "sample:og-artwork": "tsx scripts/sample-og-artwork.ts",
+    "check:link-preview": "tsx scripts/check-link-preview.ts"
   },
   "engines": {
     "node": "24.x"

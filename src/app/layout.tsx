@@ -36,11 +36,10 @@ export const metadata: Metadata = {
     url: "/",
     locale: "en_US",
   },
-  // "summary" rather than "summary_large_image": the site has no card image of
-  // its own, and claiming a large one that never arrives gets the whole preview
-  // dropped. The card route overrides this with the real thing.
+  // The site now has its own card image, from src/app/opengraph-image.tsx, which
+  // every route inherits unless it ships one of its own.
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "TzDeck",
     description: SITE_DESCRIPTION,
   },
