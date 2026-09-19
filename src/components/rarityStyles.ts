@@ -48,3 +48,20 @@ export const RARITY_CONFIG: Record<
     glow: "shadow-[0_0_28px_-8px_var(--rarity-legendary)] hover:shadow-[0_0_34px_-5px_var(--rarity-legendary)]",
   },
 };
+
+/**
+ * Literal hex per tier, for renderers that cannot read the stylesheet.
+ *
+ * satori, which rasterises the OG card behind `next/og`, resolves neither
+ * Tailwind classes nor `var(--rarity-*)`, so everything in RARITY_CONFIG is
+ * unusable there. These mirror the `--rarity-*` declarations in globals.css,
+ * and rarityStyles.test.ts fails if the two drift or if a new tier lands here
+ * without a colour.
+ */
+export const RARITY_HEX: Record<CardRarity, string> = {
+  common: "#64748b",
+  uncommon: "#34d399",
+  rare: "#22d3ee",
+  epic: "#a78bfa",
+  legendary: "#fbbf24",
+};
