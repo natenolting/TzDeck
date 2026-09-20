@@ -70,6 +70,12 @@ export default function ShareCardButton({
     const url = shareLink(card);
     setManualUrl(null);
 
+    // A crawler may be the first visitor to this card route. Start its OBJKT
+    // lookup while the person chooses where to share; shareServer's persistent
+    // cache then makes both the crawler HTML and OG image reuse the result.
+    // This is deliberately fire-and-forget so sharing never waits on warming.
+    void fetch(url, { mode: "no-cors", keepalive: true }).catch(() => {});
+
     if (navigator.share) {
       try {
         await navigator.share({ url });

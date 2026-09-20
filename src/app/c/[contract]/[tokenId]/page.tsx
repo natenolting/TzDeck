@@ -4,14 +4,15 @@ import { notFound } from "next/navigation";
 
 import { RARITY_CONFIG } from "@/components/rarityStyles";
 import ShareCardButton from "@/components/ShareCardButton";
+import SharedCardArtwork from "@/components/SharedCardArtwork";
 import {
   getArtistProfileUrl,
   getCollectionUrl,
   distinctCollectionName,
-  getObjktThumbnailUrl,
   type NFTCard,
 } from "@/lib/objkt";
-import { loadSharedCard, parseCardRef } from "@/lib/share";
+import { parseCardRef } from "@/lib/share";
+import { loadSharedCard } from "@/lib/shareServer";
 
 /** Prices and listings move; a token's identity does not. */
 export const revalidate = 3600;
@@ -88,15 +89,8 @@ export default async function SharedCardPage({ params }: Props) {
       <article
         className={`mt-8 w-full max-w-[420px] overflow-hidden rounded-2xl bg-surface-1 ${rarity.ring} ${rarity.glow}`}
       >
-        <div className="aspect-square w-full bg-black">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={getObjktThumbnailUrl(card)}
-            alt={card.name}
-            width={400}
-            height={400}
-            className="h-full w-full object-cover"
-          />
+        <div className="relative aspect-square w-full bg-black">
+          <SharedCardArtwork card={card} />
         </div>
 
         <div className="flex flex-col gap-5 p-6">

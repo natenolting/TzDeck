@@ -6,7 +6,8 @@ import path from "node:path";
 import { RARITY_CONFIG, RARITY_HEX } from "@/components/rarityStyles";
 import { coversText, readCodepointCoverage } from "@/lib/fontCoverage";
 import { getObjktThumbnailUrl, type NFTCard } from "@/lib/objkt";
-import { loadSharedCard, parseCardRef } from "@/lib/share";
+import { parseCardRef } from "@/lib/share";
+import { loadSharedCard } from "@/lib/shareServer";
 
 export const alt = "A card on TzDeck";
 export const size = { width: 1200, height: 630 };
