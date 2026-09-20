@@ -120,6 +120,29 @@ GitHub only offers a workflow once it is on the default branch, so the first pro
 
 The first production rollout is the one to sequence deliberately. Vercel ships the moment `main` moves and the deployed battle routes need their tables, so migrate immediately before or immediately after the merge.
 
+## Discord updates
+
+Once CI goes green on `main`, `.github/workflows/discord-updates.yml` posts a short player-facing note to a Discord channel. The note is not generated. It is the `## Update` section of the merged pull request's description, written by whoever opened the PR and carried across verbatim:
+
+```markdown
+## Update
+
+Booster packs no longer draw flagged tokens, so every card in a pack is one you can actually trade.
+```
+
+One to three sentences of plain English, addressed to a player rather than to a reviewer. Claude Code's attribution line and any `Co-Authored-By:` trailers are stripped before posting. A pull request with no `## Update` section falls back to its title, so a merge never blocks on prose and the workflow never invents any.
+
+Setting this up is a one-time job for the operator. In Discord, open **Server Settings > Integrations > Webhooks**, create a webhook pointed at the updates channel, and copy its URL. Add that URL to the repository as a secret named `DISCORD_UPDATES_WEBHOOK` under **Settings > Secrets and variables > Actions**. Until the secret exists the workflow logs that it has nowhere to post and exits green, so a merge never turns CI red over a webhook nobody has created yet.
+
+Preview a post without sending it, with a GitHub token in the environment (`export GITHUB_TOKEN=$(gh auth token)`):
+
+```bash
+npm run changelog -- --pr 87 --dry-run    # print the embed JSON for one pull request
+npm run changelog -- --sha <sha> --dry-run
+```
+
+The workflow also accepts a `pr` number from the Actions tab, for re-posting by hand. It keeps no record of what it has already sent, so re-running it on the same commit posts a second message.
+
 ## Run locally
 
 Install the dependencies and start the development server:
