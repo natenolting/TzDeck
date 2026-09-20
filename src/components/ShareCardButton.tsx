@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { shareLink } from "@/lib/share";
 import type { NFTCard } from "@/lib/objkt";
-import { CheckIcon, CopyIcon } from "./icons";
+import { CheckIcon, ShareIcon } from "./icons";
 
 /**
  * Puts the card's link where a person can paste it.
@@ -13,6 +13,9 @@ import { CheckIcon, CopyIcon } from "./icons";
  * preview itself already carries the name, the artist and the rarity, and X,
  * Discord and Telegram each autolink surrounding text differently, so prefixed
  * copy would be a tone decision made on the recipient's behalf.
+ *
+ * `icon` is the square treatment beside a primary action, where the label would
+ * dilute the one control meant to lead.
  *
  * `corner` is the header treatment on a shared card's own page, where this sits
  * beside the wordmark rather than among the calls to action. Everyone who lands
@@ -24,7 +27,7 @@ export default function ShareCardButton({
   variant = "action",
 }: {
   card: NFTCard;
-  variant?: "action" | "corner";
+  variant?: "action" | "corner" | "icon";
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -56,20 +59,25 @@ export default function ShareCardButton({
     }
   }
 
-  const shared =
-    variant === "corner"
-      ? "min-h-11 gap-1.5 rounded-lg px-3 text-xs text-text-tertiary hover:bg-surface-2 hover:text-text-secondary"
-      : "gap-2 rounded-xl border border-border-default bg-surface-2 px-4 py-3 text-sm text-text-secondary hover:bg-surface-3";
+  const look = {
+    corner:
+      "min-h-11 gap-1.5 rounded-lg px-3 text-xs text-text-tertiary hover:bg-surface-2 hover:text-text-secondary",
+    icon: "h-11 w-11 rounded-xl border border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+    action:
+      "gap-2 rounded-xl border border-border-default bg-surface-2 px-4 py-3 text-sm text-text-secondary hover:bg-surface-3",
+  }[variant];
 
   return (
     <button
       type="button"
       onClick={share}
       aria-label={`Share ${card.name}`}
-      className={`flex shrink-0 items-center justify-center font-semibold transition-colors ${shared}`}
+      className={`flex shrink-0 items-center justify-center font-semibold transition-colors ${look}`}
     >
-      {copied ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
-      {copied ? "Copied" : "Share"}
+      {copied ? <CheckIcon className="h-4 w-4" /> : <ShareIcon className="h-4 w-4" />}
+      <span role="status" className={variant === "icon" ? "sr-only" : undefined}>
+        {copied ? "Copied" : "Share"}
+      </span>
     </button>
   );
 }

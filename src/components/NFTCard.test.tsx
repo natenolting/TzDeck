@@ -301,9 +301,9 @@ test("the modal traps keyboard focus and restores the page after closing", async
   await user.tab();
   assert.equal(document.activeElement, collectionLink);
   await user.tab();
-  assert.equal(document.activeElement, wishlistButton);
-  await user.tab();
   assert.equal(document.activeElement, objktLink);
+  await user.tab();
+  assert.equal(document.activeElement, wishlistButton);
   await user.tab();
   assert.equal(document.activeElement, shareButton);
   await user.tab();

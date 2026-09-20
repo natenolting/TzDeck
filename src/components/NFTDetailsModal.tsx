@@ -7,7 +7,7 @@ import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl,
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
-import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon, SwordsIcon } from "./icons";
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, ImageOffIcon, SwordsIcon } from "./icons";
 import ShareCardButton from "./ShareCardButton";
 import { RARITY_CONFIG } from "./rarityStyles";
 
@@ -344,20 +344,7 @@ export default function NFTDetailsModal({
                 Battle
               </button>
             )}
-            {onToggleWishlist && (
-              <button
-                type="button"
-                onClick={() => onToggleWishlist(activeCard)}
-                className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
-                  activeIsWishlisted
-                    ? "border-saved/50 bg-saved-quiet text-saved hover:bg-saved/20"
-                    : "border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3"
-                }`}
-              >
-                {activeIsWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-              </button>
-            )}
-            <div className="flex gap-2">
+            <div className="flex items-stretch gap-2">
               <a
                 href={activeCard.objkt_url}
                 target="_blank"
@@ -366,7 +353,22 @@ export default function NFTDetailsModal({
               >
                 Collect on OBJKT
               </a>
-              <ShareCardButton key={activeKey} card={activeCard} />
+              {onToggleWishlist && (
+                <button
+                  type="button"
+                  onClick={() => onToggleWishlist(activeCard)}
+                  aria-pressed={activeIsWishlisted}
+                  aria-label={activeIsWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                    activeIsWishlisted
+                      ? "border-saved/50 bg-saved-quiet text-saved hover:bg-saved/20"
+                      : "border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary"
+                  }`}
+                >
+                  <HeartIcon className="h-4 w-4" filled={activeIsWishlisted} />
+                </button>
+              )}
+              <ShareCardButton key={activeKey} card={activeCard} variant="icon" />
             </div>
           </div>
         </div>
