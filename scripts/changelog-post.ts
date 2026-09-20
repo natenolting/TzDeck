@@ -52,6 +52,7 @@ const DESCRIPTION_LIMIT = 4096;
 const HEADING = /^(#{1,6})\s+(.*)$/;
 const ATTRIBUTION = /^\s*(?:🤖\s*)?generated with\b/iu;
 const COAUTHOR_TRAILER = /^\s*co-authored-by:/i;
+const FENCE = /^\s*(?:```|~~~)/;
 
 /**
  * The standard conventional-commit types, kept closed on purpose. An open
@@ -96,14 +97,20 @@ function truncate(text: string, limit: number): string {
  * `###` after it. Claude Code's attribution line and any Co-Authored-By
  * trailers come out: they are addressed to reviewers, not to players.
  *
+ * Headings inside a fenced code block do not count. README.md documents this
+ * convention with a fenced `## Update` example, so a pull request that quotes
+ * it would otherwise announce the example instead of its own section.
+ *
  * Returns null when the section is absent, or present but empty once stripped.
  */
 export function extractUpdate(body: string): string | null {
   let level: number | null = null;
+  let inFence = false;
   const section: string[] = [];
 
   for (const line of body.split(/\r?\n/)) {
-    const heading = HEADING.exec(line);
+    if (FENCE.test(line)) inFence = !inFence;
+    const heading = inFence ? null : HEADING.exec(line);
 
     if (level === null) {
       if (heading && isUpdateHeading(heading[1], heading[2])) level = heading[1].length;

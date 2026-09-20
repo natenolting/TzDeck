@@ -56,6 +56,22 @@ test("changelog-post: extractUpdate returns null when the section is empty once 
   );
 });
 
+test("changelog-post: extractUpdate ignores an Update heading quoted in a code fence", () => {
+  assert.equal(
+    extractUpdate(
+      "## Summary\n\nThe convention looks like this:\n\n```markdown\n## Update\n\nThe example nobody meant to publish.\n```\n\n## Update\n\nTrainers award less XP below level ten.\n",
+    ),
+    "Trainers award less XP below level ten.",
+  );
+});
+
+test("changelog-post: extractUpdate does not end the section at a heading inside a fence", () => {
+  assert.equal(
+    extractUpdate("## Update\n\nPack odds changed.\n\n```\n## not a heading\n```\n\n## Testing\n\nRan the suite.\n"),
+    "Pack odds changed.\n\n```\n## not a heading\n```",
+  );
+});
+
 test("changelog-post: stripCommitPrefix removes a scoped prefix and capitalises", () => {
   assert.equal(
     stripCommitPrefix("feat(pull): keep flagged tokens out of booster packs"),
