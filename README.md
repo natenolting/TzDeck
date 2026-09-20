@@ -151,6 +151,7 @@ npm run migrate           # Apply battle-system database migrations
 npm run migrate:status    # Print the migration plan without writing to the database
 npm run denylist          # Manage the booster-pack denylist (--list, --add, --remove)
 npm run funnel            # Report the launch bar and funnel (DATABASE_URL, else .env.local)
+npm run changelog         # Post a merged PR's Discord update (--pr <n> or --sha <sha>, --dry-run)
 npm run check:link-preview -- <url>  # Check what a link-preview crawler receives for a URL
 npm run sample:og-artwork # Measure OBJKT CDN artwork sizes against the link-preview budget
 npm run simulate          # Run N ad-hoc battle simulations (see Battle system above)

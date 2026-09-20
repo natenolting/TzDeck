@@ -18,7 +18,8 @@
     "simulate": "tsx scripts/simulate-battles.ts",
     "sample:og-artwork": "tsx scripts/sample-og-artwork.ts",
     "check:link-preview": "tsx scripts/check-link-preview.ts",
-    "funnel": "tsx scripts/funnel.ts"
+    "funnel": "tsx scripts/funnel.ts",
+    "changelog": "tsx scripts/changelog-post.ts"
   },
   "engines": {
     "node": "24.x"
