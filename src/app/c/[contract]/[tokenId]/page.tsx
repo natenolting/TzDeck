@@ -106,7 +106,7 @@ export default async function SharedCardPage({ params }: Props) {
             >
               {rarity.label}
             </span>
-            <h1 className="mt-3 font-display text-2xl font-extrabold leading-tight text-text-primary">
+            <h1 className="mt-3 text-balance font-display text-xl font-extrabold leading-tight tracking-tight text-text-primary">
               {card.name}
             </h1>
             <p className="mt-2 text-sm font-medium text-accent-hover">
