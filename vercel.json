@@ -4,5 +4,18 @@
     "deploymentEnabled": {
       "**": true
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "tz-deck.vercel.app"
+        }
+      ],
+      "destination": "https://tzdeck.xyz/:path*",
+      "permanent": true
+    }
+  ]
 }

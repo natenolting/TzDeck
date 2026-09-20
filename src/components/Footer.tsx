@@ -1,10 +1,9 @@
-import { InstagramIcon, ObjktIcon, TwitterIcon } from "./SocialIcons";
+import { ObjktIcon, TwitterIcon } from "./SocialIcons";
 import SupportLink from "./SupportLink";
 
 const SOCIAL_LINKS = [
   { label: "Explore OBJKT", href: "https://objkt.com", Icon: ObjktIcon },
   { label: "Twitter / X", href: "https://x.com/tzdeckxyz", Icon: TwitterIcon },
-  { label: "Instagram", href: "https://www.instagram.com/tzdeck/", Icon: InstagramIcon },
 ];
 
 export default function Footer() {
