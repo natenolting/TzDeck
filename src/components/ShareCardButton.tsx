@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { trackFunnelEvent } from "@/lib/analytics";
 import { shareLink } from "@/lib/share";
 import type { NFTCard } from "@/lib/objkt";
 import { CheckIcon, ShareIcon } from "./icons";
@@ -72,6 +73,7 @@ export default function ShareCardButton({
     if (navigator.share) {
       try {
         await navigator.share({ url });
+        trackFunnelEvent({ name: "card_shared", rarity: card.rarity });
         return;
       } catch (err) {
         // A dismissed share sheet is a decision, not a failure.
@@ -82,6 +84,7 @@ export default function ShareCardButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      trackFunnelEvent({ name: "card_shared", rarity: card.rarity });
       return;
     } catch {
       // Permission denied, or no clipboard at all. Try the old way.
@@ -89,6 +92,7 @@ export default function ShareCardButton({
 
     if (copyTheOldWay(url)) {
       setCopied(true);
+      trackFunnelEvent({ name: "card_shared", rarity: card.rarity });
       return;
     }
 

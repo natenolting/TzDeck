@@ -6,6 +6,7 @@ import {
   NFTCard as NFTCardType,
 } from "@/lib/objkt";
 import NFTCard from "./NFTCard";
+import { trackFunnelEvent } from "@/lib/analytics";
 import { soundManager } from "@/lib/sound";
 import { motion, AnimatePresence } from "framer-motion";
 import { SparklesIcon } from "./icons";
@@ -78,6 +79,7 @@ export default function PackOpening({
 
       setCards(data.cards);
       setFlippedIndices(new Set());
+      trackFunnelEvent({ name: "pack_opened", packSize: data.cards.length });
 
       // Small delay for the tear animation before showing cards
       registerTimer(() => {

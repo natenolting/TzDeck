@@ -1,7 +1,9 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
+import { trackFunnelEvent } from "@/lib/analytics";
 
 import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, distinctCollectionName, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
@@ -173,6 +175,16 @@ export default function NFTDetailsModal({
   const artistProfileUrl = getArtistProfileUrl(activeCard.artist_address);
   const activeCollection = distinctCollectionName(activeCard);
   const battleStats = battleStatsByCardKey ? battleStatsByCardKey.get(activeKey) ?? null : undefined;
+
+  // One event per opening, not per card. The arrows scrub through a whole
+  // deck, and counting each step would inflate a funnel step that is meant to
+  // count "someone looked at a card". The ref holds the opening card's rarity
+  // so the effect can stay on an empty dependency array without lying to
+  // exhaustive-deps.
+  const openingRarityRef = useRef(card.rarity);
+  useEffect(() => {
+    trackFunnelEvent({ name: "card_inspected", rarity: openingRarityRef.current });
+  }, []);
 
   return createPortal(
     <div
