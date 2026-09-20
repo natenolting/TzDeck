@@ -3,11 +3,12 @@
 import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
+import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, distinctCollectionName, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
-import { ChevronLeftIcon, ChevronRightIcon, ImageOffIcon, SwordsIcon } from "./icons";
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, ImageOffIcon, SwordsIcon } from "./icons";
+import ShareCardButton from "./ShareCardButton";
 import { RARITY_CONFIG } from "./rarityStyles";
 
 export interface BattleCardStats {
@@ -170,6 +171,7 @@ export default function NFTDetailsModal({
   const previousCard = cards[activeIndex - 1];
   const nextCard = cards[activeIndex + 1];
   const artistProfileUrl = getArtistProfileUrl(activeCard.artist_address);
+  const activeCollection = distinctCollectionName(activeCard);
   const battleStats = battleStatsByCardKey ? battleStatsByCardKey.get(activeKey) ?? null : undefined;
 
   return createPortal(
@@ -267,7 +269,7 @@ export default function NFTDetailsModal({
                 activeCard.artist_alias || "Unknown Artist"
               )}
             </p>
-            {activeCard.collection_name && (
+            {activeCollection && (
               <p className="mt-1 text-xs text-text-muted">
                 <a
                   href={getCollectionUrl(activeCard.contract_address)}
@@ -275,7 +277,7 @@ export default function NFTDetailsModal({
                   rel="noopener noreferrer"
                   className="hover:text-text-secondary hover:underline"
                 >
-                  {activeCard.collection_name}
+                  {activeCollection}
                 </a>
               </p>
             )}
@@ -342,27 +344,32 @@ export default function NFTDetailsModal({
                 Battle
               </button>
             )}
-            {onToggleWishlist && (
-              <button
-                type="button"
-                onClick={() => onToggleWishlist(activeCard)}
-                className={`w-full rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
-                  activeIsWishlisted
-                    ? "border-saved/50 bg-saved-quiet text-saved hover:bg-saved/20"
-                    : "border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3"
-                }`}
+            <div className="flex items-stretch gap-2">
+              <a
+                href={activeCard.objkt_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="button-primary flex-1 px-4 py-3 text-sm font-bold"
               >
-                {activeIsWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-              </button>
-            )}
-            <a
-              href={activeCard.objkt_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="button-primary w-full px-4 py-3 text-sm font-bold"
-            >
-              Collect on OBJKT
-            </a>
+                Collect on OBJKT
+              </a>
+              {onToggleWishlist && (
+                <button
+                  type="button"
+                  onClick={() => onToggleWishlist(activeCard)}
+                  aria-pressed={activeIsWishlisted}
+                  aria-label={activeIsWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                    activeIsWishlisted
+                      ? "border-saved/50 bg-saved-quiet text-saved hover:bg-saved/20"
+                      : "border-border-default bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary"
+                  }`}
+                >
+                  <HeartIcon className="h-4 w-4" filled={activeIsWishlisted} />
+                </button>
+              )}
+              <ShareCardButton key={activeKey} card={activeCard} variant="icon" />
+            </div>
           </div>
         </div>
       </div>

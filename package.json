@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test --test-concurrency=1 src/lib/*.test.ts src/lib/battle/*.test.ts src/context/*.test.ts src/hooks/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts src/app/api/battle/*/*.test.ts scripts/*.test.ts",
+    "test": "tsx --test --test-concurrency=1 src/lib/*.test.ts src/lib/battle/*.test.ts src/context/*.test.ts src/hooks/*.test.ts src/components/*.test.ts src/components/*.test.tsx src/app/api/random-pack/*.test.ts src/app/api/battle/*/*.test.ts scripts/*.test.ts",
     "calibrate:rarity": "tsx scripts/calibrate-rarity.ts",
     "check:diversity": "tsx scripts/check-pack-diversity.ts",
     "migrate": "tsx scripts/migrate.ts",
@@ -15,7 +15,9 @@
     "db:health": "tsx scripts/db-health-check.ts",
     "denylist": "tsx scripts/denylist.ts",
     "validate:tiebreak": "tsx scripts/validate-battle-tiebreak.ts",
-    "simulate": "tsx scripts/simulate-battles.ts"
+    "simulate": "tsx scripts/simulate-battles.ts",
+    "sample:og-artwork": "tsx scripts/sample-og-artwork.ts",
+    "check:link-preview": "tsx scripts/check-link-preview.ts"
   },
   "engines": {
     "node": "24.x"

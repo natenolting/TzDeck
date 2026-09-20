@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  distinctCollectionName,
   calculateRarity,
   calculateSupplyRarity,
   convertIpfsUrl,
@@ -899,4 +900,66 @@ test("fetchRandomPack returns unique tokens using their cheapest listing", async
     client.request = originalRequest;
     Math.random = originalRandom;
   }
+});
+
+test("distinctCollectionName hides a collection named after its own artist", () => {
+  assert.equal(
+    distinctCollectionName({ artist_alias: "Marie & Laveau ", collection_name: "Marie & Laveau" }),
+    undefined,
+  );
+  assert.equal(
+    distinctCollectionName({ artist_alias: "arghavan", collection_name: "ARGHAVAN" }),
+    undefined,
+  );
+});
+
+test("distinctCollectionName keeps a collection that says something new", () => {
+  assert.equal(
+    distinctCollectionName({ artist_alias: "Arghavan", collection_name: "Persian Paper Tales " }),
+    "Persian Paper Tales",
+  );
+});
+
+test("distinctCollectionName treats a blank collection as absent", () => {
+  assert.equal(distinctCollectionName({ artist_alias: "Janis", collection_name: "   " }), undefined);
+  assert.equal(distinctCollectionName({ artist_alias: "Janis" }), undefined);
+});
+
+test("normalizeObjktToken trims the whitespace OBJKT ships around names", () => {
+  const card = normalizeObjktToken({
+    name: "  Butterfly of Hope ",
+    token_id: "7",
+    fa_contract: "KT1Example",
+    display_uri: null,
+    artifact_uri: null,
+    thumbnail_uri: null,
+    supply: 1,
+    description: null,
+    creators: [{ holder: { alias: " Mojdeh ", address: "tz1abcdefghijklmnopqrstuvwxy123456" } }],
+    fa: { name: "Wings Of Hope " },
+  });
+
+  // A stray space reaches places HTML cannot re-flow: aria-labels, the
+  // document title, and the generated preview image.
+  assert.equal(card.name, "Butterfly of Hope");
+  assert.equal(card.artist_alias, "Mojdeh");
+  assert.equal(card.collection_name, "Wings Of Hope");
+});
+
+test("normalizeObjktToken falls back when a name is only whitespace", () => {
+  const card = normalizeObjktToken({
+    name: "   ",
+    token_id: "8",
+    fa_contract: "KT1Example",
+    display_uri: null,
+    artifact_uri: null,
+    thumbnail_uri: null,
+    supply: 1,
+    description: null,
+    creators: [],
+    fa: { name: "  " },
+  });
+
+  assert.equal(card.name, "OBJKT #8");
+  assert.equal(card.collection_name, "Tezos Art");
 });

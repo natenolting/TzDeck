@@ -43,7 +43,52 @@ async function loadTestHarness() {
 
 afterEach(() => {
   testingLibrary?.cleanup();
+  Reflect.deleteProperty(globalThis.navigator, "share");
+  Reflect.deleteProperty(globalThis.navigator, "clipboard");
+  Reflect.deleteProperty(globalThis, "fetch");
 });
+
+/** Records what the share button reaches for, without letting it off the machine. */
+function stubShareEnvironment(options: {
+  withShareSheet: boolean;
+  clipboardDenied?: boolean;
+  legacyCopyWorks?: boolean;
+}) {
+  const clipboard: string[] = [];
+  const shared: Array<{ url?: string }> = [];
+  const fetched: string[] = [];
+
+  Object.defineProperty(globalThis.navigator, "clipboard", {
+    configurable: true,
+    value: {
+      writeText: async (text: string) => {
+        if (options.clipboardDenied) throw new DOMException("denied", "NotAllowedError");
+        clipboard.push(text);
+      },
+    },
+  });
+  Object.defineProperty(globalThis.document, "execCommand", {
+    configurable: true,
+    value: (command: string) => {
+      if (command !== "copy") return false;
+      if (!options.legacyCopyWorks) return false;
+      clipboard.push("legacy");
+      return true;
+    },
+  });
+  if (options.withShareSheet) {
+    Object.defineProperty(globalThis.navigator, "share", {
+      configurable: true,
+      value: async (data: { url?: string }) => { shared.push(data); },
+    });
+  }
+  Object.defineProperty(globalThis, "fetch", {
+    configurable: true,
+    value: async (input: string) => { fetched.push(String(input)); return new Response(); },
+  });
+
+  return { clipboard, shared, fetched };
+}
 
 function createCard(overrides: Partial<NFTCard> = {}): NFTCard {
   return {
@@ -179,4 +224,70 @@ test("the video player is reachable by keyboard from inside the modal", async ()
   );
   const tags = [...(focusable ?? [])].map((el) => el.tagName.toLowerCase());
   assert.ok(tags.includes("video"), `focus trap skipped the player: ${tags.join(", ")}`);
+});
+
+test("sharing without a share sheet copies the bare card URL and says so", async () => {
+  const { fireEvent, render, screen, NFTDetailsModal } = await loadTestHarness();
+  const spies = stubShareEnvironment({ withShareSheet: false });
+  const card = createCard();
+
+  render(<NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: `Share ${card.name}` }));
+
+  assert.ok(await screen.findByText("Copied"));
+  assert.deepEqual(spies.clipboard, [
+    "https://tzdeck.xyz/c/KT1DetailsModalCollection/1",
+  ]);
+});
+
+test("sharing hands off to the OS share sheet where there is one, and copies nothing", async () => {
+  const { fireEvent, render, screen, NFTDetailsModal } = await loadTestHarness();
+  const spies = stubShareEnvironment({ withShareSheet: true });
+  const card = createCard();
+
+  render(<NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: `Share ${card.name}` }));
+  await screen.findByText("Share");
+
+  assert.deepEqual(spies.shared, [
+    { url: "https://tzdeck.xyz/c/KT1DetailsModalCollection/1" },
+  ]);
+  assert.deepEqual(spies.clipboard, []);
+});
+
+
+test("a refused clipboard still copies through the old path", async () => {
+  const { fireEvent, render, screen, NFTDetailsModal } = await loadTestHarness();
+  const spies = stubShareEnvironment({
+    withShareSheet: false,
+    clipboardDenied: true,
+    legacyCopyWorks: true,
+  });
+  const card = createCard();
+
+  render(<NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: `Share ${card.name}` }));
+  await screen.findByText("Copied");
+
+  assert.deepEqual(spies.clipboard, ["legacy"]);
+  assert.equal(screen.queryByLabelText("Card link, copy it manually"), null);
+});
+
+test("a browser that blocks every copy path shows the link to copy by hand", async () => {
+  const { fireEvent, render, screen, NFTDetailsModal } = await loadTestHarness();
+  stubShareEnvironment({
+    withShareSheet: false,
+    clipboardDenied: true,
+    legacyCopyWorks: false,
+  });
+  const card = createCard();
+
+  render(<NFTDetailsModal card={card} isWishlisted={false} onClose={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: `Share ${card.name}` }));
+
+  const field = await screen.findByLabelText("Card link, copy it manually");
+  assert.equal(
+    (field as HTMLInputElement).value,
+    "https://tzdeck.xyz/c/KT1DetailsModalCollection/1",
+  );
 });

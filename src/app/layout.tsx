@@ -2,7 +2,11 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter, Oxanium } from "next/font/google";
 import { WalletProvider } from "@/context/WalletContext";
+import { SITE_ORIGIN } from "@/lib/share";
 import { Analytics } from "@vercel/analytics/next";
+
+const SITE_DESCRIPTION =
+  "Open OBJKT booster packs, build a deck, and battle other collectors on Tezos.";
 
 // Oxanium is the brand face and carries the titles. Both are variable fonts,
 // so the weight axis loads whole rather than pinned -- pinning one weight left
@@ -18,8 +22,27 @@ const textFont = Inter({
 });
 
 export const metadata: Metadata = {
+  // Every route below here can now name its images and canonical URL with a
+  // relative path. Without it a shared link unfurls as bare text, which is
+  // what every TzDeck link did until this landed.
+  metadataBase: new URL(SITE_ORIGIN),
   title: "TzDeck",
-  description: "Open OBJKT booster packs, build a deck, and battle other collectors on Tezos.",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "TzDeck",
+    title: "TzDeck",
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+  },
+  // The site now has its own card image, from src/app/opengraph-image.tsx, which
+  // every route inherits unless it ships one of its own.
+  twitter: {
+    card: "summary_large_image",
+    title: "TzDeck",
+    description: SITE_DESCRIPTION,
+  },
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
