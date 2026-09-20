@@ -45,3 +45,8 @@ docs/brainstorms/
 docs/plans/
 
 .superpowers/
+
+# Agent scratch: a launch config, per-user settings, and full worktree
+# checkouts of this repo. Linting those reported 994 problems in files that
+# were not the working tree.
+.claude/
