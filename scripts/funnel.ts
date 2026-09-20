@@ -5,6 +5,8 @@
 // The bar, set in issue #68: 30 wallets each battling on two separate days,
 // within 30 days of launch. The definitions live in the SQL below rather than
 // in prose, so they cannot drift away from what the app actually does.
+import { readFileSync } from "node:fs";
+
 import { Pool } from "pg";
 
 const WINDOW_DAYS = Number(process.env.WINDOW_DAYS ?? 30);
@@ -31,13 +33,73 @@ const IS_TRAINER = "defender_wallet LIKE 'trainer:%'";
  */
 const ACTIVE_DAY = "date_trunc('day', settled_at AT TIME ZONE 'UTC')";
 
-async function main() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required to read the funnel");
+
+/**
+ * Where the connection string came from, so a run can never be ambiguous
+ * about which database it read.
+ *
+ * An explicit DATABASE_URL always wins, because that is how production is
+ * reached and it should stay a deliberate act. `.env.local` is the fallback,
+ * so the common local case needs no ceremony.
+ */
+function resolveDatabaseUrl(): { url: string; source: string } {
+  const fromEnv = process.env.DATABASE_URL;
+  if (fromEnv) return { url: fromEnv, source: "DATABASE_URL" };
+
+  let file: string;
+  try {
+    file = readFileSync(".env.local", "utf8");
+  } catch {
+    throw new Error(
+      "DATABASE_URL is required to read the funnel. Set it, or add it to .env.local.",
+    );
   }
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const line = file.split(new RegExp("\r?\n")).find((l) => l.startsWith("DATABASE_URL="));
+  const url = line?.slice("DATABASE_URL=".length).trim().replace(/^["']|["']$/g, "");
+  if (!url) {
+    throw new Error("DATABASE_URL is required to read the funnel, and .env.local does not set it.");
+  }
+  return { url, source: ".env.local" };
+}
+
+/** Host only. The connection string carries a password and must never be printed. */
+function describe(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "(unparseable host)";
+  }
+}
+
+/**
+ * Pins the SSL mode the driver is already using, rather than inheriting it.
+ *
+ * pg treats sslmode=prefer, require and verify-ca as aliases for verify-full
+ * today and warns, at length, that a future major will give them libpq
+ * semantics instead, which are weaker. Saying verify-full outright keeps the
+ * behaviour this connection already has when that day comes, and takes nine
+ * lines of warning off a report meant to be read daily.
+ */
+function pinSslMode(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  const aliased = ["prefer", "require", "verify-ca"];
+  if (aliased.includes(parsed.searchParams.get("sslmode") ?? "")) {
+    parsed.searchParams.set("sslmode", "verify-full");
+  }
+  return parsed.toString();
+}
+async function main() {
+  const { url, source } = resolveDatabaseUrl();
+  console.log(`reading ${describe(url)} (from ${source})
+`);
+
+  const pool = new Pool({ connectionString: pinSslMode(url) });
   try {
     console.log(`-- the bar: ${TARGET_WALLETS} wallets attacking on ${TARGET_DAYS}+ separate UTC days in ${WINDOW_DAYS} days --`);
     const bar = await pool.query<{ scope: string; wallets: string }>(
