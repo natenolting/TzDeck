@@ -339,19 +339,20 @@ export function normalizeObjktToken(
     listing_id: options.listingId,
     token_id: token.token_id,
     contract_address: token.fa_contract,
-    name: token.name || `OBJKT #${token.token_id}`,
+    name: token.name?.trim() || `OBJKT #${token.token_id}`,
     description: token.description || undefined,
     display_uri: convertIpfsUrl(displayUri),
     artifact_uri: convertIpfsUrl(token.artifact_uri || undefined),
     thumbnail_uri: convertIpfsUrl(token.thumbnail_uri || displayUri),
-    // Trimmed at the boundary: OBJKT aliases carry stray leading and trailing
-    // whitespace often enough that every surface would otherwise re-trim, and
-    // an OG card cannot re-flow around a trailing space the way HTML does.
+    // Names, aliases and collection titles are trimmed here rather than at each
+    // surface. OBJKT carries stray leading and trailing whitespace often enough
+    // that it reaches places HTML cannot re-flow: an aria-label reading
+    // "Share  Butterfly of Hope", a document title, an OG card.
     artist_alias: artist?.alias?.trim() || (artist?.address
       ? formatShortAddress(artist.address)
       : "Unknown Artist"),
     artist_address: artist?.address,
-    collection_name: token.fa?.name || "Tezos Art",
+    collection_name: token.fa?.name?.trim() || "Tezos Art",
     editions,
     price_mutez: options.priceMutez,
     price_xtz: priceXtz !== undefined ? Number(priceXtz.toFixed(3)) : undefined,
