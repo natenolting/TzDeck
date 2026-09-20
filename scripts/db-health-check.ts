@@ -36,14 +36,14 @@ async function main() {
       console.log(`${table}: ${rows}`);
     }
 
-    console.log("\n-- battle_log retention (0014 sweeps rows older than 30 days) --");
-    const battleLogAge = await pool.query<{ oldest: string | null; older_than_30d: string }>(`
+    console.log("\n-- battle_log retention (0018 sweeps rows older than 90 days) --");
+    const battleLogAge = await pool.query<{ oldest: string | null; older_than_90d: string }>(`
       SELECT min(settled_at) AS oldest,
-             count(*) FILTER (WHERE settled_at <= now() - interval '30 days') AS older_than_30d
+             count(*) FILTER (WHERE settled_at <= now() - interval '90 days') AS older_than_90d
       FROM battle_log
     `);
     console.log(`oldest settled_at: ${battleLogAge.rows[0].oldest ?? "(no rows)"}`);
-    console.log(`rows past the 30-day retention window: ${battleLogAge.rows[0].older_than_30d}`);
+    console.log(`rows past the 90-day retention window: ${battleLogAge.rows[0].older_than_90d}`);
 
     console.log("\n-- battle_attempts stuck past their own retry_until, still pending --");
     const stuckAttempts = await pool.query<{ action: string; n: string }>(`

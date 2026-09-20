@@ -5,6 +5,7 @@ import { BeaconWallet } from "@taquito/beacon-wallet";
 import { NetworkType, SigningType } from "@ecadlabs/beacon-types";
 import { TezosToolkit } from "@taquito/taquito";
 import { runWalletInitialization } from "./walletInitialization";
+import { trackFunnelEvent } from "@/lib/analytics";
 import { bytesToSignInBrowser, isImplicitAccountPublicKey } from "@/lib/battle/signPayload";
 import type { NonceEnvelope } from "@/lib/battle/signPayload";
 
@@ -89,12 +90,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const connect = async () => {
     if (!wallet) return;
+    // After the guard, not before it: with no wallet nothing is started, and a
+    // "started" with no attempt behind it would corrupt the count this feeds.
+    trackFunnelEvent({ name: "wallet_connect_started" });
     try {
       // No network property here — it's already set in the wallet instance
       await wallet.requestPermissions();
       const activeAccount = await wallet.client.getActiveAccount();
       if (activeAccount) {
         setAddress(activeAccount.address);
+        trackFunnelEvent({ name: "wallet_connected" });
       }
     } catch (error) {
       console.error("Failed to connect wallet:", error);
