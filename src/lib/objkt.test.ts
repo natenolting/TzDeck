@@ -610,6 +610,29 @@ test("fetchCardsByKeys returns an empty map when OBJKT is unreachable", async ()
   }
 });
 
+test("fetchCardsByKeys can surface an OBJKT failure to callers that cache results", async () => {
+  const client = objktClient as unknown as {
+    request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
+  };
+  const originalRequest = client.request;
+
+  client.request = async () => {
+    throw new Error("network down");
+  };
+
+  try {
+    await assert.rejects(
+      fetchCardsByKeys(
+        [{ contract_address: "KT1Example", token_id: "0" }],
+        { throwOnError: true },
+      ),
+      /network down/,
+    );
+  } finally {
+    client.request = originalRequest;
+  }
+});
+
 test("fetchCardsByKeys makes no request for an empty wishlist", async () => {
   const client = objktClient as unknown as {
     request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;

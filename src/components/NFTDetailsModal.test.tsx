@@ -238,6 +238,9 @@ test("sharing without a share sheet copies the bare card URL and says so", async
   assert.deepEqual(spies.clipboard, [
     "https://tzdeck.xyz/c/KT1DetailsModalCollection/1",
   ]);
+  assert.deepEqual(spies.fetched, [
+    "https://tzdeck.xyz/c/KT1DetailsModalCollection/1",
+  ]);
 });
 
 test("sharing hands off to the OS share sheet where there is one, and copies nothing", async () => {

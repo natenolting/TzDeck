@@ -1,6 +1,4 @@
-import { cache } from "react";
-
-import { fetchCardsByKeys, getCardKey, type NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/objkt";
 
 /**
  * Canonical origin. The sole home of the host string: `metadataBase` in the
@@ -46,25 +44,6 @@ export function parseCardRef(contract: string, tokenId: string): CardRef | null 
   if (!TOKEN_ID.test(tokenId)) return null;
   return { contract, tokenId, __brand: "CardRef" };
 }
-
-/**
- * Resolves the shared card, priced against its cheapest active listing.
- *
- * `fetchCardsByKeys` rather than `fetchTokenByKey` so rarity is the
- * price-if-listed grade the rest of the app shows. Grading this one surface on
- * supply alone would make a shared Epic arrive as a Rare.
- *
- * `cache` dedupes the round trip between `generateMetadata` and the page body,
- * which render in one request. It does not reach `opengraph-image`, which the
- * crawler fetches separately.
- */
-export const loadSharedCard: (ref: CardRef) => Promise<NFTCard | null> = cache(
-  async (ref: CardRef) => {
-    const key = { contract_address: ref.contract, token_id: ref.tokenId };
-    const resolved = await fetchCardsByKeys([key]);
-    return resolved.get(getCardKey(key)) ?? null;
-  },
-);
 
 /** Absolute URL of a card's page. What goes on the clipboard, nothing else. */
 export function shareLink(

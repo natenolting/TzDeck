@@ -584,6 +584,7 @@ const CARDS_BY_KEYS_CHUNK = 50;
  */
 export async function fetchCardsByKeys(
   keys: Array<Pick<NFTCard, "contract_address" | "token_id">>,
+  options: { throwOnError?: boolean } = {},
 ): Promise<Map<string, NFTCard>> {
   const resolved = new Map<string, NFTCard>();
   if (keys.length === 0) return resolved;
@@ -660,6 +661,7 @@ export async function fetchCardsByKeys(
       }
     } catch (err) {
       console.warn("OBJKT cards-by-keys query failed:", err);
+      if (options.throwOnError) throw err;
     }
   }
 
