@@ -71,12 +71,35 @@ function describe(url: string): string {
     return "(unparseable host)";
   }
 }
+
+/**
+ * Pins the SSL mode the driver is already using, rather than inheriting it.
+ *
+ * pg treats sslmode=prefer, require and verify-ca as aliases for verify-full
+ * today and warns, at length, that a future major will give them libpq
+ * semantics instead, which are weaker. Saying verify-full outright keeps the
+ * behaviour this connection already has when that day comes, and takes nine
+ * lines of warning off a report meant to be read daily.
+ */
+function pinSslMode(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  const aliased = ["prefer", "require", "verify-ca"];
+  if (aliased.includes(parsed.searchParams.get("sslmode") ?? "")) {
+    parsed.searchParams.set("sslmode", "verify-full");
+  }
+  return parsed.toString();
+}
 async function main() {
   const { url, source } = resolveDatabaseUrl();
   console.log(`reading ${describe(url)} (from ${source})
 `);
 
-  const pool = new Pool({ connectionString: url });
+  const pool = new Pool({ connectionString: pinSslMode(url) });
   try {
     console.log(`-- the bar: ${TARGET_WALLETS} wallets attacking on ${TARGET_DAYS}+ separate UTC days in ${WINDOW_DAYS} days --`);
     const bar = await pool.query<{ scope: string; wallets: string }>(
