@@ -1,0 +1,66 @@
+name: Discord updates
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request number to re-post. Leave empty to use the commit this run checks out."
+        required: false
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# Queue overlapping runs instead of cancelling them, keyed on the commit so two
+# merges in quick succession each get their post.
+#
+# Known limitation: there is no dedupe state, so re-running this workflow on a
+# sha it has already posted sends a second message to the channel.
+concurrency:
+  group: discord-updates-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  post:
+    name: Post the update
+    runs-on: ubuntu-latest
+
+    # workflow_run fires on every CI completion, and its branch filter matches the head
+    # branch, so a pull_request run from a fork's own main would match without the event check
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # workflow_run otherwise checks out the tip of main, which by the time CI
+          # reports can already be a newer commit than the one CI actually passed
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Post the update to Discord
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_UPDATES_WEBHOOK: ${{ secrets.DISCORD_UPDATES_WEBHOOK }}
+          # The dispatch input reaches the shell as an environment variable rather
+          # than an expression, so a value like `1; rm -rf .` stays a value
+          PR_NUMBER: ${{ inputs.pr }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            npm run changelog -- --pr "$PR_NUMBER"
+          else
+            npm run changelog -- --sha "$HEAD_SHA"
+          fi

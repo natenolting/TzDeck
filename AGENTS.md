@@ -11,3 +11,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Project conventions
 
 - New script or npm command (`package.json`, `scripts/`): document it in README.md's Development commands section (and any other section it belongs in, e.g. Battle system, Database migrations) in the same commit.
+- Every pull request body carries a `## Update` section: one to three sentences of plain English on what changed for a player, not for a reviewer. `.github/workflows/discord-updates.yml` posts that text verbatim to the Discord updates channel when the PR merges, so it is player-facing copy, not a changelog entry. A pull request without the section falls back to its title. Keep the rest of the body short. The Update section carries the summary, so the description below it should not restate the same thing at length in reviewer voice.
