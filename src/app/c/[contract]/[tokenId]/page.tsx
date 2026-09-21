@@ -11,7 +11,7 @@ import {
   distinctCollectionName,
   type NFTCard,
 } from "@/lib/objkt";
-import { parseCardRef } from "@/lib/share";
+import { ogImage, parseCardRef } from "@/lib/share";
 import { loadSharedCard } from "@/lib/shareServer";
 
 /** Prices and listings move; a token's identity does not. */
@@ -40,10 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = `${card.name} by ${card.artist_alias}`;
   const description = summarize(card);
+  const image = ogImage(card);
 
-  // og:image and twitter:image are deliberately absent: file-based metadata
-  // outranks this object, so opengraph-image.tsx fills them in with the URL
-  // that carries Next's cache-busting query.
   return {
     title,
     description,
@@ -55,8 +53,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       locale: "en_US",
       title,
       description,
+      images: [image],
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }
 
