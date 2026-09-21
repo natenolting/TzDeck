@@ -1,17 +1,12 @@
 import { ImageResponse } from "next/og";
-import { notFound } from "next/navigation";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { RARITY_CONFIG, RARITY_HEX } from "@/components/rarityStyles";
 import { coversText, readCodepointCoverage } from "@/lib/fontCoverage";
 import { getObjktThumbnailUrl, type NFTCard } from "@/lib/objkt";
-import { parseCardRef } from "@/lib/share";
+import { OG_IMAGE_SIZE, parseCardRef } from "@/lib/share";
 import { loadSharedCard } from "@/lib/shareServer";
-
-export const alt = "A card on TzDeck";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
 
 /**
  * Oxanium is the brand face, and an all-Oxanium card is more on-brand than a
@@ -251,7 +246,7 @@ function Details({ card, text, hex, scale, width, padding }: {
         flexDirection: "column",
         justifyContent: "space-between",
         width,
-        height: size.height,
+        height: OG_IMAGE_SIZE.height,
         padding,
       }}
     >
@@ -303,13 +298,13 @@ function ArtworkCard({ card, artworkSrc, hex }: {
   hex: string;
 }) {
   const text = resolveText(card, 72);
-  const art = size.height;
+  const art = OG_IMAGE_SIZE.height;
   return (
     <div
       style={{
         display: "flex",
-        width: size.width,
-        height: size.height,
+        width: OG_IMAGE_SIZE.width,
+        height: OG_IMAGE_SIZE.height,
         backgroundColor: "#07080f",
         fontFamily: "Oxanium",
       }}
@@ -333,7 +328,7 @@ function ArtworkCard({ card, artworkSrc, hex }: {
         text={text}
         hex={hex}
         scale={1}
-        width={size.width - art}
+        width={OG_IMAGE_SIZE.width - art}
         padding={48}
       />
     </div>
@@ -352,52 +347,62 @@ function NoArtworkCard({ card, hex }: { card: NFTCard; hex: string }) {
     <div
       style={{
         display: "flex",
-        width: size.width,
-        height: size.height,
+        width: OG_IMAGE_SIZE.width,
+        height: OG_IMAGE_SIZE.height,
         backgroundColor: "#07080f",
         backgroundImage: `linear-gradient(135deg, ${tint(hex, 0.22)} 0%, #07080f 58%)`,
         fontFamily: "Oxanium",
       }}
     >
-      <div style={{ display: "flex", width: bar, height: size.height, backgroundColor: hex }} />
+      <div style={{ display: "flex", width: bar, height: OG_IMAGE_SIZE.height, backgroundColor: hex }} />
       <Details
         card={card}
         text={text}
         hex={hex}
         scale={1.6}
-        width={size.width - bar}
+        width={OG_IMAGE_SIZE.width - bar}
         padding={64}
       />
     </div>
   );
 }
 
-type Props = { params: Promise<{ contract: string; tokenId: string }> };
+type Context = { params: Promise<{ contract: string; tokenId: string }> };
 
-export default async function Image({ params }: Props) {
+/**
+ * An explicit handler rather than `opengraph-image.tsx`, because the file
+ * convention's wrapper discards the `headers` passed to `ImageResponse` once
+ * deployed and serves ImageResponse's own `max-age=0, must-revalidate`
+ * instead, measured in production against `ed9e94a7`. Here the response is
+ * ours and nothing rewraps it.
+ *
+ * A card that does not exist answers with a bare 404 rather than `notFound()`,
+ * which would render an HTML error page under an image content type. A crawler
+ * that cannot decode that drops the whole preview, not just the image.
+ */
+export async function GET(_request: Request, { params }: Context) {
   const { contract, tokenId } = await params;
   const ref = parseCardRef(contract, tokenId);
-  if (!ref) notFound();
+  if (!ref) return new Response(null, { status: 404 });
 
   const card = await loadSharedCard(ref);
-  if (!card) notFound();
+  if (!card) return new Response(null, { status: 404 });
 
   const hex = RARITY_HEX[card.rarity];
   const artwork = await loadArtwork(card);
 
-  return new ImageResponse(
+  const image = new ImageResponse(
     artwork.drawn
       ? <ArtworkCard card={card} artworkSrc={artwork.src} hex={hex} />
       : <NoArtworkCard card={card} hex={hex} />,
     {
-      ...size,
+      ...OG_IMAGE_SIZE,
       fonts: [
         { name: "Oxanium", data: OXANIUM_REGULAR, style: "normal", weight: 400 },
         { name: "Oxanium", data: OXANIUM_BOLD, style: "normal", weight: 700 },
       ],
-      headers: {
-        "Cache-Control": artwork.drawn ? CACHE_RESOLVED : CACHE_DEGRADED,
-      },
     },
   );
+  image.headers.set("Cache-Control", artwork.drawn ? CACHE_RESOLVED : CACHE_DEGRADED);
+  return image;
 }
