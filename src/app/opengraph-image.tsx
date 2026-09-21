@@ -78,8 +78,7 @@ export default async function Image() {
               maxWidth: 900,
             }}
           >
-            Open free booster packs of Tezos art from OBJKT, build a deck from
-            your own wallet, and battle other collectors.
+            Battle other collectors with art from your Tezos collection.
           </div>
           <div
             style={{
