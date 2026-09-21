@@ -6,7 +6,7 @@ import { SITE_ORIGIN } from "@/lib/share";
 import { Analytics } from "@vercel/analytics/next";
 
 const SITE_DESCRIPTION =
-  "Open OBJKT booster packs, build a deck, and battle other collectors on Tezos.";
+  "Battle other collectors with art from your Tezos collection.";
 
 // Oxanium is the brand face and carries the titles. Both are variable fonts,
 // so the weight axis loads whole rather than pinned -- pinning one weight left
