@@ -162,7 +162,7 @@ export function getCardKey(
 export function parseTokenReference(
   input: string,
 ): Pick<NFTCard, "contract_address" | "token_id"> | null {
-  const match = input.trim().match(/(KT1[123456789A-HJ-NP-Za-km-z]{33})[/:](\d+)/);
+  const match = input.match(/(KT1[123456789A-HJ-NP-Za-km-z]{33})[/:](\d+)/);
   if (!match) return null;
   return { contract_address: match[1], token_id: match[2] };
 }
