@@ -194,3 +194,58 @@ test("a deck card with no battle progress row shows the estimated Level 1 previe
   const modal = within(screen.getByRole("dialog", { name: token.name }));
   assert.ok(await modal.findByText("Estimated Level 1"));
 });
+
+test("closing the battle panel refetches battle stats, so the details modal shows the battle's result without a reload", async () => {
+  const { fireEvent, render, screen, within, WalletContext, DeckGrid } = await loadTestHarness();
+  const token = createCard({
+    token_id: "9",
+    contract_address: "KT1DeckCardFresh",
+    name: "Fresh Fighter",
+    display_uri: "https://example.com/fresh-fighter.jpg",
+    editions: 4,
+  });
+  const cardKey = getCardKey(token);
+  let serverCards: Array<Record<string, unknown>> = [];
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/deck")) {
+      return new Response(JSON.stringify({ tokens: [token] }), { status: 200 });
+    }
+    if (url.includes("/api/battle/status")) {
+      return new Response(
+        JSON.stringify({
+          optedIn: true,
+          effectiveAttackCount: 0,
+          attackResetAt: null,
+          effectiveDefenseCount: 0,
+          defenseResetAt: null,
+          holdingsRefreshedAt: null,
+          cards: serverCards,
+        }),
+        { status: 200 },
+      );
+    }
+    throw new Error(`unexpected fetch in DeckGrid test: ${url}`);
+  }) as typeof fetch;
+
+  render(
+    <WalletContext.Provider value={mockWalletValue()}>
+      <DeckGrid onBrowsePacks={() => {}} />
+    </WalletContext.Provider>,
+  );
+
+  fireEvent.click(await screen.findByRole("button", { name: `Battle with ${token.name}` }));
+  const closeBattle = await screen.findByRole("button", { name: "Close battle panel" });
+
+  // The battle commits server-side while the panel is open.
+  serverCards = [{ cardKey, xp: 40, level: 2, power: 30, hp: 100, recoveryUntil: null, recoveryReason: null }];
+  fireEvent.click(closeBattle);
+
+  const openButton = screen.getByRole("button", { name: `View details for ${token.name}` });
+  fireEvent.load(screen.getByRole("img", { name: token.name }));
+  fireEvent.click(openButton);
+
+  const modal = within(screen.getByRole("dialog", { name: token.name }));
+  assert.ok(await modal.findByText("Level 2"), "the stats written by the battle reach the modal once the panel closes");
+});

@@ -93,6 +93,7 @@ export default function DeckGrid({
   const [requestVersion, setRequestVersion] = useState(0);
   const [battleCard, setBattleCard] = useState<NFTCardType | null>(null);
   const [battleStatsByCardKey, setBattleStatsByCardKey] = useState<Map<string, BattleCardStats>>(new Map());
+  const [battleStatsVersion, setBattleStatsVersion] = useState(0);
 
   // Filters and Sorting
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,7 +142,13 @@ export default function DeckGrid({
       });
 
     return () => controller.abort();
-  }, [address, requestVersion]);
+  }, [address, requestVersion, battleStatsVersion]);
+
+  // Battles fought in the panel changed this card's XP and level on the server.
+  const closeBattle = () => {
+    setBattleCard(null);
+    setBattleStatsVersion((version) => version + 1);
+  };
 
   const reloadDeck = () => {
     setLoading(true);
@@ -324,10 +331,10 @@ export default function DeckGrid({
       {battleCard && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setBattleCard(null)}
+          onClick={closeBattle}
         >
           <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <BattlePanel card={battleCard} onClose={() => setBattleCard(null)} />
+            <BattlePanel card={battleCard} onClose={closeBattle} />
           </div>
         </div>
       )}
