@@ -218,8 +218,8 @@ export default function WishlistGrid({
             Browse Booster Packs
           </button>
           {addControls}
-          {importControls}
         </div>
+        <div className="mt-2 flex justify-center">{importControls}</div>
         <p className="mt-3 text-xs text-text-secondary">
           Already have a backup? Import it to restore your saved cards.
         </p>
