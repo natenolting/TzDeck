@@ -150,6 +150,24 @@ export function getCardKey(
 }
 
 /**
+ * Reads an OBJKT token link, or a bare `contract/id` or `contract:id` pair,
+ * back into the identity `getCardKey` is built from.
+ *
+ * The pair is matched anywhere in the input rather than anchored to a path, so
+ * one rule covers the full URL, the scheme-less form, a trailing slash and a
+ * query string without enumerating OBJKT path prefixes, which change. The
+ * character class is base58, which is why `0`, `O`, `I` and `l` are missing
+ * from it. A collection URL has no numeric tail and so falls through to null.
+ */
+export function parseTokenReference(
+  input: string,
+): Pick<NFTCard, "contract_address" | "token_id"> | null {
+  const match = input.trim().match(/(KT1[123456789A-HJ-NP-Za-km-z]{33})[/:](\d+)/);
+  if (!match) return null;
+  return { contract_address: match[1], token_id: match[2] };
+}
+
+/**
  * OBJKT's own pre-resized still of a token, addressed by key alone.
  *
  * This is the server-side counterpart to the client's IPFS failover chain, and
