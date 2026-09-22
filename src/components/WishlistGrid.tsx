@@ -130,7 +130,9 @@ export default function WishlistGrid({
 
     setAddingCard(true);
     try {
-      const card = (await fetchCardsByKeys([reference])).get(key);
+      // Without throwOnError an unreachable OBJKT returns the same empty map as
+      // a token that does not exist, and the collector is told a good link is bad.
+      const card = (await fetchCardsByKeys([reference], { throwOnError: true })).get(key);
       if (!card) {
         setStatus({
           state: "error",
@@ -142,6 +144,11 @@ export default function WishlistGrid({
       onImport(mergeWishlists(wishlist, [card]));
       setStatus({ state: "done", message: `Added ${card.name}.` });
       setTokenReference("");
+    } catch {
+      setStatus({
+        state: "error",
+        message: "Couldn't reach OBJKT to look that up. Try again in a moment.",
+      });
     } finally {
       setAddingCard(false);
     }

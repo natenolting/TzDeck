@@ -558,3 +558,41 @@ test("a link OBJKT has no token for reports that and saves nothing", async () =>
     objktClient.request = originalRequest;
   }
 });
+
+test("a link OBJKT cannot be reached for blames the network, not the link", async () => {
+  const { fireEvent, render, screen, waitFor, WishlistGrid, objktClient } = await loadTestHarness();
+  const originalRequest = objktClient.request;
+  let importCount = 0;
+
+  objktClient.request = async () => {
+    throw new Error("network down");
+  };
+
+  try {
+    render(
+      <WishlistGrid
+        wishlist={[linkedCard({ token_id: "0" })]}
+        onWishlistToggle={() => undefined}
+        onClearWishlist={() => undefined}
+        onImport={() => {
+          importCount += 1;
+        }}
+        onBrowsePacks={() => undefined}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: `https://objkt.com/asset/${LINK_CONTRACT}/7` },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      assert.ok(screen.getByText("Couldn't reach OBJKT to look that up. Try again in a moment.")),
+    );
+    assert.equal(importCount, 0);
+    // The Add button has to come back, or a blip costs the collector the box.
+    assert.equal((screen.getByRole("button", { name: "Add" }) as HTMLButtonElement).disabled, false);
+  } finally {
+    objktClient.request = originalRequest;
+  }
+});
