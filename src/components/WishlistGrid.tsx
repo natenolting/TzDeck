@@ -217,8 +217,8 @@ export default function WishlistGrid({
           >
             Browse Booster Packs
           </button>
-          {importControls}
           {addControls}
+          {importControls}
         </div>
         <p className="mt-3 text-xs text-text-secondary">
           Already have a backup? Import it to restore your saved cards.
@@ -243,6 +243,7 @@ export default function WishlistGrid({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {addControls}
           <button
             type="button"
             onClick={handleExport}
@@ -250,7 +251,6 @@ export default function WishlistGrid({
           >
             Export
           </button>
-          {addControls}
           {importControls}
           <button
             type="button"
