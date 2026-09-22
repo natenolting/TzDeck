@@ -2,7 +2,7 @@
 
 **Pull. Collect. Battle.**
 
-TzDeck is a gamified discovery, collection, and battling layer for Tezos NFTs. It turns artwork from [OBJKT](https://objkt.com/) into a trading-card experience where collectors can open virtual booster packs, inspect new finds, browse the NFTs already held in their wallet as a personal deck, and pit those cards against other collectors' for XP and levels.
+TzDeck turns artwork listed on [OBJKT](https://objkt.com/) into trading cards. Collectors open virtual booster packs, inspect new finds, browse the NFTs already in their wallet as a deck, and battle those cards against other collectors' for XP and levels.
 
 ## How it works
 
@@ -19,7 +19,7 @@ TzDeck is a discovery layer, not a marketplace. It does not mint, sell, or trans
 
 Booster packs exclude tokens that OBJKT has flagged, tokens from collections that are no longer live, tokens with a flagged creator, and anything on TzDeck's own denylist. Roughly 99% of active listings pass, and every exclusion is recorded with the rule that caused it. See `docs/pull-filter-spec.md`.
 
-The filter needs no database. Losing `DATABASE_URL` degrades it to the three OBJKT rules rather than failing a pack -- the denylist is a manual override on top, not the main protection.
+The filter needs no database. Losing `DATABASE_URL` degrades it to the three OBJKT rules rather than failing a pack. The denylist is a manual override on top.
 
 Manage the denylist with `npm run denylist` against `DATABASE_URL`:
 
@@ -43,7 +43,7 @@ TzDeck rarity is a deterministic display classification, not an on-chain NFT tra
 | Uncommon | 25 or fewer editions **or** at least 5 ꜩ |
 | Common | More than 25 editions **and** less than 5 ꜩ |
 
-The top two tiers require market corroboration for scarcity; the lower tiers use an **OR** condition. Rules are evaluated from Legendary downward, so the first match wins.
+The top two tiers need both scarcity and price; the lower tiers need either. Rules are evaluated from Legendary downward, so the first match wins.
 
 Booster-pack contents are randomized from active OBJKT listings, but the rarity assigned to each selected card is deterministic. Cards in **My Deck** are classified by edition supply alone because wallet holdings do not include a listing price. As a result, the same NFT can have a different displayed rarity in a booster pack if its listing price raises it into a higher tier.
 
@@ -57,7 +57,7 @@ The wishlist lives in the browser's `localStorage` under `tzdeck_wishlist`, so c
 
 An import merges rather than replaces -- cards already saved keep their place, and new ones are appended. The file's own `contract_address` and `token_id` are the only identity TzDeck trusts from it: every card is re-resolved against OBJKT on import, so prices and rarities reflect the market now rather than whenever the file was written. A card OBJKT no longer lists keeps its artwork and loses its price, falling back to the supply-only rarity ladder; if OBJKT can't be reached at all, the import still succeeds on the file's stored values and says which cards may be out of date.
 
-**Add** saves a single card without a file, from the populated wishlist or the empty screen. Paste an OBJKT token link -- `https://objkt.com/asset/KT1.../123`, with or without the scheme, and with a trailing slash or a `?ref=` query if that is how it was copied -- or type the contract and token id on their own as `KT1.../123` or `KT1...:123`. Anything that isn't one of those is refused and left in the box, so a mistyped id is one edit away from working, and a card already saved is a no-op that says so instead of adding a second copy. The card itself is resolved against OBJKT the moment it is added, exactly as an imported card is, so its price and rarity are current and a link OBJKT has no token for saves nothing at all.
+**Add** saves a single card without a file, from the populated wishlist or the empty screen. Paste an OBJKT token link -- `https://objkt.com/asset/KT1.../123`, with or without the scheme, and with a trailing slash or a `?ref=` query if that is how it was copied -- or type the contract and token id on their own as `KT1.../123` or `KT1...:123`. Anything else is refused and left in the box for editing. A card already saved is a no-op that says so. The card is resolved against OBJKT on add, like an imported card, so its price and rarity are current and a link OBJKT has no token for saves nothing.
 
 **Clear Wishlist** asks for confirmation before it wipes anything, naming how many cards are at stake; the prompt opens with focus on Cancel, and Escape or a click outside backs out.
 
@@ -95,9 +95,9 @@ npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed ac
 
 **Does the SQL side duplicate and test those caps?** No. `commit_battle` never recomputes combat stats -- it takes the client-computed `attackerStats`/`defenderStats`/`combat` as opaque input and only records them. The one server-side formula SQL *does* recompute independently (so a client can't lie about it) is the anti-farming XP decay, which is why it's the only one with a parity test (`commitBattle.test.ts`'s `"decay parity"` case).
 
-**Does that anti-farming decay reset per opponent?** Per opponent *wallet pair*, and it's a rolling window rather than a hard reset: `commit_battle` counts your wins against that specific wallet in the trailing 7 days and scales the XP award down by `0.5 ^ count` (floored at 10%). Beating a different wallet starts back at full XP; wins against the same wallet older than 7 days simply age out of the count on their own.
+**Does that anti-farming decay reset per opponent?** Per opponent *wallet pair*, and it's a rolling window rather than a hard reset: `commit_battle` counts your wins against that specific wallet in the trailing 7 days and scales the XP award down by `0.5 ^ count` (floored at 10%). Beating a different wallet starts back at full XP; wins against the same wallet older than 7 days age out of the count.
 
-**Does the win/loss battle log ever get pruned?** Yes -- `battle_log` rows older than 30 days are swept opportunistically inside `commit_battle`, the same pattern `check_rate_limit` uses for `rate_limits` (see [Database migrations](#database-migrations)). Nothing reads `battle_log` beyond that 7-day decay window in production, so 30 days is a comfortable margin, not a hard functional requirement.
+**Does the win/loss battle log ever get pruned?** Yes -- `battle_log` rows older than 30 days are swept opportunistically inside `commit_battle`, the same pattern `check_rate_limit` uses for `rate_limits` (see [Database migrations](#database-migrations)). Nothing reads `battle_log` beyond the 7-day decay window, so 30 days is ample.
 
 ## Database migrations
 
@@ -114,13 +114,13 @@ An applied migration is checksummed, so its file must never be edited afterward.
 
 Production migrations run from `.github/workflows/migrate.yml`, which triggers once CI goes green on `main` and can also be started by hand from the Actions tab. Before it can work, the operator adds a `PRODUCTION_DATABASE_URL` secret to the repository's `production` environment under **Settings > Environments**. That environment is also where required reviewers go if a production migration should need human approval.
 
-Give the secret the **direct**, non-pooled Neon connection string. A run holds a session-level advisory lock so two migrations cannot overlap, and a transaction-mode pooler can hand each statement a different backend, taking the lock on one connection and releasing it against another. The per-migration transactions themselves are fine through a pooler, which is why this fails silently rather than loudly, so applying through a `-pooler` host is refused outright. Reads never take the lock, so `migrate:status` works against either host. When the secret is empty the workflow fails with that instruction instead of connecting to nothing.
+Give the secret the **direct**, non-pooled Neon connection string. A run holds a session-level advisory lock so two migrations cannot overlap. A transaction-mode pooler can hand each statement a different backend, taking the lock on one connection and releasing it on another, while the per-migration transactions still succeed, so the failure is silent. Applying through a `-pooler` host is therefore refused outright. Reads never take the lock, so `migrate:status` works against either host. When the secret is empty the workflow fails with that instruction instead of connecting to nothing.
 
 `PRODUCTION_DATABASE_URL` is a GitHub Actions secret, read only by the workflow. It has nothing to do with Vercel's environment variables, where the app reads `DATABASE_URL` at runtime. Vercel wants the pooled endpoint for that one; only migrations need the direct host.
 
 GitHub only offers a workflow once it is on the default branch, so the first production migration has to be dispatched by hand after this lands on `main`.
 
-The first production rollout is the one to sequence deliberately. Vercel ships the moment `main` moves and the deployed battle routes need their tables, so migrate immediately before or immediately after the merge.
+Vercel ships the moment `main` moves and the deployed battle routes need their tables, so run the first production migration immediately before or after the merge.
 
 ## Discord updates
 
