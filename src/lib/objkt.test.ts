@@ -18,6 +18,7 @@ import {
   isPlayableVideo,
   normalizeObjktToken,
   objktClient,
+  parseTokenReference,
   PACK_MAX_PER_ARTIST,
   RARITY_LEGEND,
   selectDiverseListings,
@@ -148,6 +149,53 @@ test("getCardKey creates a stable contract and token identity", () => {
     getCardKey({ contract_address: "KT1Example", token_id: "42" }),
     "KT1Example:42",
   );
+});
+
+// A real 36-character originated address, so the length and alphabet rules the
+// parser enforces are exercised rather than asserted against a stand-in.
+const PARSE_CONTRACT = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
+
+test("parseTokenReference reads a token out of every shape a collector can paste", () => {
+  const expected = { contract_address: PARSE_CONTRACT, token_id: "123" };
+
+  assert.deepEqual(
+    parseTokenReference(`https://objkt.com/asset/${PARSE_CONTRACT}/123`),
+    expected,
+  );
+  assert.deepEqual(
+    parseTokenReference(`objkt.com/asset/${PARSE_CONTRACT}/123`),
+    expected,
+  );
+  assert.deepEqual(
+    parseTokenReference(`https://objkt.com/asset/${PARSE_CONTRACT}/123/`),
+    expected,
+  );
+  assert.deepEqual(
+    parseTokenReference(`https://objkt.com/asset/${PARSE_CONTRACT}/123?ref=tz1Friend`),
+    expected,
+  );
+  assert.deepEqual(parseTokenReference(`${PARSE_CONTRACT}/123`), expected);
+  assert.deepEqual(parseTokenReference(`${PARSE_CONTRACT}:123`), expected);
+  assert.deepEqual(
+    parseTokenReference(`   https://objkt.com/asset/${PARSE_CONTRACT}/123   `),
+    expected,
+  );
+});
+
+test("parseTokenReference returns null for anything that is not one token", () => {
+  assert.equal(parseTokenReference(""), null);
+  assert.equal(parseTokenReference("   "), null);
+  assert.equal(
+    parseTokenReference(`https://objkt.com/collection/${PARSE_CONTRACT}`),
+    null,
+  );
+  assert.equal(parseTokenReference("https://objkt.com/users/tz1Collector"), null);
+  assert.equal(parseTokenReference("https://objkt.com/asset/KT1Short/123"), null);
+  assert.equal(
+    parseTokenReference(`https://objkt.com/asset/${PARSE_CONTRACT}/not-a-number`),
+    null,
+  );
+  assert.equal(parseTokenReference("the blue one from the drop last night"), null);
 });
 
 test("normalizeObjktToken maps shared OBJKT metadata and listing options", () => {

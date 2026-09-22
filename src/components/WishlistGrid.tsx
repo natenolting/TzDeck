@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
+import {
+  fetchCardsByKeys,
+  getCardKey,
+  NFTCard as NFTCardType,
+  parseTokenReference,
+} from "@/lib/objkt";
 import {
   mergeWishlists,
   parseWishlistExport,
@@ -54,6 +59,10 @@ export default function WishlistGrid({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<ImportStatus>({ state: "idle" });
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [tokenReference, setTokenReference] = useState("");
+  // Its own flag rather than the shared status. Adding a card and importing a
+  // file are separate requests, and neither should grey out the other's button.
+  const [addingCard, setAddingCard] = useState(false);
 
   const handleExport = () => {
     const blob = new Blob([serializeWishlist(wishlist)], { type: "application/json" });
@@ -99,6 +108,71 @@ export default function WishlistGrid({
     onImport(cards);
     setStatus({ state: "done", message: describeImport(added, parsed.skipped, stale) });
   };
+
+  const handleAddByReference = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const reference = parseTokenReference(tokenReference);
+    if (!reference) {
+      setStatus({
+        state: "error",
+        message: "That isn't an OBJKT token link, or a contract and token id.",
+      });
+      return;
+    }
+
+    const key = getCardKey(reference);
+    if (wishlist.some((saved) => getCardKey(saved) === key)) {
+      setStatus({ state: "done", message: "That card is already saved." });
+      setTokenReference("");
+      return;
+    }
+
+    setAddingCard(true);
+    try {
+      // Without throwOnError an unreachable OBJKT returns the same empty map as
+      // a token that does not exist, and the collector is told a good link is bad.
+      const card = (await fetchCardsByKeys([reference], { throwOnError: true })).get(key);
+      if (!card) {
+        setStatus({
+          state: "error",
+          message: "OBJKT has no token with that contract and id.",
+        });
+        return;
+      }
+
+      onImport(mergeWishlists(wishlist, [card]));
+      setStatus({ state: "done", message: `Added ${card.name}.` });
+      setTokenReference("");
+    } catch {
+      setStatus({
+        state: "error",
+        message: "Couldn't reach OBJKT to look that up. Try again in a moment.",
+      });
+    } finally {
+      setAddingCard(false);
+    }
+  };
+
+  const addControls = (
+    <form onSubmit={handleAddByReference} className="flex items-center gap-2">
+      <input
+        type="text"
+        value={tokenReference}
+        onChange={(event) => setTokenReference(event.target.value)}
+        placeholder="Paste an OBJKT link"
+        aria-label="Add a card by OBJKT link, or by contract and token id"
+        className="w-48 rounded-xl border border-border-default bg-surface-2 px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-accent"
+      />
+      <button
+        type="submit"
+        disabled={addingCard || tokenReference.trim() === ""}
+        className="button-secondary px-3.5 py-1.5 text-xs font-semibold disabled:opacity-60"
+      >
+        {addingCard ? "Adding…" : "Add"}
+      </button>
+    </form>
+  );
 
   const importControls = (
     <>
@@ -150,8 +224,9 @@ export default function WishlistGrid({
           >
             Browse Booster Packs
           </button>
-          {importControls}
+          {addControls}
         </div>
+        <div className="mt-2 flex justify-center">{importControls}</div>
         <p className="mt-3 text-xs text-text-secondary">
           Already have a backup? Import it to restore your saved cards.
         </p>
@@ -175,6 +250,7 @@ export default function WishlistGrid({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {addControls}
           <button
             type="button"
             onClick={handleExport}

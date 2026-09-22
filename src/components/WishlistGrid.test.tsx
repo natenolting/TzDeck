@@ -90,6 +90,29 @@ function fileInput(container: HTMLElement): HTMLInputElement {
   return input as HTMLInputElement;
 }
 
+// The add-by-link box enforces the real 36-character originated-address shape,
+// which the shared `card` helper's KT1Example stand-in does not satisfy.
+const LINK_CONTRACT = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton";
+
+function linkedCard(overrides: Partial<NFTCard> = {}): NFTCard {
+  return card({ contract_address: LINK_CONTRACT, ...overrides });
+}
+
+function objktToken(tokenId: string, name: string) {
+  return {
+    name,
+    token_id: tokenId,
+    fa_contract: LINK_CONTRACT,
+    display_uri: "ipfs://QmExample",
+    artifact_uri: null,
+    thumbnail_uri: null,
+    supply: 100,
+    description: null,
+    creators: [{ holder: { alias: "Example Artist", address: "tz1Example" } }],
+    fa: { name: "Example Collection" },
+  };
+}
+
 test("the empty wishlist links back to booster packs", async () => {
   const { fireEvent, render, screen, WishlistGrid } = await loadTestHarness();
   let browseCount = 0;
@@ -386,6 +409,189 @@ test("an unreachable OBJKT still imports, and says the prices may be stale", asy
     assert.equal(imported?.length, 1);
     assert.equal(imported?.[0].price_xtz, 600);
     await waitFor(() => assert.ok(screen.getByText(/couldn't be refreshed/i)));
+  } finally {
+    objktClient.request = originalRequest;
+  }
+});
+
+test("pasting an OBJKT link saves that card to the wishlist", async () => {
+  const { fireEvent, render, screen, waitFor, WishlistGrid, objktClient } = await loadTestHarness();
+  const originalRequest = objktClient.request;
+  let imported: NFTCard[] | undefined;
+
+  objktClient.request = async () => ({
+    listing: [{ id: 9, price: 5_000_000, token: objktToken("7", "Interference 7") }],
+    token: [],
+  });
+
+  try {
+    const { rerender } = render(
+      <WishlistGrid
+        wishlist={[linkedCard({ token_id: "0" })]}
+        onWishlistToggle={() => undefined}
+        onClearWishlist={() => undefined}
+        onImport={(cards) => {
+          imported = cards;
+        }}
+        onBrowsePacks={() => undefined}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: `https://objkt.com/asset/${LINK_CONTRACT}/7` },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => assert.ok(imported));
+    assert.deepEqual(imported?.map((c) => c.token_id), ["0", "7"]);
+    // The card is resolved against OBJKT, not invented from the link.
+    assert.equal(imported?.[1].name, "Interference 7");
+    assert.equal(imported?.[1].price_xtz, 5);
+    await waitFor(() => assert.ok(screen.getByText("Added Interference 7.")));
+
+    rerender(
+      <WishlistGrid
+        wishlist={imported as NFTCard[]}
+        onWishlistToggle={() => undefined}
+        onClearWishlist={() => undefined}
+        onImport={() => undefined}
+        onBrowsePacks={() => undefined}
+      />,
+    );
+
+    assert.equal(screen.getAllByText("Interference 7").length > 0, true);
+  } finally {
+    objktClient.request = originalRequest;
+  }
+});
+
+test("adding a card you already have says so and leaves the wishlist alone", async () => {
+  const { fireEvent, render, screen, waitFor, WishlistGrid, objktClient } = await loadTestHarness();
+  const originalRequest = objktClient.request;
+  let importCount = 0;
+
+  objktClient.request = async () => {
+    throw new Error("the wishlist already answers this, so OBJKT must not be asked");
+  };
+
+  try {
+    render(
+      <WishlistGrid
+        wishlist={[linkedCard({ token_id: "7" })]}
+        onWishlistToggle={() => undefined}
+        onClearWishlist={() => undefined}
+        onImport={() => {
+          importCount += 1;
+        }}
+        onBrowsePacks={() => undefined}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: `${LINK_CONTRACT}:7` },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => assert.ok(screen.getByText("That card is already saved.")));
+    assert.equal(importCount, 0);
+  } finally {
+    objktClient.request = originalRequest;
+  }
+});
+
+test("a value that is not a token reference reports it and stays in the box", async () => {
+  const { fireEvent, render, screen, waitFor, WishlistGrid } = await loadTestHarness();
+  let importCount = 0;
+
+  render(
+    <WishlistGrid
+      wishlist={[linkedCard()]}
+      onWishlistToggle={() => undefined}
+      onClearWishlist={() => undefined}
+      onImport={() => {
+        importCount += 1;
+      }}
+      onBrowsePacks={() => undefined}
+    />,
+  );
+
+  const box = screen.getByRole("textbox") as HTMLInputElement;
+  fireEvent.change(box, { target: { value: "https://objkt.com/users/tz1Collector" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+  await waitFor(() => assert.ok(screen.getByText(/isn't an OBJKT token link/i)));
+  // Kept, so a mistyped id is one edit away from working rather than a retype.
+  assert.equal(box.value, "https://objkt.com/users/tz1Collector");
+  assert.equal(importCount, 0);
+});
+
+test("a link OBJKT has no token for reports that and saves nothing", async () => {
+  const { fireEvent, render, screen, waitFor, WishlistGrid, objktClient } = await loadTestHarness();
+  const originalRequest = objktClient.request;
+  let importCount = 0;
+
+  objktClient.request = async () => ({ listing: [], token: [] });
+
+  try {
+    render(
+      <WishlistGrid
+        wishlist={[linkedCard({ token_id: "0" })]}
+        onWishlistToggle={() => undefined}
+        onClearWishlist={() => undefined}
+        onImport={() => {
+          importCount += 1;
+        }}
+        onBrowsePacks={() => undefined}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: `https://objkt.com/asset/${LINK_CONTRACT}/404` },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      assert.ok(screen.getByText("OBJKT has no token with that contract and id.")),
+    );
+    assert.equal(importCount, 0);
+  } finally {
+    objktClient.request = originalRequest;
+  }
+});
+
+test("a link OBJKT cannot be reached for blames the network, not the link", async () => {
+  const { fireEvent, render, screen, waitFor, WishlistGrid, objktClient } = await loadTestHarness();
+  const originalRequest = objktClient.request;
+  let importCount = 0;
+
+  objktClient.request = async () => {
+    throw new Error("network down");
+  };
+
+  try {
+    render(
+      <WishlistGrid
+        wishlist={[linkedCard({ token_id: "0" })]}
+        onWishlistToggle={() => undefined}
+        onClearWishlist={() => undefined}
+        onImport={() => {
+          importCount += 1;
+        }}
+        onBrowsePacks={() => undefined}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: `https://objkt.com/asset/${LINK_CONTRACT}/7` },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      assert.ok(screen.getByText("Couldn't reach OBJKT to look that up. Try again in a moment.")),
+    );
+    assert.equal(importCount, 0);
+    // The Add button has to come back, or a blip costs the collector the box.
+    assert.equal((screen.getByRole("button", { name: "Add" }) as HTMLButtonElement).disabled, false);
   } finally {
     objktClient.request = originalRequest;
   }
