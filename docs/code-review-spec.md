@@ -54,7 +54,7 @@ flowchart TD
 ## 3. Detailed Specifications
 
 ### SPEC-01: Uniform Shuffle & Query Offset Resilience
-* **Location:** [`src/lib/objkt.ts`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts#L290-L345)
+* **Location:** [`src/lib/objkt.ts`](../src/lib/objkt.ts#L290-L345)
 * **Problem:**
   1. `listings.sort(() => 0.5 - Math.random())` produces a non-uniform distribution due to V8's Timsort sorting algorithm.
   2. If `randomOffset` (0–799) lands on an empty window of active listings, the query throws an error, resulting in an unrecoverable 500 error for the user.
@@ -77,12 +77,12 @@ export function shuffleArray<T>(array: T[]): T[] {
 
 ### SPEC-02: Deterministic React Keys Across Card Grids
 * **Locations:**
-  * [`src/components/DeckGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/DeckGrid.tsx#L262)
-  * [`src/components/PackOpening.tsx`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L276)
-  * [`src/components/WishlistGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/WishlistGrid.tsx#L53)
+  * [`src/components/DeckGrid.tsx`](../src/components/DeckGrid.tsx#L262)
+  * [`src/components/PackOpening.tsx`](../src/components/PackOpening.tsx#L276)
+  * [`src/components/WishlistGrid.tsx`](../src/components/WishlistGrid.tsx#L53)
 * **Problem:** Keys include array indices (`key={`${token.token_id}-${token.contract_address}-${index}`}`). When filters or sorts change, index changes force React to either reuse mismatched state or remount DOM nodes pointlessly.
 * **Remediation:**
-  * Provide a standard card key helper in [`src/lib/objkt.ts`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts):
+  * Provide a standard card key helper in [`src/lib/objkt.ts`](../src/lib/objkt.ts):
     ```ts
     export function getCardKey(card: Pick<NFTCard, "contract_address" | "token_id">): string {
       return `${card.contract_address}:${card.token_id}`;
@@ -93,7 +93,7 @@ export function shuffleArray<T>(array: T[]): T[] {
 ---
 
 ### SPEC-03: Asynchronous Timer Lifecycle & Debounce Protection
-* **Location:** [`src/components/PackOpening.tsx`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L26-L84)
+* **Location:** [`src/components/PackOpening.tsx`](../src/components/PackOpening.tsx#L26-L84)
 * **Problem:**
   1. Clicking "Click to Rip Open" multiple times triggers overlapping calls to `fetch("/api/random-pack")`.
   2. `setTimeout` callbacks (700ms and 600ms) fire on unmounted components if the user navigates tabs.
@@ -113,7 +113,7 @@ export function shuffleArray<T>(array: T[]): T[] {
 ---
 
 ### SPEC-04: Unified OBJKT Token Normalizer
-* **Location:** [`src/lib/objkt.ts`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts#L227-L370)
+* **Location:** [`src/lib/objkt.ts`](../src/lib/objkt.ts#L227-L370)
 * **Problem:** Identical mapping logic (~20 lines each) is duplicated in `fetchUserHoldings` and `fetchRandomPack`.
 * **Remediation:**
   * Define an internal normalizer function:
@@ -155,7 +155,7 @@ export function shuffleArray<T>(array: T[]): T[] {
 ---
 
 ### SPEC-05: Route Consolidation for Random Pack Generation
-* **Location:** [`src/app/api/random-pack/route.ts`](file:///Users/natenolting/TzDeck/src/app/api/random-pack/route.ts)
+* **Location:** [`src/app/api/random-pack/route.ts`](../src/app/api/random-pack/route.ts)
 * **Problem:** 60 lines containing nearly identical duplicate handlers for `GET` and `POST`.
 * **Remediation:**
   * Consolidate pack generation logic into a shared handler:
@@ -173,13 +173,13 @@ export function shuffleArray<T>(array: T[]): T[] {
 ---
 
 ### SPEC-06: Shared Formatters
-* **Locations:** [`src/components/ConnectButton.tsx`](file:///Users/natenolting/TzDeck/src/components/ConnectButton.tsx#L38), [`src/lib/objkt.ts`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts#L235)
-* **Remediation:** Export a shared `formatShortAddress(address: string): string` utility in [`src/lib/objkt.ts`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts).
+* **Locations:** [`src/components/ConnectButton.tsx`](../src/components/ConnectButton.tsx#L38), [`src/lib/objkt.ts`](../src/lib/objkt.ts#L235)
+* **Remediation:** Export a shared `formatShortAddress(address: string): string` utility in [`src/lib/objkt.ts`](../src/lib/objkt.ts).
 
 ---
 
 ### SPEC-07: CSS Variable-Driven Foil Glow
-* **Location:** [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L100-L185)
+* **Location:** [`src/components/NFTCard.tsx`](../src/components/NFTCard.tsx#L100-L185)
 * **Problem:** `onMouseMove` calls `setMousePos({ x, y })` on every pixel change, forcing React to re-render the card at high frequencies.
 * **Remediation:**
   * Remove `mousePos` React state.
@@ -206,7 +206,7 @@ export function shuffleArray<T>(array: T[]): T[] {
 ---
 
 ### SPEC-08: Single-Pass Deck Statistics
-* **Location:** [`src/components/DeckGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/DeckGrid.tsx#L106-L172)
+* **Location:** [`src/components/DeckGrid.tsx`](../src/components/DeckGrid.tsx#L106-L172)
 * **Problem:** 3 separate iterations over `tokens` (two in separate `useMemo` hooks, one unmemoized on every render).
 * **Remediation:** Compute all 3 stats in a single memoized loop:
   ```ts
@@ -236,17 +236,17 @@ export function shuffleArray<T>(array: T[]): T[] {
 ---
 
 ### SPEC-09: Safe Modal Focus Trapping Without Document Mutation
-* **Location:** [`src/components/NFTDetailsModal.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTDetailsModal.tsx#L35-L93)
+* **Location:** [`src/components/NFTDetailsModal.tsx`](../src/components/NFTDetailsModal.tsx#L35-L93)
 * **Problem:** Mutating `inert` and `aria-hidden` across `document.body.children` risks breaking third-party injected elements like Beacon Wallet dialogs.
 * **Remediation:** Remove global `document.body.children` iteration. Maintain internal keyboard `Tab` boundary cycling within the modal's ref container and preserve the body `overflow: hidden` lock.
 
 ---
 
 ### SPEC-10: Dependency & Hygiene Pruning
-1. **Unused Dependencies in [`package.json`](file:///Users/natenolting/TzDeck/package.json):**
+1. **Unused Dependencies in [`package.json`](../package.json):**
    * Uninstall `@tanstack/react-query` and `@upstash/redis` (not used anywhere in `src/`).
 2. **Remove Leftover Chat File:**
-   * Remove [`deepseek-convo.md`](file:///Users/natenolting/TzDeck/deepseek-convo.md) (145KB LLM conversation log) from the repository.
+   * Remove [`deepseek-convo.md`](../deepseek-convo.md) (145KB LLM conversation log) from the repository.
 3. **Remove Empty Directory:**
    * Delete `src/app/api/media/` and clean up legacy proxy parsing tests in `objkt.test.ts` if no longer required.
 

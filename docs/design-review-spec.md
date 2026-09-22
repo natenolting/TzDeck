@@ -74,7 +74,7 @@ flowchart TD
 
 #### DR-01: Typeface & Type Scale
 
-* **Location:** [`src/app/globals.css`](file:///Users/natenolting/TzDeck/src/app/globals.css#L11-L25), [`src/app/layout.tsx`](file:///Users/natenolting/TzDeck/src/app/layout.tsx)
+* **Location:** [`src/app/globals.css`](../src/app/globals.css#L11-L25), [`src/app/layout.tsx`](../src/app/layout.tsx)
 * **Severity:** Blocker
 * **Problem:** `globals.css:25` sets `font-family: Arial, Helvetica, sans-serif`. `--font-geist-sans` is referenced at `globals.css:11` but never defined, and `layout.tsx` loads no `next/font`. Verified in the browser: both `body` and `h1` compute to `Arial, Helvetica, sans-serif`. A trading-card product renders entirely in the OS default face, and `font-black tracking-tight` on Arial produces weight without character.
 * **Remediation:**
@@ -139,7 +139,7 @@ flowchart TD
 
 #### DR-02: Color, Surface & Text Ramp Tokens
 
-* **Location:** [`src/app/globals.css`](file:///Users/natenolting/TzDeck/src/app/globals.css#L1-L28); consumed by every component
+* **Location:** [`src/app/globals.css`](../src/app/globals.css#L1-L28); consumed by every component
 * **Severity:** Blocker (S3, S6, S7 roll up here)
 * **Problem:** Three separate defects share one root cause — there is no token layer, so every component invents its own values.
   1. **Text ramp is two steps.** Measured on the deck view, only three text colors exist across the whole page: white, one indigo, one gray. Consequence: in `NFTCard`, artist (`gray-300`) and collection (`gray-500`) sit on the same line at near-equal weight and read as two competing labels rather than primary and metadata.
@@ -192,7 +192,7 @@ flowchart TD
 
 #### DR-03: Focus Ring Token
 
-* **Location:** all interactive elements; reference implementation already exists in [`src/components/NFTDetailsModal.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTDetailsModal.tsx)
+* **Location:** all interactive elements; reference implementation already exists in [`src/components/NFTDetailsModal.tsx`](../src/components/NFTDetailsModal.tsx)
 * **Severity:** Should-fix
 * **Problem:** Keyboard-focusing a nav tab yields Chrome's default `outline: auto 1px rgb(0, 95, 204)` — one pixel, low contrast against a near-black background, and a blue that is not the product's indigo. `NFTDetailsModal` already defines a proper `focus:ring-2 focus:ring-indigo-400`, so the app does this correctly in exactly one file.
 * **Remediation:** Define one ring and apply it to every button, link, input, and select.
@@ -215,9 +215,9 @@ flowchart TD
 
 #### DR-04: Delete Fabricated Pull Odds
 
-* **Location:** [`src/components/PackOpening.tsx`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L203-L222)
+* **Location:** [`src/components/PackOpening.tsx`](../src/components/PackOpening.tsx#L203-L222)
 * **Severity:** Blocker
-* **Problem:** The idle pack screen publishes an odds table — Common 50%, Uncommon 25%, Rare 15%, Epic 7%, Legendary 3%. No weighted draw exists anywhere in the codebase. [`calculateRarity`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts#L109-L116) is a deterministic function of edition supply and listing price, applied *after* selection; `fetchRandomPack` shuffles uniformly and slices. The README states this explicitly. Observed in review: a single pack returned **4 Epic + 1 Legendary**, which the published table rates at roughly one in a million.
+* **Problem:** The idle pack screen publishes an odds table — Common 50%, Uncommon 25%, Rare 15%, Epic 7%, Legendary 3%. No weighted draw exists anywhere in the codebase. [`calculateRarity`](../src/lib/objkt.ts#L109-L116) is a deterministic function of edition supply and listing price, applied *after* selection; `fetchRandomPack` shuffles uniformly and slices. The README states this explicitly. Observed in review: a single pack returned **4 Epic + 1 Legendary**, which the published table rates at roughly one in a million.
 
   Published pull rates are a trust claim in a gacha context. The UI asserts numbers the system does not implement.
 * **Remediation:** Replace the odds row with a rarity legend that states the actual rule. Same visual slot, same chip treatment, truthful content — and more useful, because it teaches the collector how to read a card.
@@ -239,7 +239,7 @@ flowchart TD
 
 #### DR-05: Re-tier Rarity Thresholds
 
-* **Location:** [`src/lib/objkt.ts`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts#L109-L116)
+* **Location:** [`src/lib/objkt.ts`](../src/lib/objkt.ts#L109-L116)
 * **Severity:** Blocker
 * **Problem:** Current thresholds are `OR`-joined and tuned far too loose for OBJKT's actual catalogue:
 
@@ -285,7 +285,7 @@ flowchart TD
 
 #### DR-06: Unify Wishlist Icon Metaphor
 
-* **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L119), [`src/components/WishlistGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/WishlistGrid.tsx#L22), [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L208-L235)
+* **Location:** [`src/app/page.tsx`](../src/app/page.tsx#L119), [`src/components/WishlistGrid.tsx`](../src/components/WishlistGrid.tsx#L22), [`src/components/NFTCard.tsx`](../src/components/NFTCard.tsx#L208-L235)
 * **Severity:** Should-fix
 * **Problem:** The nav tab shows a star, the empty state shows a star, the control on the card is a heart, and the empty-state copy reads "click the heart icon." Three surfaces, two metaphors, one instruction that points at the wrong one.
 * **Remediation:** Standardise on the **heart** — it is already the interactive control, and it is the stronger "save this" signal against a star, which reads as rating. Replace both stars with the heart icon from DR-10 and leave the copy as written.
@@ -296,7 +296,7 @@ flowchart TD
 
 #### DR-07: Rarity in the Frame, Not Over the Artwork
 
-* **Location:** [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L34-L77) (`foilGradient` config) and [`#L190-L191`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L190-L191) (application)
+* **Location:** [`src/components/NFTCard.tsx`](../src/components/NFTCard.tsx#L34-L77) (`foilGradient` config) and [`#L190-L191`](../src/components/NFTCard.tsx#L190-L191) (application)
 * **Severity:** Blocker
 * **Problem:** The rarity tint is applied `absolute inset-0` across the **entire card, artwork included**, at up to 30% opacity:
 
@@ -331,7 +331,7 @@ flowchart TD
 
 #### DR-08: Retire the "Outstanding Pull" Banner
 
-* **Location:** [`src/components/PackOpening.tsx`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L291-L307)
+* **Location:** [`src/components/PackOpening.tsx`](../src/components/PackOpening.tsx#L291-L307)
 * **Severity:** Blocker
 * **Problem:** A full-width amber-to-purple gradient bar, set above the card grid, fires whenever the pack contains any Epic or Legendary — which under current thresholds is nearly every pack. It is the highest-contrast element on the screen, and it sits above the cards, so the loudest thing in the revealed-pack view is a message rather than the artwork. A reward that always fires is not a reward.
 * **Remediation:**
@@ -345,7 +345,7 @@ flowchart TD
 
 #### DR-09: Single-Primary Action Hierarchy
 
-* **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L88) (and 100, 115, 132), [`src/components/ConnectButton.tsx`](file:///Users/natenolting/TzDeck/src/components/ConnectButton.tsx#L70-L82), [`src/components/PackOpening.tsx`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L284), [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L318)
+* **Location:** [`src/app/page.tsx`](../src/app/page.tsx#L88) (and 100, 115, 132), [`src/components/ConnectButton.tsx`](../src/components/ConnectButton.tsx#L70-L82), [`src/components/PackOpening.tsx`](../src/components/PackOpening.tsx#L284), [`src/components/NFTCard.tsx`](../src/components/NFTCard.tsx#L318)
 * **Severity:** Blocker
 * **Problem:** `bg-gradient-to-r from-blue-600 to-indigo-600` is applied to the active tab, Connect Wallet, Open Another Pack, and "Collect on OBJKT" on every card. In the revealed-pack view that is seven gradient buttons at once; in the Deck empty state, two identical Connect Wallet buttons appear at once (header at `page.tsx:78` and empty state at `page.tsx:170`). Promotion without demotion is not hierarchy — nothing wins because everything won.
 
@@ -369,7 +369,7 @@ flowchart TD
 
 #### DR-10: Icon Components, Zero Emoji
 
-* **Locations:** [`page.tsx:92,104,119,136,223`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L92), [`SoundToggle.tsx:22-26`](file:///Users/natenolting/TzDeck/src/components/SoundToggle.tsx#L22), [`PackOpening.tsx:299`](file:///Users/natenolting/TzDeck/src/components/PackOpening.tsx#L299), [`NFTCard.tsx:252,288-290`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L252), [`WishlistGrid.tsx:22`](file:///Users/natenolting/TzDeck/src/components/WishlistGrid.tsx#L22), [`DeckGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/DeckGrid.tsx)
+* **Locations:** [`page.tsx:92,104,119,136,223`](../src/app/page.tsx#L92), [`SoundToggle.tsx:22-26`](../src/components/SoundToggle.tsx#L22), [`PackOpening.tsx:299`](../src/components/PackOpening.tsx#L299), [`NFTCard.tsx:252,288-290`](../src/components/NFTCard.tsx#L252), [`WishlistGrid.tsx:22`](../src/components/WishlistGrid.tsx#L22), [`DeckGrid.tsx`](../src/components/DeckGrid.tsx)
 * **Severity:** Blocker
 * **Problem:** Two defects, one fix.
   1. **Emoji as chrome.** 🎴 🃏 ⭐ ℹ️ in the nav, 🔊/🔇 in SoundToggle, 🎉 🎁 ✨ 🖼️ in banners, About, and the image fallback. These render as full-color OS glyphs against an indigo/slate palette — the ℹ️ blue square and ⭐ yellow star are off-palette, they vary by platform and OS version, and the 🃏 in the About tab is nearly invisible on a dark background. This is the fastest visual tell that a UI was generated rather than designed.
@@ -400,7 +400,7 @@ flowchart TD
 
 #### DR-11: Hit Areas at 40px Minimum
 
-* **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L85-L140), [`src/components/SoundToggle.tsx`](file:///Users/natenolting/TzDeck/src/components/SoundToggle.tsx#L14-L20), [`src/components/ConnectButton.tsx`](file:///Users/natenolting/TzDeck/src/components/ConnectButton.tsx)
+* **Location:** [`src/app/page.tsx`](../src/app/page.tsx#L85-L140), [`src/components/SoundToggle.tsx`](../src/components/SoundToggle.tsx#L14-L20), [`src/components/ConnectButton.tsx`](../src/components/ConnectButton.tsx)
 * **Severity:** Should-fix
 * **Problem:** Measured in the browser — every nav tab is **32px** tall, Connect Wallet is **32px**, SoundToggle is **36×38**. The target minimum is 44px, with 40px an acceptable floor for dense desktop chrome. Every primary navigation control is under it.
 * **Remediation:** Raise nav tabs and Connect Wallet from `py-2` to `py-2.5` with a `min-h-10`; SoundToggle to `h-10 w-10`. The wishlist heart on the card (`NFTCard.tsx:208-235`) is a `p-1.5` control inside a dense card — give it `h-8 w-8` with an invisible expanded tap target rather than growing the visual button.
@@ -412,7 +412,7 @@ flowchart TD
 
 #### DR-12: Mobile Tab Bar
 
-* **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L83)
+* **Location:** [`src/app/page.tsx`](../src/app/page.tsx#L83)
 * **Severity:** Blocker
 * **Problem:** At 390×844 the tab row fails four ways at once. A bright native scrollbar renders full-width beneath the tabs. Labels wrap inside the pills ("Booster / Packs", "My / Deck") so pill heights go ragged, 32px against 48px. The row clips mid-"About" at the right edge with no fade or affordance signalling more content. And the row sits 8px from the edge while the content below sits at 16px, breaking the gutter.
 * **Remediation:**
@@ -443,7 +443,7 @@ flowchart TD
 
 #### DR-13: Wishlist Empty-State Action
 
-* **Location:** [`src/components/WishlistGrid.tsx`](file:///Users/natenolting/TzDeck/src/components/WishlistGrid.tsx#L18-L28)
+* **Location:** [`src/components/WishlistGrid.tsx`](../src/components/WishlistGrid.tsx#L18-L28)
 * **Severity:** Should-fix
 * **Problem:** The empty state tells the user to open booster packs and gives them no way to do it. A dead end — the only route out is back to the tab bar.
 * **Remediation:** Add a primary action that switches to the Packs tab. This requires lifting `setActiveTab` from `page.tsx` into a prop:
@@ -457,13 +457,13 @@ flowchart TD
   }
   ```
 
-  Apply the same treatment to the "No OBJKTs Found" state in [`DeckGrid.tsx:156-166`](file:///Users/natenolting/TzDeck/src/components/DeckGrid.tsx#L156), which has the identical dead end.
+  Apply the same treatment to the "No OBJKTs Found" state in [`DeckGrid.tsx:156-166`](../src/components/DeckGrid.tsx#L156), which has the identical dead end.
 
 ---
 
 #### DR-14: Deduplicate Pack Cards
 
-* **Location:** [`src/lib/objkt.ts`](file:///Users/natenolting/TzDeck/src/lib/objkt.ts#L375-L376)
+* **Location:** [`src/lib/objkt.ts`](../src/lib/objkt.ts#L375-L376)
 * **Severity:** Should-fix (correctness, surfaced through the UI)
 * **Problem:** The query selects from `listing`, and one token can hold several active listings. `shuffleArray(listings).slice(0, count)` can therefore return the same token twice. Observed in review: "the beauty of decay" by Ozmandium appeared as cards 2 and 4 of one pack at different prices, and React logged a key collision:
 
@@ -490,7 +490,7 @@ flowchart TD
 
 #### DR-15: About Tab Measure & Copy
 
-* **Location:** [`src/app/page.tsx`](file:///Users/natenolting/TzDeck/src/app/page.tsx#L189-L240)
+* **Location:** [`src/app/page.tsx`](../src/app/page.tsx#L189-L240)
 * **Severity:** Should-fix
 * **Problem:**
   1. The body paragraph runs the full 690px of the `max-w-3xl` panel at 14px — roughly 100 characters per line, well past comfortable reading measure.
@@ -501,7 +501,7 @@ flowchart TD
 
 #### DR-16: Card Back & Motion Cleanup
 
-* **Location:** [`src/components/NFTCard.tsx`](file:///Users/natenolting/TzDeck/src/components/NFTCard.tsx#L140-L165)
+* **Location:** [`src/components/NFTCard.tsx`](../src/components/NFTCard.tsx#L140-L165)
 * **Severity:** Note
 * **Problem:**
   1. The card back sets "ꜩ TZDECK" as text at line 143, directly above `tzdeck-shield-gradient-on-dark.svg` — which already contains the TZDECK wordmark. The brand appears twice on one 5:7 card.
