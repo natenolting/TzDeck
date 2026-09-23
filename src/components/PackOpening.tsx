@@ -161,11 +161,11 @@ export default function PackOpening({
                 type="button"
                 whileHover={{ y: -8 }}
                 whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 onClick={openPack}
                 disabled={isLoading}
                 aria-label={isLoading ? "Opening booster pack" : "Open booster pack"}
-                className="peer group font-display relative flex h-[456px] w-[296px] cursor-pointer flex-col items-center text-left drop-shadow-2xl transition-all select-none disabled:cursor-wait"
+                className="peer group font-display relative flex h-[456px] w-[296px] cursor-pointer flex-col items-center text-left drop-shadow-2xl select-none disabled:cursor-wait"
               >
                 {/* The seals are wider than the pouch, as on a real pillow pack.
                     Their clipped outer edge changes the actual silhouette. */}
@@ -227,7 +227,7 @@ export default function PackOpening({
                 <div className="foil-pack-seal foil-pack-seal-bottom" aria-hidden="true" />
               </motion.button>
               <div
-                className="pack-hover-glow pointer-events-none absolute -z-10 opacity-0 transition-opacity duration-300 peer-hover:opacity-100"
+                className="pack-hover-glow pointer-events-none absolute -z-10 opacity-0 transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] peer-hover:opacity-100"
                 aria-hidden="true"
               />
             </div>
