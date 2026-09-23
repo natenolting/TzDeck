@@ -77,6 +77,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-surface-0 text-text-primary selection:bg-accent selection:text-text-primary">
       <div className="page-vignette pointer-events-none fixed inset-0" />
+      <div className="page-grain pointer-events-none fixed inset-0" />
 
       <div className="relative z-10 flex min-h-screen max-w-7xl mx-auto flex-col px-4 sm:px-6 lg:px-8 py-6">
         {/* ================= HEADER NAVBAR ================= */}

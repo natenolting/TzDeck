@@ -154,76 +154,83 @@ export default function PackOpening({
             exit={{ opacity: 0, scale: 0.95 }}
             className="flex flex-col items-center justify-center text-center"
           >
-            {/* Booster Foil Pack Graphic */}
-            <motion.button
-              type="button"
-              whileHover={{ y: -8 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              onClick={openPack}
-              disabled={isLoading}
-              aria-label={isLoading ? "Opening booster pack" : "Open booster pack"}
-              className="group font-display relative flex h-[456px] w-[296px] cursor-pointer flex-col items-center text-left drop-shadow-2xl transition-all hover:drop-shadow-[0_24px_28px_rgb(99_102_241/0.3)] select-none disabled:cursor-wait"
-            >
-              {/* The seals are wider than the pouch, as on a real pillow pack.
-                  Their clipped outer edge changes the actual silhouette. */}
-              <div className="foil-pack-seal foil-pack-seal-top" aria-hidden="true" />
+            {/* Booster Foil Pack Graphic. The hover glow is a sibling layer, not a
+                drop-shadow, so it can take the dithered gradient treatment. */}
+            <div className="relative isolate">
+              <motion.button
+                type="button"
+                whileHover={{ y: -8 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                onClick={openPack}
+                disabled={isLoading}
+                aria-label={isLoading ? "Opening booster pack" : "Open booster pack"}
+                className="peer group font-display relative flex h-[456px] w-[296px] cursor-pointer flex-col items-center text-left drop-shadow-2xl transition-all select-none disabled:cursor-wait"
+              >
+                {/* The seals are wider than the pouch, as on a real pillow pack.
+                    Their clipped outer edge changes the actual silhouette. */}
+                <div className="foil-pack-seal foil-pack-seal-top" aria-hidden="true" />
 
-              <div className="foil-pack foil-pack-body relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                {/* Metallic foil sheen + light-catching holo sweep */}
-                <div className="foil-sheen pointer-events-none absolute inset-0 opacity-60 group-hover:opacity-90 transition-opacity" />
-                <div className="foil-holo-sweep pointer-events-none absolute inset-0" />
-                <div className="pointer-events-none foil-glow-cool absolute -top-24 -left-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
-                <div className="pointer-events-none foil-glow-warm absolute -bottom-24 -right-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
+                <div className="foil-pack foil-pack-body relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                  {/* Metallic foil sheen + light-catching holo sweep */}
+                  <div className="foil-sheen pointer-events-none absolute inset-0 opacity-60 group-hover:opacity-90 transition-opacity" />
+                  <div className="foil-holo-sweep pointer-events-none absolute inset-0" />
+                  <div className="pointer-events-none foil-glow-cool absolute -top-24 -left-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
+                  <div className="pointer-events-none foil-glow-warm absolute -bottom-24 -right-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
 
-                {/* Pack Header: wordmark + corner count badge, like a rating stamp */}
-                <div className="relative z-10 flex items-start justify-between px-5 pt-4">
-                  <span className="mt-1.5 text-xs font-black tracking-[0.2em] text-accent-hover">
-                    TZDECK
-                  </span>
-                  <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-full border-2 border-accent-hover/70 bg-surface-0/70 text-accent-hover shadow-md backdrop-blur-sm">
-                    <span className="text-sm font-black leading-none">5</span>
-                    <span className="text-[0.55rem] font-bold leading-none tracking-wide">CARDS</span>
-                  </div>
-                </div>
-
-                {/* Pack Center Artwork */}
-                <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-5">
-                  <div className="relative flex h-28 w-28 items-center justify-center">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
-                      className="foil-starburst pointer-events-none absolute -inset-6"
-                    />
-                    <Image
-                      src="/tzdeck-icon-gradient-on-light.svg"
-                      alt=""
-                      width={112}
-                      height={112}
-                      className="relative z-10 h-28 w-28 rounded-2xl shadow-xl ring-2 ring-accent-hover/70"
-                    />
-                  </div>
-
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="foil-ribbon flex h-10 items-center justify-center px-5 text-lg font-black tracking-wider text-text-primary">
-                      <span className="pack-band-label">OBJKT PACK</span>
+                  {/* Pack Header: wordmark + corner count badge, like a rating stamp */}
+                  <div className="relative z-10 flex items-start justify-between px-5 pt-4">
+                    <span className="mt-1.5 text-xs font-black tracking-[0.2em] text-accent-hover">
+                      TZDECK
                     </span>
-                    <p className="text-xs text-text-secondary font-medium text-center">
-                      Random Active Marketplace Pulls
-                    </p>
+                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-full border-2 border-accent-hover/70 bg-surface-0/70 text-accent-hover shadow-md backdrop-blur-sm">
+                      <span className="text-sm font-black leading-none">5</span>
+                      <span className="text-[0.55rem] font-bold leading-none tracking-wide">CARDS</span>
+                    </div>
+                  </div>
+
+                  {/* Pack Center Artwork */}
+                  <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-5">
+                    <div className="relative flex h-28 w-28 items-center justify-center">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
+                        className="foil-starburst pointer-events-none absolute -inset-6"
+                      />
+                      <Image
+                        src="/tzdeck-icon-gradient-on-light.svg"
+                        alt=""
+                        width={112}
+                        height={112}
+                        className="relative z-10 h-28 w-28 rounded-2xl shadow-xl ring-2 ring-accent-hover/70"
+                      />
+                    </div>
+
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="foil-ribbon flex h-10 items-center justify-center px-5 text-lg font-black tracking-wider text-text-primary">
+                        <span className="pack-band-label">OBJKT PACK</span>
+                      </span>
+                      <p className="text-xs text-text-secondary font-medium text-center">
+                        Random Active Marketplace Pulls
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Pack Bottom Footer: full-bleed color band, like a set's product stripe */}
+                  <div className="relative z-10 mt-auto flex h-11 shrink-0 items-center justify-center bg-gradient-to-r from-accent to-accent-hover text-center shadow-[0_-2px_12px_rgb(0_0_0/0.35)]">
+                    <span className="pack-band-label text-sm font-black uppercase tracking-widest text-text-primary">
+                      {isLoading ? "Opening..." : "Click to Rip Open"}
+                    </span>
                   </div>
                 </div>
 
-                {/* Pack Bottom Footer: full-bleed color band, like a set's product stripe */}
-                <div className="relative z-10 mt-auto flex h-11 shrink-0 items-center justify-center bg-gradient-to-r from-accent to-accent-hover text-center shadow-[0_-2px_12px_rgb(0_0_0/0.35)]">
-                  <span className="pack-band-label text-sm font-black uppercase tracking-widest text-text-primary">
-                    {isLoading ? "Opening..." : "Click to Rip Open"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="foil-pack-seal foil-pack-seal-bottom" aria-hidden="true" />
-            </motion.button>
+                <div className="foil-pack-seal foil-pack-seal-bottom" aria-hidden="true" />
+              </motion.button>
+              <div
+                className="pack-hover-glow pointer-events-none absolute -z-10 opacity-0 transition-opacity duration-300 peer-hover:opacity-100"
+                aria-hidden="true"
+              />
+            </div>
 
             {/* Error prompt */}
             {error && (
