@@ -30,6 +30,9 @@
   /* Saved/wishlisted is its own signal: not an action, not an error. */
   --saved: #fb7185;
   --saved-quiet: rgb(251 113 133 / 0.14);
+
+  /* Tileable grey noise for dithering dark gradients. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 @theme inline {
@@ -397,6 +400,101 @@ h4,
     color-mix(in srgb, var(--accent) 16%, transparent) 0,
     transparent 52%
   );
+  overflow: hidden;
+}
+
+/* Two faint glows drift behind the page on long, offset cycles so the
+   background breathes without ever drawing the eye. Only transform and
+   opacity animate, which stay on the compositor instead of repainting a
+   full-screen gradient every frame. */
+.page-vignette::before,
+.page-vignette::after {
+  content: "";
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+
+/* Smoothstep falloff: flat at both ends, so the glow has no hard ring where a
+   linear fade would stop. Each glow sets --glow-color and --glow-strength. */
+.page-vignette::before,
+.page-vignette::after,
+.pack-hover-glow {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--glow-color) var(--glow-strength), transparent) 0,
+    color-mix(in srgb, var(--glow-color) calc(var(--glow-strength) * 0.84), transparent) 25%,
+    color-mix(in srgb, var(--glow-color) calc(var(--glow-strength) * 0.5), transparent) 50%,
+    color-mix(in srgb, var(--glow-color) calc(var(--glow-strength) * 0.16), transparent) 75%,
+    transparent 100%
+  );
+}
+
+.page-vignette::before {
+  top: -25vmax;
+  left: -15vmax;
+  --glow-color: var(--accent);
+  --glow-strength: 22%;
+  animation: vignette-drift-cool 60s ease-in-out infinite alternate;
+}
+
+.page-vignette::after {
+  bottom: -30vmax;
+  right: -20vmax;
+  --glow-color: var(--rarity-epic);
+  --glow-strength: 18%;
+  animation: vignette-drift-warm 84s ease-in-out infinite alternate;
+}
+
+/* Film grain over the background glows. Dark, low-contrast gradients only
+   have a few dozen 8-bit levels to spread across hundreds of pixels, so they
+   band; soft-light noise centered on mid-grey nudges each pixel up or down a
+   level and the eye averages the steps away. It sits under the page content,
+   so text and artwork stay clean. */
+.page-grain {
+  background-image: var(--grain);
+  mix-blend-mode: soft-light;
+  opacity: 0.35;
+}
+
+/* The booster pack's hover glow: a layer behind the pack rather than a
+   drop-shadow, so it gets the smoothstep falloff. The page grain beneath shows
+   through its partial alpha, which dithers it along with the background. */
+.pack-hover-glow {
+  inset: -5rem -6rem -7rem;
+  --glow-color: var(--accent);
+  --glow-strength: 50%;
+}
+
+@keyframes vignette-drift-cool {
+  from {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+  to {
+    transform: translate(45vw, 45vh) scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes vignette-drift-warm {
+  from {
+    transform: translate(0, 0) scale(1.1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-45vw, -45vh) scale(1);
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-vignette::before,
+  .page-vignette::after {
+    animation: none;
+  }
 }
 
 /* A chip that sits on top of artwork we do not control.
