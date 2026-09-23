@@ -155,14 +155,14 @@ export default function WishlistGrid({
   };
 
   const addControls = (
-    <form onSubmit={handleAddByReference} className="flex items-center gap-2">
+    <form onSubmit={handleAddByReference} className="flex w-full items-center gap-2 sm:w-auto">
       <input
         type="text"
         value={tokenReference}
         onChange={(event) => setTokenReference(event.target.value)}
         placeholder="Paste an OBJKT link"
         aria-label="Add a card by OBJKT link, or by contract and token id"
-        className="w-48 rounded-xl border border-border-default bg-surface-2 px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-accent"
+        className="min-h-10 min-w-0 flex-1 rounded-xl border border-border-default bg-surface-2 px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-accent sm:w-56 sm:flex-none"
       />
       <button
         type="submit"
