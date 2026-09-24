@@ -24,6 +24,8 @@ interface NFTCardProps {
   battleStatsByCardKey?: Map<string, BattleCardStats>;
   onToggleWishlist?: (card: NFTCardType) => void;
   onBattle?: (card: NFTCardType) => void;
+  /** Names the battle action, e.g. "Demo battle" where no real battle is on offer. */
+  battleLabel?: string;
   className?: string;
 }
 
@@ -40,6 +42,7 @@ export default function NFTCard({
   battleStatsByCardKey,
   onToggleWishlist,
   onBattle,
+  battleLabel = "Battle",
   className = "",
 }: NFTCardProps) {
   // Ordered fallback sources
@@ -162,8 +165,8 @@ export default function NFTCard({
                 e.stopPropagation();
                 onBattle(card);
               }}
-              title="Battle"
-              aria-label={`Battle with ${card.name}`}
+              title={battleLabel}
+              aria-label={`${battleLabel} with ${card.name}`}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
             >
               <SwordsIcon className="h-4 w-4" />
@@ -299,6 +302,7 @@ export default function NFTCard({
           onClose={closeDetails}
           onToggleWishlist={onToggleWishlist}
           onBattle={onBattle}
+          battleLabel={battleLabel}
         />
       )}
     </>

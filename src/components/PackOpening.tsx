@@ -9,13 +9,15 @@ import NFTCard from "./NFTCard";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { soundManager } from "@/lib/sound";
 import { motion, AnimatePresence } from "framer-motion";
-import { SparklesIcon } from "./icons";
+import { SparklesIcon, SwordsIcon } from "./icons";
 import Image from "next/image";
 
 interface PackOpeningProps {
   onWishlistToggle?: (card: NFTCardType) => void;
   wishlistIds?: Set<string>;
   onShowRarity?: () => void;
+  /** Try a revealed card against a trainer, in the browser only. */
+  onDemoBattle?: (card: NFTCardType) => void;
 }
 
 type PackState = "idle" | "opening" | "revealing" | "complete";
@@ -23,6 +25,7 @@ type PackState = "idle" | "opening" | "revealing" | "complete";
 export default function PackOpening({
   onWishlistToggle,
   onShowRarity,
+  onDemoBattle,
   wishlistIds = new Set(),
 }: PackOpeningProps) {
   const [packState, setPackState] = useState<PackState>("idle");
@@ -334,6 +337,8 @@ export default function PackOpening({
                       detailCards={revealedCards}
                       detailWishlistIds={wishlistIds}
                       onToggleWishlist={onWishlistToggle}
+                      onBattle={isFlipped ? onDemoBattle : undefined}
+                      battleLabel="Demo battle"
                     />
                   </div>
                 );
@@ -350,6 +355,13 @@ export default function PackOpening({
                 >
                   How grading works <span aria-hidden="true">→</span>
                 </button>
+              </p>
+            )}
+
+            {onDemoBattle && flippedIndices.size > 0 && (
+              <p className="mt-2 flex max-w-sm items-center justify-center gap-1.5 text-center text-xs text-text-tertiary">
+                <SwordsIcon className="h-3.5 w-3.5 shrink-0" />
+                <span>Tap the swords on a card to try it in a demo battle.</span>
               </p>
             )}
           </motion.div>

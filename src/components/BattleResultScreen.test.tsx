@@ -468,3 +468,67 @@ test("a draw shows Draw with no XP line once played out", async () => {
   assert.ok(await screen.findByText(/Draw/));
   assert.equal(screen.queryByText(/\+\d+ XP/), null, "no XP-awarded line renders for a draw");
 });
+
+test("a demo battle is badged as unsaved and quotes XP as what a real win would earn", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({ defenderCardKey: undefined, defenderWallet: undefined, trainerTier: "common" })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+      demo={{ onReplay: () => {} }}
+    />,
+  );
+
+  assert.ok(screen.getByText(/Demo battle · nothing is saved/), "the badge shows from the first frame, not only at the end");
+  const xpLine = await screen.findByText(/A real win here earns/);
+  assert.equal(xpLine.textContent, "A real win here earns +42 XP.", "XP reads as hypothetical, never as XP actually gained");
+});
+
+test("a demo loss explains recovery instead of claiming the card is recovering", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({ winner: "defender", defenderCardKey: undefined, trainerTier: "common" })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+      demo={{ onReplay: () => {} }}
+    />,
+  );
+
+  assert.ok(await screen.findByText(/A real loss rests your card for 4 hours/));
+  assert.equal(screen.queryByText(/Recovering for a while/), null);
+});
+
+test("a finished demo offers Replay and its call to action alongside Close", async () => {
+  const { fireEvent, render, screen, BattleResultScreen } = await loadTestHarness();
+  let replays = 0;
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({ defenderCardKey: undefined, trainerTier: "common" })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+      demo={{
+        onReplay: () => {
+          replays += 1;
+        },
+        callToAction: <p>Connect to battle for real</p>,
+      }}
+    />,
+  );
+
+  assert.equal(screen.queryByRole("button", { name: /replay/i }), null, "Replay waits for the fight to finish, like Close");
+  fireEvent.click(await screen.findByRole("button", { name: /replay/i }));
+  assert.equal(replays, 1);
+  assert.ok(screen.getByText("Connect to battle for real"));
+  assert.ok(screen.getByRole("button", { name: /close/i }));
+});

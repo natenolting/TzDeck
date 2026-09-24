@@ -23,6 +23,16 @@ interface BattleResultScreenProps {
   wasOverkillTiebreak: boolean;
   onClose: () => void;
   beatDelayMs?: number;
+  /**
+   * Set for a browser-only demo fight (lib/battle/demo.ts). Nothing was
+   * committed, so the screen says so, reframes XP and recovery as what a real
+   * battle would do, and offers a replay alongside Close.
+   */
+  demo?: {
+    onReplay: () => void;
+    /** The next step toward a real battle, e.g. a connect button; shown once the fight ends. */
+    callToAction?: React.ReactNode;
+  };
 }
 
 interface CombatBeat {
@@ -131,12 +141,14 @@ function OutcomeBanner({
   winner,
   wasOverkillTiebreak,
   xpAwarded,
+  isDemo,
 }: {
   sequenceComplete: boolean;
   outcome: BattleResult["outcome"];
   winner: BattleResult["winner"];
   wasOverkillTiebreak: boolean;
   xpAwarded: number;
+  isDemo: boolean;
 }) {
   if (!sequenceComplete) return <div className="h-[3.25rem]" aria-hidden="true" />;
 
@@ -153,7 +165,13 @@ function OutcomeBanner({
     return (
       <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-success/40 bg-success-quiet px-4 py-2.5">
         <p className="font-display text-lg font-bold text-success">{wasOverkillTiebreak ? "Won by margin!" : "Victory!"}</p>
-        <p className="text-sm font-bold tabular-nums text-success">+{xpAwarded} XP</p>
+        {isDemo ? (
+          <p className="text-xs text-success/80">
+            A real win here earns <span className="font-bold tabular-nums">+{xpAwarded} XP</span>.
+          </p>
+        ) : (
+          <p className="text-sm font-bold tabular-nums text-success">+{xpAwarded} XP</p>
+        )}
       </div>
     );
   }
@@ -161,7 +179,9 @@ function OutcomeBanner({
   return (
     <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-danger/40 bg-danger-quiet px-4 py-2.5">
       <p className="font-display text-lg font-bold text-danger">Defeated</p>
-      <p className="text-xs text-danger/80">Recovering for a while.</p>
+      <p className="text-xs text-danger/80">
+        {isDemo ? "A real loss rests your card for 4 hours." : "Recovering for a while."}
+      </p>
     </div>
   );
 }
@@ -172,6 +192,7 @@ export default function BattleResultScreen({
   wasOverkillTiebreak,
   onClose,
   beatDelayMs = DEFAULT_BEAT_DELAY_MS,
+  demo,
 }: BattleResultScreenProps) {
   const [defenderCard, setDefenderCard] = useState<NFTCardType | null>(null);
 
@@ -215,6 +236,11 @@ export default function BattleResultScreen({
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-0/98 px-4 py-6 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
+        {demo ? (
+          <p className="mx-auto mb-3 w-fit rounded-full border border-accent/30 bg-accent-quiet px-3 py-1 text-2xs font-semibold uppercase tracking-wider text-accent-hover">
+            Demo battle · nothing is saved
+          </p>
+        ) : null}
         <div className="mb-5">
           <OutcomeBanner
             sequenceComplete={sequenceComplete}
@@ -222,6 +248,7 @@ export default function BattleResultScreen({
             winner={result.winner}
             wasOverkillTiebreak={wasOverkillTiebreak}
             xpAwarded={result.xpAwarded ?? 0}
+            isDemo={Boolean(demo)}
           />
         </div>
 
@@ -291,7 +318,19 @@ export default function BattleResultScreen({
           })}
         </div>
 
-        {sequenceComplete ? (
+        {sequenceComplete && demo ? (
+          <div className="mt-6 flex flex-col gap-3">
+            {demo.callToAction}
+            <div className="flex gap-2">
+              <button onClick={demo.onReplay} className="button-secondary flex-1 px-4 py-2.5 text-xs font-semibold">
+                Replay
+              </button>
+              <button onClick={onClose} className="button-primary flex-1 px-4 py-2.5 text-xs font-semibold">
+                Close
+              </button>
+            </div>
+          </div>
+        ) : sequenceComplete ? (
           <button onClick={onClose} className="button-primary mt-6 w-full px-4 py-2.5 text-xs font-semibold">
             Close
           </button>
