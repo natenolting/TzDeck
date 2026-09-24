@@ -575,8 +575,16 @@ h4,
   display: none;
 }
 
+/* On narrow screens the tabs show icons only. The label stays in the
+   accessibility tree, visually hidden, so each tab keeps its name without a
+   duplicate aria-label. */
 @media (width < 420px) {
   .tab-label {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
