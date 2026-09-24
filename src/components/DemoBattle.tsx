@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ConnectButton from "./ConnectButton";
 import BattleResultScreen from "./BattleResultScreen";
 import { useWallet } from "@/context/WalletContext";
+import { trackFunnelEvent } from "@/lib/analytics";
 import type { NFTCard as NFTCardType } from "@/lib/objkt";
 import { buildDemoBattle, randomDemoSeed } from "@/lib/battle/demo";
 
 interface DemoBattleProps {
   card: NFTCardType;
+  /** Which entry point opened it: My Deck's connect screen, or a pulled pack card. */
+  source: "deck" | "pack";
   /** The first fight's seed; every Replay after it rolls a fresh one. */
   initialSeed: number;
   onClose: () => void;
@@ -20,10 +23,18 @@ interface DemoBattleProps {
  * The real battle screen, fed a fight resolved in the browser. No wallet,
  * signature or database is involved, so it works for anyone.
  */
-export default function DemoBattle({ card, initialSeed, onClose, onGoToDeck }: DemoBattleProps) {
+export default function DemoBattle({ card, source, initialSeed, onClose, onGoToDeck }: DemoBattleProps) {
   const { address } = useWallet();
   const [seed, setSeed] = useState(initialSeed);
   const battle = useMemo(() => buildDemoBattle(card, seed), [card, seed]);
+
+  // One event per demo opened, not per Replay: the funnel step is "someone
+  // watched a battle", and replays would inflate it. The ref keeps the effect
+  // on an empty dependency array without lying to exhaustive-deps.
+  const sourceRef = useRef(source);
+  useEffect(() => {
+    trackFunnelEvent({ name: "demo_battle_started", source: sourceRef.current });
+  }, []);
 
   const callToAction = address ? (
     onGoToDeck ? (
