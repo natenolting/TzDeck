@@ -80,11 +80,11 @@ function mutePackSounds() {
   soundManager.playCardFlip = () => undefined;
 }
 
-async function renderRevealingPack() {
+async function renderRevealingPack(props: { onDemoBattle?: (card: NFTCard) => void } = {}) {
   const { fireEvent, render, screen, PackOpening } = await loadTestHarness();
   mockSuccessfulPackRequest();
   mutePackSounds();
-  const rendered = render(<PackOpening />);
+  const rendered = render(<PackOpening {...props} />);
 
   fireEvent.click(screen.getByText("Click to Rip Open"));
   await screen.findByText(
@@ -205,6 +205,20 @@ test("pack detail navigation includes only revealed cards", async () => {
 
   assert.ok(screen.getByRole("button", { name: "View previous card" }));
   assert.equal(screen.queryByRole("button", { name: "View next card" }), null);
+});
+
+test("only a revealed card offers a demo battle, and it hands over that card", async () => {
+  const battled: string[] = [];
+  const { fireEvent, screen } = await renderRevealingPack({ onDemoBattle: (card) => battled.push(card.name) });
+
+  assert.equal(screen.queryAllByRole("button", { name: /^Demo battle with/ }).length, 0, "a face-down card gives nothing away");
+
+  fireEvent.click(screen.getByRole("button", { name: "Reveal card 1 of 2" }));
+  fireEvent.click(screen.getByRole("button", { name: "Demo battle with First Pull" }));
+
+  assert.deepEqual(battled, ["First Pull"]);
+  assert.equal(screen.queryAllByRole("button", { name: "Demo battle with Second Pull" }).length, 0);
+  assert.equal(screen.queryAllByText(/try it in a demo battle/).length, 1);
 });
 
 test("the pack and every card back are real buttons a keyboard can reach", async () => {

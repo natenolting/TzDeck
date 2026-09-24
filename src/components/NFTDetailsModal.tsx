@@ -30,6 +30,7 @@ interface NFTDetailsModalProps {
   onClose: () => void;
   onToggleWishlist?: (card: NFTCard) => void;
   onBattle?: (card: NFTCard) => void;
+  battleLabel?: string;
 }
 
 function BattleStatsSection({ card, battleStats }: { card: NFTCard; battleStats: BattleCardStats | null }) {
@@ -150,6 +151,7 @@ export default function NFTDetailsModal({
   onClose,
   onToggleWishlist,
   onBattle,
+  battleLabel = "Battle",
 }: NFTDetailsModalProps) {
   const titleId = useId();
   const { dialogRef, initialFocusRef: closeButtonRef } = useDialogBehavior<HTMLButtonElement>(onClose);
@@ -349,11 +351,11 @@ export default function NFTDetailsModal({
                   onBattle(activeCard);
                   onClose();
                 }}
-                aria-label={`Battle with ${activeCard.name}`}
+                aria-label={`${battleLabel} with ${activeCard.name}`}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-border-default bg-surface-2 px-4 py-3 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface-3"
               >
                 <SwordsIcon className="h-4 w-4" />
-                Battle
+                {battleLabel}
               </button>
             )}
             <div className="flex items-stretch gap-2">

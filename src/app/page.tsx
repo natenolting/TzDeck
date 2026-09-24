@@ -4,12 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
 import ConnectButton from "@/components/ConnectButton";
 import DeckGrid from "@/components/DeckGrid";
 import PackOpening from "@/components/PackOpening";
+import DemoBattle from "@/components/DemoBattle";
 import WishlistGrid from "@/components/WishlistGrid";
 import SoundToggle from "@/components/SoundToggle";
 import Footer from "@/components/Footer";
 import SupportLink from "@/components/SupportLink";
 import { useWallet } from "@/context/WalletContext";
 import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@/lib/objkt";
+import { DEMO_SHOWCASE_CARD, DEMO_SHOWCASE_SEED, randomDemoSeed } from "@/lib/battle/demo";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { useWishlistMimeBackfill } from "@/hooks/useWishlistMimeBackfill";
 import { motion } from "framer-motion";
@@ -21,6 +23,7 @@ import {
   HeartIcon,
   InfoIcon,
   SparklesIcon,
+  SwordsIcon,
 } from "@/components/icons";
 
 type ActiveTab = "packs" | "deck" | "wishlist" | "about";
@@ -42,6 +45,7 @@ export default function Home() {
   // This re-resolves them once, quietly.
   useWishlistMimeBackfill(wishlist);
   const rarityHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [demoBattle, setDemoBattle] = useState<{ card: NFTCardType; seed: number } | null>(null);
   const focusRarityRef = useRef(false);
 
   const handleShowRarity = () => {
@@ -199,6 +203,8 @@ export default function Home() {
               onShowRarity={handleShowRarity}
               onWishlistToggle={handleWishlistToggle}
               wishlistIds={wishlistIds}
+              // A pulled card fights honestly: a random seed, win or lose.
+              onDemoBattle={(card) => setDemoBattle({ card, seed: randomDemoSeed() })}
             />
           )}
 
@@ -222,8 +228,16 @@ export default function Home() {
                   <p className="mt-2 text-sm text-text-secondary mb-6">
                     Connect Temple, Kukai, or Beacon to view your owned OBJKT NFTs as your personal playable deck.
                   </p>
-                  <div className="flex justify-center">
+                  <div className="flex flex-col items-center gap-3">
                     <ConnectButton />
+                    <button
+                      type="button"
+                      onClick={() => setDemoBattle({ card: DEMO_SHOWCASE_CARD, seed: DEMO_SHOWCASE_SEED })}
+                      className="button-quiet gap-2 px-4 py-2 text-xs font-semibold"
+                    >
+                      <SwordsIcon className="h-4 w-4" />
+                      Watch a demo battle
+                    </button>
                   </div>
                 </div>
               )}
@@ -336,6 +350,14 @@ export default function Home() {
             </motion.div>
           )}
         </main>
+        {demoBattle && (
+          <DemoBattle
+            card={demoBattle.card}
+            initialSeed={demoBattle.seed}
+            onClose={() => setDemoBattle(null)}
+            onGoToDeck={activeTab === "deck" ? undefined : () => setActiveTab("deck")}
+          />
+        )}
         <Footer />
       </div>
     </div>

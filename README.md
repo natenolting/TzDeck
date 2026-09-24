@@ -77,6 +77,12 @@ npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed ac
 
 `simulate` is the general-purpose tool for exploring balance: it defaults to rolling a new random card for each side every trial, or pins a specific matchup via `--a-editions`/`--a-desc`/`--a-level` (and `--b-*` for the defender). Pass `--seed=N` for a reproducible run or `--csv=path.csv` to export one row per trial.
 
+### Demo battles
+
+Anyone can watch a battle without a wallet. **Watch a demo battle** on My Deck's connect screen runs the TzDeck Demo Card through a fixed fight, and the swords button on a revealed booster-pack card tries that card instead, with a fresh random fight each time. Both use the real combat math (`src/lib/battle/demo.ts`): a level-1 copy of the card against the Common Trainer at its real stats. Everything runs in the browser, so nothing is signed or saved, and no XP, cooldown or daily attack is spent.
+
+The demo card's fight is pinned by `DEMO_SHOWCASE_SEED` so the first thing a visitor sees includes a miss, a critical hit and a close win. `demo.test.ts` fails if a rules change alters that fight; when it does, pick a new seed that still shows all three.
+
 ### Frequently asked questions
 
 **Does battling ever cost Tezos?** No. Every battle action -- matchmaking, direct challenges, opting in, refreshing holdings -- is authenticated by asking your wallet to sign a message (`wallet.client.requestSignPayload` in `WalletContext.tsx`), never by broadcasting an on-chain operation. Nothing is transferred and no gas or storage fee is paid.
