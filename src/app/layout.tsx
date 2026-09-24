@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter, Oxanium } from "next/font/google";
 import { WalletProvider } from "@/context/WalletContext";
+import MotionPreferences from "@/components/MotionPreferences";
 import { SITE_ORIGIN } from "@/lib/share";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -65,7 +66,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${displayFont.variable} ${textFont.variable}`}>
       <body>
-        <WalletProvider>{children}</WalletProvider>
+        <MotionPreferences>
+          <WalletProvider>{children}</WalletProvider>
+        </MotionPreferences>
         <Analytics />
       </body>
     </html>

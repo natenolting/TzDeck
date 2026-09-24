@@ -500,6 +500,11 @@ h4,
   .page-vignette::after {
     animation: none;
   }
+
+  /* The pack's holo sweep slides across on hover; show it without the slide. */
+  .foil-holo-sweep {
+    transition: none;
+  }
 }
 
 /* A chip that sits on top of artwork we do not control.
