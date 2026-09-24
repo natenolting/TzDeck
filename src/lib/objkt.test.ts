@@ -16,6 +16,7 @@ import {
   getCardImageSources,
   isImageArtifact,
   isPlayableVideo,
+  normalizeEditions,
   normalizeObjktToken,
   objktClient,
   parseTokenReference,
@@ -233,6 +234,71 @@ test("normalizeObjktToken maps shared OBJKT metadata and listing options", () =>
   assert.equal(card.price_xtz, 25);
   assert.equal(card.rarity, "uncommon");
   assert.equal(card.quantity_owned, 2);
+});
+
+test("normalizeEditions accepts only a real count, including TzKT's numeric strings", () => {
+  assert.equal(normalizeEditions(1), 1);
+  assert.equal(normalizeEditions(25), 25);
+  assert.equal(normalizeEditions("40"), 40);
+  for (const gap of [null, undefined, 0, "0", -3, 0.5, "", " ", "many", Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.equal(normalizeEditions(gap), undefined, `${String(gap)} is not an edition count`);
+  }
+});
+
+test("a token OBJKT reports no supply for is Unknown, never a 1 of 1", () => {
+  for (const supply of [null, 0]) {
+    const token = {
+      name: "Mystery",
+      token_id: "7",
+      fa_contract: "KT1Mystery",
+      display_uri: null,
+      artifact_uri: null,
+      thumbnail_uri: null,
+      supply,
+    };
+
+    const held = normalizeObjktToken(token);
+    assert.equal(held.editions, undefined, `supply ${supply}`);
+    assert.equal(held.rarity, "common", `a held token with supply ${supply} grades Common, as the server battles it`);
+
+    // Listed: price alone decides, so a cheap listing can't be lifted by scarcity it never showed.
+    assert.equal(normalizeObjktToken(token, { priceMutez: 200_000_000 }).rarity, "rare", `supply ${supply}`);
+    assert.equal(normalizeObjktToken(token, { priceMutez: 1_000_000 }).rarity, "common", `supply ${supply}`);
+  }
+});
+
+test("the TzKT fallback reads a string supply, falls back to metadata, and leaves a gap Unknown", async () => {
+  const client = objktClient as unknown as { request: () => Promise<unknown> };
+  const originalRequest = client.request;
+  const originalFetch = globalThis.fetch;
+  const balance = (tokenId: string, totalSupply?: string, editions?: string) => ({
+    balance: "1",
+    token: {
+      tokenId,
+      totalSupply,
+      contract: { address: "KT1Tzkt" },
+      metadata: { name: `Token ${tokenId}`, artifactUri: "ipfs://QmArt", editions },
+    },
+  });
+  client.request = async () => {
+    throw new Error("OBJKT is down");
+  };
+  globalThis.fetch = (async () => ({
+    json: async () => [balance("1", "12"), balance("2", "0", "7"), balance("3", "0")],
+  })) as unknown as typeof fetch;
+
+  try {
+    const cards = await fetchUserHoldings("tz1Collector");
+
+    assert.deepEqual(cards.map((card) => [card.editions, card.rarity]), [
+      [12, "uncommon"],
+      [7, "rare"],
+      [undefined, "common"],
+    ]);
+  } finally {
+    client.request = originalRequest;
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("normalizeObjktToken carries the token's mime through", () => {

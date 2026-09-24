@@ -3,6 +3,7 @@ import {
   calculateSupplyRarity,
   fetchCardsByKeys,
   getCardKey,
+  normalizeEditions,
   RARITY_LEGEND,
   type CardRarity,
   type NFTCard,
@@ -53,7 +54,7 @@ function readCard(entry: unknown): NFTCard | null {
   const tokenId = readString(raw.token_id);
   if (!contractAddress || !tokenId) return null;
 
-  const editions = readFiniteNumber(raw.editions);
+  const editions = normalizeEditions(raw.editions);
   const priceXtz = readFiniteNumber(raw.price_xtz);
   const rarity = readString(raw.rarity);
 

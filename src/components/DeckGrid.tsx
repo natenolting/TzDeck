@@ -177,7 +177,8 @@ export default function DeckGrid({
     if (sortBy === "name") {
       result.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortBy === "editions") {
-      result.sort((a, b) => (a.editions || 1) - (b.editions || 1));
+      // An unknown edition count sorts last: it isn't evidence of scarcity.
+      result.sort((a, b) => (a.editions ?? Number.MAX_SAFE_INTEGER) - (b.editions ?? Number.MAX_SAFE_INTEGER));
     }
 
     return result;

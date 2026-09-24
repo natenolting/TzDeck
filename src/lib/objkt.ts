@@ -306,6 +306,19 @@ export function calculateSupplyRarity(editions?: number): CardRarity {
   return "common";
 }
 
+/**
+ * A token's edition count, or undefined when upstream can't give one. OBJKT
+ * reports a null supply for tokens it hasn't indexed and 0 for fully burned
+ * ones, and TzKT sends counts as strings. None of those gaps is a count: the
+ * rarity ladders read 1 as a 1 of 1, so filling one in with 1 (or letting 0
+ * through, which the battle seed rounds up to 1) grades an unknown token as
+ * the scarcest tier there is. Undefined grades on price alone, or Common.
+ */
+export function normalizeEditions(raw: unknown): number | undefined {
+  const value = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : raw;
+  return typeof value === "number" && Number.isFinite(value) && value >= 1 ? Math.trunc(value) : undefined;
+}
+
 export interface ObjktRawToken {
   name: string | null;
   token_id: string;
@@ -346,7 +359,7 @@ export function normalizeObjktToken(
   token: ObjktRawToken,
   options: NormalizeTokenOptions = {},
 ): NFTCard {
-  const editions = token.supply ?? 1;
+  const editions = normalizeEditions(token.supply);
   const priceXtz = options.priceMutez !== undefined
     ? options.priceMutez / 1_000_000
     : undefined;
@@ -503,7 +516,7 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
           const metadata = token.metadata!;
           const contractAddress = token.contract?.address || "";
           const tokenId = String(token.tokenId || token.token_id || "0");
-          const editions = Number(token.totalSupply || metadata.editions || 1);
+          const editions = normalizeEditions(token.totalSupply) ?? normalizeEditions(metadata.editions);
           const displayUri = metadata.displayUri || metadata.thumbnailUri || metadata.artifactUri || "";
 
           return {

@@ -304,12 +304,10 @@ export default function NFTDetailsModal({
           )}
 
           <dl className="grid grid-cols-2 gap-3 text-sm">
-            {activeCard.editions !== undefined && (
-              <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
-                <dt className="text-xs text-text-tertiary">Editions</dt>
-                <dd className="mt-1 font-bold tabular-nums text-text-primary">{activeCard.editions}</dd>
-              </div>
-            )}
+            <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
+              <dt className="text-xs text-text-tertiary">Editions</dt>
+              <dd className="mt-1 font-bold tabular-nums text-text-primary">{activeCard.editions ?? "Unknown"}</dd>
+            </div>
             {activeCard.price_xtz !== undefined && (
               <div className="rounded-xl border border-border-subtle bg-surface-2 p-3">
                 <dt className="text-xs text-text-tertiary">Listed Price</dt>

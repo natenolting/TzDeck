@@ -126,6 +126,14 @@ export function normalizeDescriptionLength(description?: string | null): number 
   return stripped.length;
 }
 
+/**
+ * Stands in for an edition count upstream couldn't give: deep in the Common
+ * tier, so an unknown card is never rewarded as scarce. The server seeds
+ * battles with it (holdings.ts); anything simulating a fight in the browser
+ * uses the same value so the two can't disagree.
+ */
+export const UNKNOWN_EDITIONS_FALLBACK = 100_000;
+
 /** Captured once, the first time a card's progress row is created (Key Technical Decisions). */
 export function deriveBaseSeed(editions: number, description?: string | null): BaseSeed {
   return {
