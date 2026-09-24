@@ -45,7 +45,7 @@ export default function Home() {
   // This re-resolves them once, quietly.
   useWishlistMimeBackfill(wishlist);
   const rarityHeadingRef = useRef<HTMLHeadingElement>(null);
-  const [demoBattle, setDemoBattle] = useState<{ card: NFTCardType; seed: number } | null>(null);
+  const [demoBattle, setDemoBattle] = useState<{ card: NFTCardType; seed: number; source: "deck" | "pack" } | null>(null);
   const focusRarityRef = useRef(false);
 
   const handleShowRarity = () => {
@@ -204,7 +204,7 @@ export default function Home() {
               onWishlistToggle={handleWishlistToggle}
               wishlistIds={wishlistIds}
               // A pulled card fights honestly: a random seed, win or lose.
-              onDemoBattle={(card) => setDemoBattle({ card, seed: randomDemoSeed() })}
+              onDemoBattle={(card) => setDemoBattle({ card, seed: randomDemoSeed(), source: "pack" })}
             />
           )}
 
@@ -232,7 +232,7 @@ export default function Home() {
                     <ConnectButton />
                     <button
                       type="button"
-                      onClick={() => setDemoBattle({ card: DEMO_SHOWCASE_CARD, seed: DEMO_SHOWCASE_SEED })}
+                      onClick={() => setDemoBattle({ card: DEMO_SHOWCASE_CARD, seed: DEMO_SHOWCASE_SEED, source: "deck" })}
                       className="button-quiet gap-2 px-4 py-2 text-xs font-semibold"
                     >
                       <SwordsIcon className="h-4 w-4" />
@@ -353,6 +353,7 @@ export default function Home() {
         {demoBattle && (
           <DemoBattle
             card={demoBattle.card}
+            source={demoBattle.source}
             initialSeed={demoBattle.seed}
             onClose={() => setDemoBattle(null)}
             onGoToDeck={activeTab === "deck" ? undefined : () => setActiveTab("deck")}

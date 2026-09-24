@@ -35,11 +35,13 @@ type TestingLibrary = typeof import("@testing-library/react");
 type NFTDetailsModalComponent = typeof import("./NFTDetailsModal")["default"];
 type ShareCardButtonComponent = typeof import("./ShareCardButton")["default"];
 type PackOpeningComponent = typeof import("./PackOpening")["default"];
+type DemoBattleComponent = typeof import("./DemoBattle")["default"];
 
 let testingLibrary: TestingLibrary | undefined;
 let NFTDetailsModal: NFTDetailsModalComponent | undefined;
 let ShareCardButton: ShareCardButtonComponent | undefined;
 let PackOpening: PackOpeningComponent | undefined;
+let DemoBattle: DemoBattleComponent | undefined;
 
 const originalFetch = globalThis.fetch;
 const originalPlayPackRip = soundManager.playPackRip;
@@ -51,7 +53,8 @@ async function loadTestHarness() {
   NFTDetailsModal ||= (await import("./NFTDetailsModal")).default;
   ShareCardButton ||= (await import("./ShareCardButton")).default;
   PackOpening ||= (await import("./PackOpening")).default;
-  return { ...testingLibrary, NFTDetailsModal, ShareCardButton, PackOpening };
+  DemoBattle ||= (await import("./DemoBattle")).default;
+  return { ...testingLibrary, NFTDetailsModal, ShareCardButton, PackOpening, DemoBattle };
 }
 
 /**
@@ -239,6 +242,18 @@ test("opening a pack sends one pack_opened carrying nothing but the count", asyn
   ]);
 });
 
+test("a demo battle sends one demo_battle_started carrying nothing but its source, and Replay sends no more", async () => {
+  const { fireEvent, render, screen, DemoBattle } = await loadTestHarness();
+  const recorded = recordEvents();
+
+  render(<DemoBattle card={createCard({ editions: 50 })} source="pack" initialSeed={1} onClose={() => {}} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Replay" }, { timeout: 15_000 }));
+
+  assert.deepStrictEqual(recorded, [
+    ["event", { name: "demo_battle_started", data: { source: "pack" }, options: undefined }],
+  ]);
+});
+
 test("the two wallet events send no data at all", () => {
   const recorded = recordEvents();
 
@@ -259,7 +274,7 @@ test("the two wallet events send no data at all", () => {
 });
 
 test("nothing the whole funnel sends contains a wallet address, a contract address, a token id or a card key", async () => {
-  const { act, fireEvent, render, screen, NFTDetailsModal, ShareCardButton } = await loadTestHarness();
+  const { act, fireEvent, render, screen, NFTDetailsModal, ShareCardButton, DemoBattle } = await loadTestHarness();
   const card = createCard();
   const recorded = recordEvents();
 
@@ -272,6 +287,7 @@ test("nothing the whole funnel sends contains a wallet address, a contract addre
     }
   });
   await openAPack([card, createCard({ token_id: "987654322" })]);
+  render(<DemoBattle card={card} source="pack" initialSeed={1} onClose={() => {}} />);
   trackFunnelEvent({ name: "wallet_connect_started" });
   trackFunnelEvent({ name: "wallet_connected" });
 
