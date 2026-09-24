@@ -91,7 +91,7 @@ export default async function Image() {
               fontFamily: "Oxanium",
             }}
           >
-            <div style={{ display: "flex", fontWeight: 400, fontSize: 26, color: "#6c7390" }}>
+            <div style={{ display: "flex", fontWeight: 400, fontSize: 26, color: "#79809b" }}>
               tzdeck.xyz
             </div>
           </div>

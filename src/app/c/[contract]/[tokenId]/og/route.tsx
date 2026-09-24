@@ -171,7 +171,7 @@ function Stat({ label, value, color, scale }: {
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", fontSize: Math.round(19 * scale), color: "#6c7390" }}>
+      <div style={{ display: "flex", fontSize: Math.round(19 * scale), color: "#79809b" }}>
         {label}
       </div>
       <div
@@ -204,7 +204,7 @@ function Credit({ scale }: { scale: number }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "baseline" }}>
-        <div style={{ display: "flex", fontSize: Math.round(19 * scale), color: "#6c7390" }}>
+        <div style={{ display: "flex", fontSize: Math.round(19 * scale), color: "#79809b" }}>
           Found on
         </div>
         <div
@@ -218,7 +218,7 @@ function Credit({ scale }: { scale: number }) {
         >
           TzDeck
         </div>
-        <div style={{ display: "flex", marginLeft: 9, fontSize: Math.round(17 * scale), color: "#6c7390" }}>
+        <div style={{ display: "flex", marginLeft: 9, fontSize: Math.round(17 * scale), color: "#79809b" }}>
           {"· tzdeck.xyz"}
         </div>
       </div>
