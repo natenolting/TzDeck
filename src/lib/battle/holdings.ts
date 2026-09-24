@@ -1,5 +1,5 @@
 import { objktClient } from "@/lib/objkt";
-import { deriveBaseSeed, type BaseSeed } from "./rules";
+import { deriveBaseSeed, UNKNOWN_EDITIONS_FALLBACK, type BaseSeed } from "./rules";
 
 /**
  * Authoritative, server-fetched card metadata for materializing progress
@@ -18,9 +18,6 @@ export interface BattleTokenMetadata {
   observedAt: Date;
 }
 
-/** Conservative fallback for a missing/invalid supply value -- never treated as scarce. */
-const UNKNOWN_SUPPLY_FALLBACK = 100_000;
-
 const UPSTREAM_TIMEOUT_MS = 8_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -34,7 +31,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 function resolveEditions(rawSupply: unknown): number {
   const supply = Number(rawSupply);
-  if (!Number.isFinite(supply) || supply <= 0) return UNKNOWN_SUPPLY_FALLBACK;
+  if (!Number.isFinite(supply) || supply <= 0) return UNKNOWN_EDITIONS_FALLBACK;
   return Math.trunc(supply);
 }
 

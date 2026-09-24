@@ -390,6 +390,16 @@ test("a battle control sits with the wishlist button and calls onBattle", async 
   assert.equal(screen.queryByRole("dialog"), null);
 });
 
+test("a card with no known edition count says Unknown on the card and in its details", async () => {
+  const { fireEvent, render, screen, within, NFTCard } = await loadTestHarness();
+  render(<NFTCard card={{ ...card, editions: undefined }} />);
+
+  assert.equal(screen.queryAllByText("Editions: Unknown").length, 1);
+  fireEvent.click(screen.getByRole("button", { name: `View details for ${card.name}` }));
+  const modal = within(screen.getByRole("dialog", { name: card.name }));
+  assert.equal(modal.queryAllByText("Unknown").length, 1);
+});
+
 test("cards omit the battle control when onBattle is not passed", async () => {
   const { render, screen, NFTCard } = await loadTestHarness();
   render(<NFTCard card={card} onToggleWishlist={() => undefined} />);

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { NFTCard } from "@/lib/objkt";
 import { buildDemoBattle, DEMO_SHOWCASE_CARD, DEMO_SHOWCASE_SEED, DEMO_TRAINER_TIER } from "./demo";
-import { deriveBaseSeed, effectiveStats, trainerStats } from "./rules";
+import { deriveBaseSeed, effectiveStats, trainerStats, UNKNOWN_EDITIONS_FALLBACK } from "./rules";
 
 test("the showcase fight is pinned: a miss, a comeback critical hit, and a narrow win", () => {
   const { result, wasOverkillTiebreak } = buildDemoBattle(DEMO_SHOWCASE_CARD, DEMO_SHOWCASE_SEED);
@@ -63,5 +63,5 @@ test("XP is quoted only for a win, and a card with no edition count fights as a 
   assert.equal(loss.xpAwarded, 0);
 
   const unknown: NFTCard = { ...DEMO_SHOWCASE_CARD, editions: undefined, description: undefined };
-  assert.deepEqual(buildDemoBattle(unknown, 1).result.attackerStats, effectiveStats(deriveBaseSeed(100), 1));
+  assert.deepEqual(buildDemoBattle(unknown, 1).result.attackerStats, effectiveStats(deriveBaseSeed(UNKNOWN_EDITIONS_FALLBACK), 1));
 });

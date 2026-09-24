@@ -8,6 +8,7 @@ import {
   trainerBaseXpAward,
   trainerStats,
   trainerTierGap,
+  UNKNOWN_EDITIONS_FALLBACK,
 } from "./rules";
 
 // ---------------------------------------------------------------------------
@@ -22,9 +23,6 @@ export const DEMO_TRAINER_TIER = "common" as const;
 
 /** Matches the battle routes' COMBAT_VARIANCE, so a demo fight swings like a real one. */
 const DEMO_COMBAT_VARIANCE = 0.2;
-
-/** A card with no known edition count fights as a common, never as a flattering 1 of 1. */
-const DEMO_FALLBACK_EDITIONS = 100;
 
 /**
  * Stands in for an owned card when the visitor has none to hand (My Deck
@@ -60,7 +58,7 @@ export interface DemoBattle {
 /** A fresh level-1 copy of `card` against the Common Trainer, resolved from `seed`. */
 export function buildDemoBattle(card: NFTCard, seed: number): DemoBattle {
   const attackerLevel = 1;
-  const baseSeed = deriveBaseSeed(card.editions ?? DEMO_FALLBACK_EDITIONS, card.description);
+  const baseSeed = deriveBaseSeed(card.editions ?? UNKNOWN_EDITIONS_FALLBACK, card.description);
   const attackerStats = effectiveStats(baseSeed, attackerLevel);
   const trainer = trainerStats(DEMO_TRAINER_TIER);
   const defenderStats = { power: trainer.power, hp: trainer.hp };

@@ -176,6 +176,15 @@ test("non-numeric prices and edition counts are discarded", () => {
   assert.equal(imported.editions, undefined);
 });
 
+test("an edition count of zero imports as Unknown, not a scarce card", () => {
+  const raw = JSON.stringify({ version: 1, cards: [card({ editions: 0, price_xtz: undefined, rarity: undefined })] });
+
+  const [imported] = parseWishlistExport(raw).cards;
+
+  assert.equal(imported.editions, undefined);
+  assert.equal(imported.rarity, "common");
+});
+
 test("a video token's mime survives the export round-trip", () => {
   const video = card({ mime: "video/mp4" });
 
