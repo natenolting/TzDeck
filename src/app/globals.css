@@ -10,7 +10,8 @@
   --border-strong: rgb(255 255 255 / 0.16);
   --text-primary: #f2f4fa;
   --text-secondary: #a5abc2;
-  --text-tertiary: #6c7390;
+  /* The darkest tint that still clears 4.5:1 on surface-0 through surface-2. */
+  --text-tertiary: #79809b;
   --text-muted: #464c63;
   --accent: #6366f1;
   --accent-hover: #818cf8;

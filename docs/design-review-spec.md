@@ -165,7 +165,7 @@ flowchart TD
        /* Text ramp — four steps, mandatory */
        --text-primary:   #F2F4FA;
        --text-secondary: #A5ABC2;
-       --text-tertiary:  #6C7390;
+       --text-tertiary:  #79809B;
        --text-muted:     #464C63;
 
        /* Accent — exactly one, <= 10% of surface area */
