@@ -5,6 +5,12 @@ import { useRef } from "react";
 export type SectionTab<Id extends string> = {
   id: Id;
   label: string;
+  /**
+   * Shown instead of `label` on narrow screens, where the full labels don't
+   * fit. It must be a word from `label`: the tab keeps `label` as its
+   * accessible name, and the visible text has to be part of that name.
+   */
+  shortLabel?: string;
   icon: React.ReactNode;
   /** Trailing content after the label, such as a count or a status dot. */
   badge?: React.ReactNode;
@@ -78,15 +84,22 @@ export default function SectionTabs<Id extends string>({
             tabIndex={isSelected ? 0 : -1}
             onClick={() => onSelect(tab.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
+            className={`section-tab flex min-h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors ${
               isSelected
                 ? "tab-button-active"
                 : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
             }`}
           >
             {tab.icon}
-            <span className="tab-label">{tab.label}</span>
-            {tab.badge}
+            <span className="inline-flex items-center gap-2">
+              <span className={tab.shortLabel ? "tab-label tab-label-has-short" : "tab-label"}>{tab.label}</span>
+              {tab.shortLabel && (
+                <span aria-hidden="true" className="tab-label-short">
+                  {tab.shortLabel}
+                </span>
+              )}
+              {tab.badge}
+            </span>
           </button>
         );
       })}
