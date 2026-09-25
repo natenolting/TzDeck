@@ -493,6 +493,41 @@ h4,
    rather than a box-shadow because a shadow is not drawn under its own box,
    which shows as a dark strip when the pack lifts on hover. The small
    downward offset keeps the lifted pack's shadow. */
+/* The sealed pack is drawn at 296x456 and scaled as one piece, so its
+   artwork, type and seals keep their proportions. On a short screen it
+   shrinks to fit what's left once the header, tabs, sentence and footer
+   have their space, so the Packs tab never scrolls; it never grows past
+   full size, or below 0.6. tan(atan2(a, b)) is a / b as a plain number,
+   which a scale needs and plain calc() can't produce from two lengths.
+   --pack-reserve is everything on the page but the pack, measured with
+   a few pixels spare: phones, 320px screens (where the footer text wraps
+   to two lines), and sm and up. */
+.pack-fit {
+  --pack-reserve: 378px;
+  --pack-scale: clamp(0.6, tan(atan2(100svh - var(--pack-reserve), 456px)), 1);
+  width: calc(296px * var(--pack-scale));
+  height: calc(456px * var(--pack-scale));
+}
+
+@media (width < 360px) {
+  .pack-fit {
+    --pack-reserve: 396px;
+  }
+}
+
+@media (width >= 40rem) {
+  .pack-fit {
+    --pack-reserve: 388px;
+  }
+}
+
+.pack-fit-inner {
+  width: 296px;
+  height: 456px;
+  transform: scale(var(--pack-scale));
+  transform-origin: top left;
+}
+
 .pack-hover-glow {
   inset: -0.25rem 0.125rem;
   border-radius: 0.5rem;

@@ -158,8 +158,10 @@ export default function PackOpening({
             className="flex flex-col items-center justify-center text-center"
           >
             {/* Booster Foil Pack Graphic. The hover glow is a sibling layer, not a
-                drop-shadow, so it can take the dithered gradient treatment. */}
-            <div className="relative isolate">
+                drop-shadow, so it can take the dithered gradient treatment.
+                .pack-fit scales the whole pack down on short screens. */}
+            <div className="pack-fit">
+            <div className="pack-fit-inner relative isolate">
               <motion.button
                 type="button"
                 whileHover={{ y: -8 }}
@@ -231,6 +233,7 @@ export default function PackOpening({
                 className="pack-hover-glow pointer-events-none absolute -z-10 opacity-0 transition-opacity duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] peer-hover:opacity-100"
                 aria-hidden="true"
               />
+            </div>
             </div>
 
             <p className="mt-4 max-w-xs text-center text-sm text-text-secondary">
