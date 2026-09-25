@@ -7,6 +7,7 @@ import { RARITY_CONFIG } from "./rarityStyles";
 import { OFFENSIVE_RECOVERY_HOURS, type RoundOutcome, type RoundRecord } from "@/lib/battle/rules";
 import { trainerAvatarSvg } from "@/lib/battle/trainerAvatar";
 import type { BattleResult } from "./BattlePanel";
+import PageBackdrop from "./PageBackdrop";
 
 export const DEFAULT_BEAT_DELAY_MS = 650;
 
@@ -242,8 +243,12 @@ export default function BattleResultScreen({
   const defenderHp = lastRevealed ? lastRevealed.hpB : defenderMaxHp;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-0/98 px-4 py-6 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
+    // Opaque, with the app's own backdrop drawn inside: a translucent, blurred
+    // overlay only showed a smear of the page, and a backdrop-filter here would
+    // pin PageBackdrop's fixed layers to this box instead of the viewport.
+    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-0 px-4 py-6">
+      <PageBackdrop />
+      <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col">
         {demo ? (
           <p className="mx-auto mb-3 w-fit rounded-full border border-accent/30 bg-accent-quiet px-3 py-1 text-2xs font-semibold uppercase tracking-wider text-accent-hover">
             Demo battle · nothing is saved

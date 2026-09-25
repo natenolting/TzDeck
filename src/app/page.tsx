@@ -8,6 +8,7 @@ import DemoBattle from "@/components/DemoBattle";
 import WishlistGrid from "@/components/WishlistGrid";
 import SoundToggle from "@/components/SoundToggle";
 import Footer from "@/components/Footer";
+import PageBackdrop from "@/components/PageBackdrop";
 import SectionTabs, { sectionPanelId, sectionTabId } from "@/components/SectionTabs";
 import SupportLink from "@/components/SupportLink";
 import { useWallet } from "@/context/WalletContext";
@@ -82,8 +83,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-surface-0 text-text-primary selection:bg-accent selection:text-text-primary">
-      <div className="page-vignette pointer-events-none fixed inset-0" />
-      <div className="page-grain pointer-events-none fixed inset-0" />
+      <PageBackdrop />
 
       <div className="relative z-10 flex min-h-screen max-w-7xl mx-auto flex-col px-4 sm:px-6 lg:px-8 py-6">
         {/* ================= HEADER NAVBAR ================= */}
