@@ -87,8 +87,11 @@ export default function Home() {
 
       <div className="relative z-10 flex min-h-screen max-w-7xl mx-auto flex-col px-4 sm:px-6 lg:px-8 py-6">
         {/* ================= HEADER NAVBAR ================= */}
-        <header className="flex flex-col items-start justify-between gap-4 border-b border-border-subtle pb-6 md:flex-row md:items-center">
-          <div className="flex items-center gap-3">
+        {/* One row at every width: stacking the buttons under the logo on phones
+            pushed the Packs screen past one screen. No bottom rule either; the
+            tab row already separates the header from the page. */}
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {/* Logo Emblem */}
             <Image
               src="/tzdeck-icon-gradient-on-dark.svg"
@@ -96,10 +99,10 @@ export default function Home() {
               width={44}
               height={44}
               priority
-              className="h-11 w-11 rounded-xl shadow-lg shadow-accent/20"
+              className="h-11 w-11 rounded-xl shadow-lg shadow-accent/20 max-[359px]:hidden"
             />
 
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
                   <Link
@@ -115,18 +118,18 @@ export default function Home() {
                     TzDeck
                   </Link>
                 </h1>
-                <span className="rounded-full bg-accent-quiet px-2 py-0.5 text-2xs font-bold text-accent-hover border border-accent/30">
+                <span className="shrink-0 whitespace-nowrap rounded-full max-sm:hidden bg-accent-quiet px-2 py-0.5 text-2xs font-bold text-accent-hover border border-accent/30">
                   OBJKT Gacha
                 </span>
               </div>
-              <p className="text-xs text-text-secondary">Pull. Collect. Battle.</p>
+              <p className="truncate text-xs text-text-secondary">Pull. Collect. Battle.</p>
             </div>
           </div>
 
           {/* Right Navigation & Wallet */}
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <SoundToggle />
-            <ConnectButton variant="quiet" />
+            <ConnectButton variant="quiet" compact />
           </div>
         </header>
 
@@ -135,7 +138,7 @@ export default function Home() {
           label="Sections"
           selected={activeTab}
           onSelect={setActiveTab}
-          className="tab-scroller -mx-4 my-6 flex items-center justify-start gap-2 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:justify-center sm:px-6 lg:-mx-8 lg:px-8"
+          className="tab-scroller -mx-4 my-4 flex items-center justify-start gap-2 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:my-6 sm:justify-center sm:px-6 lg:-mx-8 lg:px-8"
           tabs={[
             { id: "packs", label: "Booster Packs", shortLabel: "Packs", icon: <CardsIcon /> },
             {
