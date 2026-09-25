@@ -12,6 +12,7 @@ import BattlePanel, {
   resubmitBattleAttempt,
   resubmitWhilePending,
 } from "./BattlePanel";
+import { useBattleStatus } from "@/hooks/useBattleStatus";
 import { baseStatsFromSeed, deriveBaseSeed } from "@/lib/battle/rules";
 import { objktClient, type NFTCard } from "@/lib/objkt";
 
@@ -403,6 +404,12 @@ function mockWalletValue() {
   };
 }
 
+/** The panel receives its status from My Deck; this stands in for the deck as the hook's owner. */
+function BattlePanelWithStatus(props: { card: NFTCard; onClose: () => void }) {
+  const battleStatus = useBattleStatus(mockWalletValue().address);
+  return <BattlePanel {...props} battleStatus={battleStatus} />;
+}
+
 function statusJson(overrides: Partial<ReturnType<typeof baseStatusJson>> = {}) {
   return { ...baseStatusJson(), ...overrides };
 }
@@ -475,7 +482,7 @@ test("BattlePanel: a won battle mounts BattleResultScreen with the attacker card
 
   render(
     <WalletContext.Provider value={mockWalletValue()}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -519,7 +526,7 @@ test("a rejected signature sends no POST and shows the cancellation message", as
 
   render(
     <WalletContext.Provider value={wallet}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -544,7 +551,7 @@ test("a terminal POST-phase business rejection shows its own error, never the si
 
   render(
     <WalletContext.Provider value={mockWalletValue()}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -575,7 +582,7 @@ test("Battle and opt-in controls stay disabled while a battle submission is in f
 
   render(
     <WalletContext.Provider value={mockWalletValue()}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -652,7 +659,7 @@ test("automatic retries and a manual Retry after exhaustion both reuse the origi
 
   render(
     <WalletContext.Provider value={wallet}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -692,7 +699,7 @@ test("holdings that have never synced show 'Never synced' and offer a Refresh Ho
 
   render(
     <WalletContext.Provider value={mockWalletValue()}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -725,7 +732,7 @@ test("Refresh Holdings signs the refresh action, POSTs the signed body, and upda
 
   render(
     <WalletContext.Provider value={mockWalletValue()}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -760,7 +767,7 @@ test("opt-in and Battle stay disabled while holdings are refreshing", async () =
 
   render(
     <WalletContext.Provider value={mockWalletValue()}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 
@@ -809,7 +816,7 @@ test("a 202 continuation from Refresh Holdings is resubmitted with the identical
 
   render(
     <WalletContext.Provider value={wallet}>
-      <BattlePanel card={attackerCard} onClose={() => {}} />
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
     </WalletContext.Provider>,
   );
 

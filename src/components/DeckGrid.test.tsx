@@ -195,7 +195,7 @@ test("a deck card with no battle progress row shows the estimated Level 1 previe
   assert.ok(await modal.findByText("Estimated Level 1"));
 });
 
-test("closing the battle panel refetches battle stats, so the details modal shows the battle's result without a reload", async () => {
+test("a battle fought from the deck updates the card's details, and opening the panel costs no status request", async () => {
   const { fireEvent, render, screen, within, WalletContext, DeckGrid } = await loadTestHarness();
   const token = createCard({
     token_id: "9",
@@ -206,13 +206,30 @@ test("closing the battle panel refetches battle stats, so the details modal show
   });
   const cardKey = getCardKey(token);
   let serverCards: Array<Record<string, unknown>> = [];
+  let statusRequests = 0;
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.includes("/api/deck")) {
       return new Response(JSON.stringify({ tokens: [token] }), { status: 200 });
     }
+    if (url.includes("/api/battle/trainer")) {
+      serverCards = [{ cardKey, xp: 40, level: 2, power: 30, hp: 100, recoveryUntil: null, recoveryReason: null }];
+      return new Response(
+        JSON.stringify({
+          outcome: "win",
+          winner: "attacker",
+          xpAwarded: 40,
+          trainerTier: "common",
+          attackerStats: { power: 30, hp: 100 },
+          defenderStats: { power: 20, hp: 80 },
+          combat: { rounds: 0, finalHpA: 100, finalHpB: 0, history: [] },
+        }),
+        { status: 200 },
+      );
+    }
     if (url.includes("/api/battle/status")) {
+      statusRequests += 1;
       return new Response(
         JSON.stringify({
           optedIn: true,
@@ -236,11 +253,13 @@ test("closing the battle panel refetches battle stats, so the details modal show
   );
 
   fireEvent.click(await screen.findByRole("button", { name: `Battle with ${token.name}` }));
-  const closeBattle = await screen.findByRole("button", { name: "Close battle panel" });
+  fireEvent.click(await screen.findByRole("button", { name: "Train" }));
+  assert.equal(statusRequests, 1, "the panel reuses the status My Deck already loaded");
 
-  // The battle commits server-side while the panel is open.
-  serverCards = [{ cardKey, xp: 40, level: 2, power: 30, hp: 100, recoveryUntil: null, recoveryReason: null }];
-  fireEvent.click(closeBattle);
+  fireEvent.click(screen.getByRole("button", { name: "Battle!" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Close" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Close battle panel" }));
+  assert.equal(statusRequests, 2, "the settled battle refreshed status once");
 
   const openButton = screen.getByRole("button", { name: `View details for ${token.name}` });
   fireEvent.load(screen.getByRole("img", { name: token.name }));
@@ -248,4 +267,52 @@ test("closing the battle panel refetches battle stats, so the details modal show
 
   const modal = within(screen.getByRole("dialog", { name: token.name }));
   assert.ok(await modal.findByText("Level 2"), "the stats written by the battle reach the modal once the panel closes");
+});
+
+test("a battle status that failed with the deck is retried when the battle panel opens", async () => {
+  const { fireEvent, render, screen, WalletContext, DeckGrid } = await loadTestHarness();
+  const token = createCard({
+    token_id: "10",
+    contract_address: "KT1DeckCardRetry",
+    name: "Second Wind",
+    display_uri: "https://example.com/second-wind.jpg",
+    editions: 4,
+  });
+  let statusRequests = 0;
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/deck")) {
+      return new Response(JSON.stringify({ tokens: [token] }), { status: 200 });
+    }
+    if (url.includes("/api/battle/status")) {
+      statusRequests += 1;
+      if (statusRequests === 1) return new Response(JSON.stringify({ error: "status_unavailable" }), { status: 500 });
+      return new Response(
+        JSON.stringify({
+          optedIn: false,
+          effectiveAttackCount: 0,
+          attackResetAt: null,
+          effectiveDefenseCount: 0,
+          defenseResetAt: null,
+          holdingsRefreshedAt: null,
+          cards: [],
+        }),
+        { status: 200 },
+      );
+    }
+    throw new Error(`unexpected fetch in DeckGrid test: ${url}`);
+  }) as typeof fetch;
+
+  render(
+    <WalletContext.Provider value={mockWalletValue()}>
+      <DeckGrid onBrowsePacks={() => {}} />
+    </WalletContext.Provider>,
+  );
+
+  fireEvent.click(await screen.findByRole("button", { name: `Battle with ${token.name}` }));
+
+  assert.ok(await screen.findByRole("button", { name: "Train" }), "the retried status opens the battle controls");
+  assert.equal(screen.queryByText("Battles are temporarily unavailable."), null);
+  assert.equal(statusRequests, 2);
 });

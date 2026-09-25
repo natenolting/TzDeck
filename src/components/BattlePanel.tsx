@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
+import type { BattleStatusState } from "@/hooks/useBattleStatus";
 import { getCardImageSources, getCardKey, isImageArtifact, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { battleErrorMessage } from "@/lib/battle/errorMessages";
@@ -18,26 +19,6 @@ import { RARITY_CONFIG } from "./rarityStyles";
 import Switch from "./Switch";
 import BattleResultScreen from "./BattleResultScreen";
 import { SwordsIcon } from "./icons";
-
-interface StatusCard {
-  cardKey: string;
-  xp: number;
-  level: number;
-  power: number;
-  hp: number;
-  recoveryUntil: string | null;
-  recoveryReason: "offensive" | "defensive" | null;
-}
-
-interface StatusResponse {
-  optedIn: boolean;
-  effectiveAttackCount: number;
-  attackResetAt: string | null;
-  effectiveDefenseCount: number;
-  defenseResetAt: string | null;
-  holdingsRefreshedAt: string | null;
-  cards: StatusCard[];
-}
 
 export interface BattleResult {
   outcome: "win" | "draw" | "no_match";
@@ -107,6 +88,7 @@ export function isHoldingsStale(holdingsRefreshedAt: string | null, now: Date, s
 
 interface BattlePanelProps {
   card: NFTCardType;
+  battleStatus: BattleStatusState;
   onClose: () => void;
 }
 
@@ -316,13 +298,11 @@ interface PendingBattleAttempt {
   body: string;
 }
 
-export default function BattlePanel({ card, onClose }: BattlePanelProps) {
+export default function BattlePanel({ card, battleStatus, onClose }: BattlePanelProps) {
   const { address, signChallenge } = useWallet();
   const cardKey = getCardKey(card);
+  const { status, unavailable: statusUnavailable, loading: statusLoading, refresh: refreshStatus } = battleStatus;
 
-  const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [statusUnavailable, setStatusUnavailable] = useState(false);
-  const [statusLoading, setStatusLoading] = useState(true);
   const [mode, setMode] = useState<"random" | "challenge" | "trainer">("random");
   const [trainerTier, setTrainerTier] = useState<CardRarity>("common");
   const [targetWallet, setTargetWallet] = useState("");
@@ -346,37 +326,6 @@ export default function BattlePanel({ card, onClose }: BattlePanelProps) {
   );
   const { imageUrl: cardImageUrl, loaded: cardImageLoaded, failed: cardImageFailed, handleLoad: handleCardImageLoad, handleError: handleCardImageError } =
     useFailoverImage(cardImageSources);
-
-  const loadStatus = useCallback(
-    (walletAddress: string) =>
-      fetch(`/api/battle/status?address=${encodeURIComponent(walletAddress)}`, { cache: "no-store" })
-        .then((response) => {
-          if (!response.ok) throw new Error("status_unavailable");
-          return response.json() as Promise<StatusResponse>;
-        })
-        .then((data) => {
-          setStatus(data);
-          setStatusUnavailable(false);
-        })
-        .catch(() => {
-          setStatusUnavailable(true);
-        })
-        .finally(() => {
-          setStatusLoading(false);
-        }),
-    [],
-  );
-
-  useEffect(() => {
-    if (!address) return;
-    void loadStatus(address);
-  }, [address, loadStatus]);
-
-  const refreshStatus = useCallback(() => {
-    if (!address) return Promise.resolve();
-    setStatusLoading(true);
-    return loadStatus(address);
-  }, [address, loadStatus]);
 
   const ownCardStatus = status?.cards.find((c) => c.cardKey === cardKey);
   const previewStats = ownCardStatus ? null : previewStatsForCard(card);

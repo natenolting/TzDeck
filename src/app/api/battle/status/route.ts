@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientIp } from "@/lib/battle/requestAuth";
 import { effectiveStats, levelForXp } from "@/lib/battle/rules";
+import type { BattleStatus } from "@/lib/battle/status";
 import { checkRateLimit, fetchAllProgressForWallet, fetchWallet } from "@/lib/battle/store";
 
 // Public wallet game status can be read without a write signature; internal
@@ -50,18 +51,16 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json(
-      {
-        optedIn: wallet?.opted_in ?? false,
-        effectiveAttackCount: wallet ? effectiveCount(wallet.attack_count, wallet.attack_reset_at, now) : 0,
-        attackResetAt: wallet?.attack_reset_at ?? null,
-        effectiveDefenseCount: wallet ? effectiveCount(wallet.defense_count, wallet.defense_reset_at, now) : 0,
-        defenseResetAt: wallet?.defense_reset_at ?? null,
-        holdingsRefreshedAt: wallet?.holdings_refreshed_at ?? null,
-        cards,
-      },
-      { headers: { "Cache-Control": NO_STORE_CACHE_CONTROL } },
-    );
+    const body: BattleStatus = {
+      optedIn: wallet?.opted_in ?? false,
+      effectiveAttackCount: wallet ? effectiveCount(wallet.attack_count, wallet.attack_reset_at, now) : 0,
+      attackResetAt: wallet?.attack_reset_at ?? null,
+      effectiveDefenseCount: wallet ? effectiveCount(wallet.defense_count, wallet.defense_reset_at, now) : 0,
+      defenseResetAt: wallet?.defense_reset_at ?? null,
+      holdingsRefreshedAt: wallet?.holdings_refreshed_at ?? null,
+      cards,
+    };
+    return NextResponse.json(body, { headers: { "Cache-Control": NO_STORE_CACHE_CONTROL } });
   } catch (error) {
     console.error("Error in battle status route:", error);
     return NextResponse.json({ error: "status_unavailable" }, { status: 500 });

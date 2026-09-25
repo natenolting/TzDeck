@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
+import { useBattleStatus } from "@/hooks/useBattleStatus";
+import type { BattleCardStatus } from "@/lib/battle/status";
 import NFTCard from "./NFTCard";
-import type { BattleCardStats } from "./NFTDetailsModal";
 import BattlePanel from "./BattlePanel";
 import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
 
@@ -61,26 +62,6 @@ async function requestDeck(address: string, signal: AbortSignal): Promise<NFTCar
   return data.tokens || [];
 }
 
-interface BattleStatusResponse {
-  cards?: Array<{ cardKey: string; xp: number; level: number; power: number; hp: number }>;
-}
-
-/** Never battled rows just don't appear here -- the modal shows an estimated preview for those. */
-async function requestBattleStats(address: string, signal: AbortSignal): Promise<Map<string, BattleCardStats>> {
-  const response = await fetch(`/api/battle/status?address=${encodeURIComponent(address)}`, {
-    signal,
-    cache: "no-store",
-  });
-  if (!response.ok) return new Map();
-
-  const data = (await response.json()) as BattleStatusResponse;
-  const byCardKey = new Map<string, BattleCardStats>();
-  for (const card of data.cards ?? []) {
-    byCardKey.set(card.cardKey, { xp: card.xp, level: card.level, power: card.power, hp: card.hp });
-  }
-  return byCardKey;
-}
-
 export default function DeckGrid({
   onWishlistToggle,
   wishlistIds = new Set(),
@@ -92,8 +73,12 @@ export default function DeckGrid({
   const [error, setError] = useState<string | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
   const [battleCard, setBattleCard] = useState<NFTCardType | null>(null);
-  const [battleStatsByCardKey, setBattleStatsByCardKey] = useState<Map<string, BattleCardStats>>(new Map());
-  const [battleStatsVersion, setBattleStatsVersion] = useState(0);
+  const battleStatus = useBattleStatus(address);
+  // Never-battled cards have no row, and the modal shows an estimated preview for those.
+  const battleStatsByCardKey = useMemo(
+    () => new Map<string, BattleCardStatus>(battleStatus.status?.cards.map((card) => [card.cardKey, card])),
+    [battleStatus.status],
+  );
 
   // Filters and Sorting
   const [searchQuery, setSearchQuery] = useState("");
@@ -129,31 +114,18 @@ export default function DeckGrid({
     return () => controller.abort();
   }, [address, requestVersion]);
 
-  useEffect(() => {
-    if (!address) return;
-
-    const controller = new AbortController();
-
-    requestBattleStats(address, controller.signal)
-      .then(setBattleStatsByCardKey)
-      .catch((requestError: unknown) => {
-        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        console.error(requestError);
-      });
-
-    return () => controller.abort();
-  }, [address, requestVersion, battleStatsVersion]);
-
-  // Battles fought in the panel changed this card's XP and level on the server.
-  const closeBattle = () => {
-    setBattleCard(null);
-    setBattleStatsVersion((version) => version + 1);
+  const openBattle = (card: NFTCardType) => {
+    setBattleCard(card);
+    // A status that failed with the deck gets another try, rather than a panel stuck on "unavailable".
+    if (battleStatus.unavailable) void battleStatus.refresh();
   };
+  const closeBattle = () => setBattleCard(null);
 
   const reloadDeck = () => {
     setLoading(true);
     setError(null);
     setRequestVersion((version) => version + 1);
+    void battleStatus.refresh();
   };
 
   // Derived filtered & sorted tokens
@@ -322,7 +294,7 @@ export default function DeckGrid({
                 detailWishlistIds={wishlistIds}
                 battleStatsByCardKey={battleStatsByCardKey}
                 onToggleWishlist={onWishlistToggle}
-                onBattle={setBattleCard}
+                onBattle={openBattle}
               />
             );
           })}
@@ -335,7 +307,7 @@ export default function DeckGrid({
           onClick={closeBattle}
         >
           <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <BattlePanel card={battleCard} onClose={closeBattle} />
+            <BattlePanel card={battleCard} battleStatus={battleStatus} onClose={closeBattle} />
           </div>
         </div>
       )}
