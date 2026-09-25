@@ -296,7 +296,7 @@ export default function PackOpening({
                 </h2>
                 <p className="text-xs text-text-secondary mt-0.5 tabular-nums">
                   {packState === "revealing"
-                    ? "Click on each card to reveal your pull"
+                    ? "Reveal each card to see your pull"
                     : `Revealed 5 cards • Total listed value: ${totalValue.toFixed(2)} XTZ`}
                 </p>
               </div>

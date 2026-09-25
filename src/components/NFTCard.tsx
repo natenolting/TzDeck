@@ -113,7 +113,7 @@ export default function NFTCard({
           {/* Card Back Prompt */}
           <div className="text-center">
             <span className="inline-block rounded-full bg-accent-quiet px-3 py-1 text-2xs font-medium text-accent-hover border border-accent/30">
-              Click to Reveal
+              Reveal
             </span>
           </div>
         </div>

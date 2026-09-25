@@ -139,7 +139,7 @@ async function openAPack(cards: NFTCard[]) {
   stubPackRequest(cards);
   render(<PackOpening />);
   fireEvent.click(screen.getByText("Rip it open"));
-  await screen.findByText("Click on each card to reveal your pull", undefined, {
+  await screen.findByText("Reveal each card to see your pull", undefined, {
     timeout: 2_500,
   });
 }
