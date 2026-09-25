@@ -79,7 +79,7 @@ npm run validate:tiebreak             # the R14 overkill-tiebreak's own fixed ac
 
 ### Demo battles
 
-Anyone can watch a battle without a wallet. **Watch a demo battle** on My Deck's connect screen runs the TzDeck Demo Card through a fixed fight, and the swords button on a revealed booster-pack card tries that card instead, with a fresh random fight each time. Both use the real combat math (`src/lib/battle/demo.ts`): a level-1 copy of the card against the Common Trainer at its real stats. Everything runs in the browser, so nothing is signed or saved, and no XP, cooldown or daily attack is spent. Opening a demo sends one anonymous `demo_battle_started` analytics event, tagged only with where it started (`deck` or `pack`); replays send nothing.
+Anyone can watch a battle without a wallet. **Watch a demo battle** on My Deck's connect screen runs the TzDeck Demo Card through a fixed fight, and the swords button on a revealed booster-pack card tries that card instead, with a fresh random fight each time. Both use the real combat math (`src/lib/battle/demo.ts`): a level-1 copy of the card against the Common Trainer at its real stats. Everything runs in the browser, so nothing is signed or saved, and no XP, cooldown or daily attack is spent. Opening a demo sends one anonymous `demo_battle_started` analytics event, tagged only with where it started (`deck` or `pack`), and each Replay sends a `demo_battle_replayed` tagged the same way.
 
 The demo card's fight is pinned by `DEMO_SHOWCASE_SEED` so the first thing a visitor sees includes a miss, a critical hit and a close win. `demo.test.ts` fails if a rules change alters that fight; when it does, pick a new seed that still shows all three.
 

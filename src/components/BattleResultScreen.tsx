@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { fetchTokenByKey, formatShortAddress, getCardImageSources, isImageArtifact, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { RARITY_CONFIG } from "./rarityStyles";
-import type { RoundOutcome, RoundRecord } from "@/lib/battle/rules";
+import { OFFENSIVE_RECOVERY_HOURS, type RoundOutcome, type RoundRecord } from "@/lib/battle/rules";
 import { trainerAvatarSvg } from "@/lib/battle/trainerAvatar";
 import type { BattleResult } from "./BattlePanel";
 
@@ -135,6 +135,12 @@ function HealthBar({ label, current, max, side }: { label: string; current: numb
   );
 }
 
+/** A card's hit strength, next to the HP its bar already shows. Absent on a stored battle that predates stats. */
+function PowerStat({ power }: { power: number | undefined }) {
+  if (power === undefined) return null;
+  return <p className="-mt-1 text-[11px] tabular-nums text-text-tertiary">Power {power}</p>;
+}
+
 function OutcomeBanner({
   sequenceComplete,
   outcome,
@@ -180,7 +186,9 @@ function OutcomeBanner({
     <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-danger/40 bg-danger-quiet px-4 py-2.5">
       <p className="font-display text-lg font-bold text-danger">Defeated</p>
       <p className="text-xs text-danger/80">
-        {isDemo ? "A real loss rests your card for 4 hours." : "Recovering for a while."}
+        {isDemo
+          ? `A real loss rests your card for ${OFFENSIVE_RECOVERY_HOURS} ${OFFENSIVE_RECOVERY_HOURS === 1 ? "hour" : "hours"}.`
+          : "Recovering for a while."}
       </p>
     </div>
   );
@@ -256,6 +264,7 @@ export default function BattleResultScreen({
           <div className="flex flex-1 flex-col items-center gap-2">
             <CardFace card={attackerCard} side="attacker" />
             <HealthBar label="You" current={attackerHp} max={attackerMaxHp} side="attacker" />
+            <PowerStat power={result.attackerStats?.power} />
           </div>
           <div
             aria-hidden="true"
@@ -277,8 +286,15 @@ export default function BattleResultScreen({
               max={defenderMaxHp}
               side="defender"
             />
+            <PowerStat power={result.defenderStats?.power} />
           </div>
         </div>
+
+        {result.attackerStats && result.defenderStats ? (
+          <p className="mt-3 text-center text-[11px] text-text-tertiary">
+            Power comes from edition size: fewer editions hit harder. HP comes from rarity and the description.
+          </p>
+        ) : null}
 
         <div className="mt-6 max-h-[50vh] flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-border-default bg-surface-1/60 p-3">
           {beats.slice(0, revealedBeats).map((beat, index) => {

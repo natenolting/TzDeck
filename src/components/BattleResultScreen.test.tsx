@@ -532,3 +532,40 @@ test("a finished demo offers Replay and its call to action alongside Close", asy
   assert.ok(screen.getByText("Connect to battle for real"));
   assert.ok(screen.getByRole("button", { name: /close/i }));
 });
+
+test("each side's Power shows under its HP bar, with a line on where the numbers come from", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+  stubDefenderTokenFetch("Rival Card");
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult()}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+    />,
+  );
+
+  assert.equal(screen.queryAllByText("Power 30").length, 1, "the attacker's Power");
+  assert.equal(screen.queryAllByText("Power 28").length, 1, "the defender's Power");
+  assert.equal(screen.queryAllByText(/fewer editions hit harder/).length, 1);
+});
+
+test("a stored battle without stats shows no Power and no explanation", async () => {
+  const { render, screen, BattleResultScreen } = await loadTestHarness();
+  stubDefenderTokenFetch("Rival Card");
+
+  render(
+    <BattleResultScreen
+      attackerCard={attackerCard}
+      result={baseResult({ attackerStats: undefined, defenderStats: undefined })}
+      wasOverkillTiebreak={false}
+      onClose={() => {}}
+      beatDelayMs={5}
+    />,
+  );
+
+  assert.equal(screen.queryAllByText(/^Power /).length, 0);
+  assert.equal(screen.queryAllByText(/fewer editions hit harder/).length, 0);
+});

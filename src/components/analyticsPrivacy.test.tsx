@@ -242,15 +242,18 @@ test("opening a pack sends one pack_opened carrying nothing but the count", asyn
   ]);
 });
 
-test("a demo battle sends one demo_battle_started carrying nothing but its source, and Replay sends no more", async () => {
+test("a demo battle sends one demo_battle_started, then one demo_battle_replayed per Replay, each carrying nothing but its source", async () => {
   const { fireEvent, render, screen, DemoBattle } = await loadTestHarness();
   const recorded = recordEvents();
 
   render(<DemoBattle card={createCard({ editions: 50 })} source="pack" initialSeed={1} onClose={() => {}} />);
   fireEvent.click(await screen.findByRole("button", { name: "Replay" }, { timeout: 15_000 }));
+  fireEvent.click(await screen.findByRole("button", { name: "Replay" }, { timeout: 15_000 }));
 
   assert.deepStrictEqual(recorded, [
     ["event", { name: "demo_battle_started", data: { source: "pack" }, options: undefined }],
+    ["event", { name: "demo_battle_replayed", data: { source: "pack" }, options: undefined }],
+    ["event", { name: "demo_battle_replayed", data: { source: "pack" }, options: undefined }],
   ]);
 });
 
