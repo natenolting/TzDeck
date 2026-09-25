@@ -58,6 +58,14 @@ function postRequest(body: unknown): NextRequest {
   });
 }
 
+async function ledgerRow(wallet: string) {
+  const sql = getSql();
+  const [row] = await sql`
+    SELECT status, retryable, status_code, response FROM battle_attempts WHERE wallet = ${wallet} AND action = 'trainer'
+  `;
+  return row;
+}
+
 async function cleanupWallet(wallet: string) {
   const sql = getSql();
   await sql`DELETE FROM battle_log WHERE attacker_wallet = ${wallet}`;
@@ -123,11 +131,48 @@ test("POST /api/battle/trainer: a card not held by the attacker is rejected befo
       async () => {
         const response = await POST(postRequest({ ...body, attackerCardKey: ATTACKER_CARD_KEY, trainerTier: "common" }));
         assert.equal(response.status, 409);
-        const json = await response.json();
-        assert.equal(json.error, "attacker_card_not_held");
+        assert.deepEqual(await response.json(), { error: "attacker_card_not_held", retryable: false });
+        assert.deepEqual(await ledgerRow(address), {
+          status: "failed",
+          retryable: false,
+          status_code: 409,
+          response: { error: "attacker_card_not_held", retryable: false },
+        });
       },
     );
   } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/trainer: an ownership check nobody can answer is retryable, on the wire and in the ledger", async () => {
+  const { signer, publicKey, address } = await testSigner();
+  const originalFetch = globalThis.fetch;
+  try {
+    const body = await buildSignedBody(signer, publicKey, address, "trainer", [ATTACKER_CARD_KEY, "common"]);
+    // Only TzKT goes down: the Neon driver talks to the database over fetch too.
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input instanceof Request ? input.url : input).includes("api.tzkt.io")) throw new Error("TzKT unreachable");
+      return originalFetch(input, init);
+    }) as typeof fetch;
+    await withObjktStub(
+      async () => {
+        throw new Error("OBJKT unreachable");
+      },
+      async () => {
+        const response = await POST(postRequest({ ...body, attackerCardKey: ATTACKER_CARD_KEY, trainerTier: "common" }));
+        assert.equal(response.status, 503);
+        assert.deepEqual(await response.json(), { error: "ownership_unverifiable", retryable: true });
+        assert.deepEqual(await ledgerRow(address), {
+          status: "failed",
+          retryable: true,
+          status_code: 503,
+          response: { error: "ownership_unverifiable", retryable: true },
+        });
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
     await cleanupWallet(address);
   }
 });

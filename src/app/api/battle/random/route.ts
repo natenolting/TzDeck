@@ -5,6 +5,8 @@ import { verifyOwnership } from "@/lib/battle/ownership";
 import { fetchBattleTokenMetadata } from "@/lib/battle/holdings";
 import { authenticateAndClaim, isSignedRequestBodyShapeValid, splitCardKey, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import {
+  COMBAT_VARIANCE,
+  RULES_VERSION,
   baseXpAward,
   effectiveStats,
   findMatch,
@@ -29,8 +31,6 @@ import {
 // the up-to-several bounded upstream ownership re-checks during re-rolls.
 export const maxDuration = 25;
 
-const COMBAT_VARIANCE = 0.2;
-const RULES_VERSION = "v1";
 const MAX_NOT_HELD_REROLLS = 3;
 const MAX_UNVERIFIABLE_REROLLS = 2;
 // Independent of the daily attack-cap: a failed search or an exhausted

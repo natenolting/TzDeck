@@ -31,6 +31,8 @@ import {
   trainerTierGap,
   trainerBaseXpAward,
   trainerXpAward,
+  settleTrainerBattle,
+  type BattleResult,
   type CandidateCard,
   type Rng,
 } from "./rules";
@@ -444,4 +446,40 @@ test("trainerXpAward: repeat wins against the same trainer decay on top of the g
   const fifth = trainerXpAward("common", 0, 4);
   assert.ok(fifth < first);
   assert.ok(fifth >= 1);
+});
+
+function combatEndingIn(outcome: BattleResult["outcome"]): BattleResult {
+  return { rounds: 3, outcome, finalHpA: 0, finalHpB: 0, roundDamageA: 0, roundDamageB: 0, history: [] };
+}
+
+test("settleTrainerBattle: an attacker win at its own ceiling pays the full trainer award", () => {
+  assert.deepEqual(settleTrainerBattle(combatEndingIn("A"), "common", 1), {
+    outcome: "win",
+    attackerWon: true,
+    baseXpAward: 50,
+  });
+});
+
+test("settleTrainerBattle: an attacker win two tiers below its ceiling pays a quarter of it", () => {
+  assert.deepEqual(settleTrainerBattle(combatEndingIn("A"), "common", 10), {
+    outcome: "win",
+    attackerWon: true,
+    baseXpAward: 13,
+  });
+});
+
+test("settleTrainerBattle: a trainer win is a win that pays nothing", () => {
+  assert.deepEqual(settleTrainerBattle(combatEndingIn("B"), "common", 1), {
+    outcome: "win",
+    attackerWon: false,
+    baseXpAward: 0,
+  });
+});
+
+test("settleTrainerBattle: a draw pays nothing", () => {
+  assert.deepEqual(settleTrainerBattle(combatEndingIn("draw"), "common", 1), {
+    outcome: "draw",
+    attackerWon: false,
+    baseXpAward: 0,
+  });
 });

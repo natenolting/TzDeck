@@ -171,7 +171,8 @@ export async function resubmitWhilePending(
 // ---------------------------------------------------------------------------
 
 /**
- * Error strings the battle-route/attempt-ledger contract marks retryable
+ * Fallback for error responses that don't carry the server's own `retryable`
+ * flag: error strings the battle-route/attempt-ledger contract marks retryable
  * (server called failAttempt/commit_battle with retryable=true, or the
  * request never reached a persisted attempt at all -- attempt_in_progress).
  * Every other non-2xx response is a terminal business rejection per the
@@ -219,7 +220,8 @@ async function classifyBattleResponse(post: () => Promise<Response>): Promise<Cl
 
   const error = typeof json.error === "string" ? json.error : "battle_request_failed";
   if (error === "nonce_expired") return { kind: "expired" };
-  if (RETRYABLE_BATTLE_ERRORS.has(error)) {
+  const retryable = typeof json.retryable === "boolean" ? json.retryable : RETRYABLE_BATTLE_ERRORS.has(error);
+  if (retryable) {
     const retryAfterHeader = response.headers.get("Retry-After");
     const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
     return { kind: "retry", retryAfterMs };
