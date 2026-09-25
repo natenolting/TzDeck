@@ -288,6 +288,30 @@ test("resubmitBattleAttempt does not retry a terminal business rejection, even t
   assert.equal(postCalls, 1, "not every 409 is retryable -- a business rejection must not loop");
 });
 
+test("resubmitBattleAttempt retries a code it has never heard of when the server marks it retryable", async () => {
+  const responses = [jsonResponse(503, { error: "some_new_upstream_blip", retryable: true }), jsonResponse(200, battleWinJson())];
+  const post = async () => responses.shift()!;
+
+  const outcome = await resubmitBattleAttempt(post, 5, 2000, async () => undefined);
+
+  assert.equal(outcome.kind, "success");
+});
+
+test("resubmitBattleAttempt stops on a normally-retried code when the server says it is not retryable", async () => {
+  let postCalls = 0;
+  const post = async () => {
+    postCalls += 1;
+    return jsonResponse(503, { error: "ownership_unverifiable", retryable: false });
+  };
+
+  const outcome = await resubmitBattleAttempt(post, 5, 2000, async () => {
+    throw new Error("must not wait -- the server said this attempt is finished");
+  });
+
+  assert.deepEqual(outcome, { kind: "terminal", status: 503, error: "ownership_unverifiable" });
+  assert.equal(postCalls, 1);
+});
+
 test("resubmitBattleAttempt surfaces nonce_expired as 'expired', not a generic terminal error", async () => {
   let postCalls = 0;
   const post = async () => {
@@ -347,9 +371,9 @@ test("applyBattleOutcome: a terminal rejection with no language key surfaces the
   const { panelState, clearPendingAttempt } = applyBattleOutcome({
     kind: "terminal",
     status: 400,
-    error: "missing_required_fields",
+    error: "no_such_battle_code",
   });
-  assert.deepEqual(panelState, { kind: "error", message: "missing_required_fields" });
+  assert.deepEqual(panelState, { kind: "error", message: "no_such_battle_code" });
   assert.equal(clearPendingAttempt, true);
 });
 

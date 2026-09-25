@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { battleErrorMessage } from "./errorMessages";
+import { BATTLE_FAILURES } from "./failures";
 
 test("battleErrorMessage translates a code that has copy", () => {
   assert.equal(
@@ -51,6 +52,12 @@ test("battleErrorMessage translates an unexpected matchmaking failure", () => {
 });
 
 test("battleErrorMessage returns an unmapped code unchanged", () => {
-  assert.equal(battleErrorMessage("missing_required_fields"), "missing_required_fields");
+  assert.equal(battleErrorMessage("no_such_battle_code"), "no_such_battle_code");
   assert.equal(battleErrorMessage("toString"), "toString");
+});
+
+test("every failure a battle route can reject with has player-facing copy", () => {
+  for (const code of Object.keys(BATTLE_FAILURES)) {
+    assert.notEqual(battleErrorMessage(code), code, `${code} would reach the player as a raw code`);
+  }
 });
