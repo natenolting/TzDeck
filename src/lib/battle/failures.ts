@@ -9,6 +9,9 @@ export const BATTLE_FAILURES = {
   attacker_recovering: { status: 409, retryable: false },
   attacker_metadata_unavailable: { status: 503, retryable: true },
   ownership_unverifiable: { status: 503, retryable: true },
+  defender_card_not_held: { status: 409, retryable: false },
+  self_challenge: { status: 400, retryable: false },
+  target_not_eligible: { status: 409, retryable: false },
   trainer_tier_locked: { status: 409, retryable: false },
 } as const satisfies Record<string, { status: number; retryable: boolean }>;
 

@@ -32,6 +32,8 @@ import {
   trainerBaseXpAward,
   trainerXpAward,
   settleTrainerBattle,
+  settlePlayerBattle,
+  type Combatant,
   type BattleResult,
   type CandidateCard,
   type Rng,
@@ -50,6 +52,7 @@ function makeCandidate(overrides: Partial<CandidateCard> & Pick<CandidateCard, "
     recoveryUntil: null,
     defenseCount: 0,
     defenseResetAt: FAR_FUTURE,
+    progressVersion: "1",
     ...overrides,
   };
 }
@@ -480,6 +483,39 @@ test("settleTrainerBattle: a draw pays nothing", () => {
   assert.deepEqual(settleTrainerBattle(combatEndingIn("draw"), "common", 1), {
     outcome: "draw",
     attackerWon: false,
+    baseXpAward: 0,
+  });
+});
+
+const LEGENDARY_ATTACKER: Combatant = { wallet: "tz1Attacker", cardKey: "KT1a:1", seed: { editions: 1, descriptionLength: 0 }, level: 1 };
+const COMMON_DEFENDER: Combatant = { wallet: "tz1Defender", cardKey: "KT1d:2", seed: { editions: 50, descriptionLength: 0 }, level: 3 };
+
+test("settlePlayerBattle: an attacker win pays for the defender's card, and the defender recovers", () => {
+  assert.deepEqual(settlePlayerBattle(combatEndingIn("A"), LEGENDARY_ATTACKER, COMMON_DEFENDER), {
+    outcome: "win",
+    winner: LEGENDARY_ATTACKER,
+    loser: COMMON_DEFENDER,
+    loserRecoveryReason: "defensive",
+    baseXpAward: 120,
+  });
+});
+
+test("settlePlayerBattle: a defender win pays for the attacker's card, and the attacker takes the longer recovery", () => {
+  assert.deepEqual(settlePlayerBattle(combatEndingIn("B"), LEGENDARY_ATTACKER, COMMON_DEFENDER), {
+    outcome: "win",
+    winner: COMMON_DEFENDER,
+    loser: LEGENDARY_ATTACKER,
+    loserRecoveryReason: "offensive",
+    baseXpAward: 500,
+  });
+});
+
+test("settlePlayerBattle: a draw has no winner, no recovery, and no XP", () => {
+  assert.deepEqual(settlePlayerBattle(combatEndingIn("draw"), LEGENDARY_ATTACKER, COMMON_DEFENDER), {
+    outcome: "draw",
+    winner: null,
+    loser: null,
+    loserRecoveryReason: null,
     baseXpAward: 0,
   });
 });
