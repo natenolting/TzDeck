@@ -5,7 +5,7 @@ import {
   applyLevel,
   baseStatsFromSeed,
   baseXpAward,
-  bestCardForChallenge,
+  bestFittingCardForWallet,
   candidateStrength,
   criticalHitChance,
   criticalHitMultiplier,
@@ -311,20 +311,29 @@ test("findMatch: no candidate within the widest band fails with no match", () =>
   assert.equal(match, null);
 });
 
-test("findMatch: a candidate outside the narrowest bands is still found once progressive widening reaches a band containing it", () => {
+test("findMatch: a noticeably stronger opponent is still matched when it is the only one", () => {
   const seed = deriveBaseSeed(50, "a description");
   const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed, level: 1 }));
-  // Level 4 scales both power and hp by 1 + PER_LEVEL_BONUS*(4-1) = 1.3x, so
-  // strength (power*hp) scales by ~1.69x -- past band 0.5's 1.5x upper
-  // bound, only reachable once widening reaches band 1.0's 2.0x upper bound.
-  const wideCandidate = makeCandidate({ wallet: "tz1Wide", cardKey: "KT1:1", seed, level: 4 });
-  const wideStrength = candidateStrength(wideCandidate);
-  assert.ok(wideStrength > attackerStrength * 1.5, "sanity: candidate strength must actually sit past the 0.5 band's upper bound, or this test proves nothing about widening");
-  assert.ok(wideStrength <= attackerStrength * 2.0, "sanity: candidate strength must actually sit within the 1.0 band's upper bound");
+  // Level 4 scales power and hp by 1.3x each, so strength by ~1.69x.
+  const strongerCandidate = makeCandidate({ wallet: "tz1Wide", cardKey: "KT1:1", seed, level: 4 });
+  assert.ok(candidateStrength(strongerCandidate) > attackerStrength * 1.5, "sanity: the candidate is well above the attacker");
 
-  const match = findMatch(attackerStrength, [wideCandidate], NOW);
-  assert.ok(match, "a candidate only reachable by widening past the narrower bands must still be found, not lost to an early no-match");
+  const match = findMatch(attackerStrength, [strongerCandidate], NOW);
   assert.equal(match?.card.cardKey, "KT1:1");
+});
+
+test("findMatch: an opponent up to 3x the attacker's strength matches, and one past that does not", () => {
+  const candidate = makeCandidate({ wallet: "tz1Wallet", cardKey: "KT1:1" });
+  const candidateStrengthValue = candidateStrength(candidate);
+  const lowestAttackerInRange = Math.ceil(candidateStrengthValue / 3);
+
+  assert.equal(findMatch(lowestAttackerInRange, [candidate], NOW)?.card.cardKey, "KT1:1");
+  assert.equal(findMatch(lowestAttackerInRange - 1, [candidate], NOW), null);
+});
+
+test("findMatch: a much weaker opponent is always in range", () => {
+  const pool = [makeCandidate({ wallet: "tz1Wallet", cardKey: "KT1:1" })]; // strength in the thousands
+  assert.equal(findMatch(1_000_000_000, pool, NOW)?.card.cardKey, "KT1:1");
 });
 
 test("findMatch: a recovering card is excluded from its wallet's candidacy", () => {
@@ -379,16 +388,7 @@ test("findMatch: excluding one wallet's card must not exclude a different wallet
   assert.equal(rerolled?.wallet, "tz1WalletB", "wallet B's copy of the same card_key must still be a candidate");
 });
 
-test("findMatch: a wallet that has never opted in never appears -- enforced by store.ts's query, not this function's own filtering", () => {
-  // Documented here rather than tested in isolation: findMatch operates on
-  // whatever pool it's given, and fetchMatchmakingCandidatePool (store.ts)
-  // is what excludes non-opted-in wallets and the attacker's own wallet via
-  // its WHERE clause -- there is no separate opted-in flag on CandidateCard
-  // to filter on at this layer.
-  assert.equal(typeof findMatch, "function");
-});
-
-test("bestCardForChallenge: F2 reuses the same closest-card selection for a single named wallet", () => {
+test("bestFittingCardForWallet: a direct challenge gets the named wallet's closest card", () => {
   const seed = deriveBaseSeed(50, "");
   const attackerStrength = candidateStrength(makeCandidate({ wallet: "attacker", cardKey: "self:1", seed, level: 5 }));
   const targetCards = [
@@ -396,7 +396,7 @@ test("bestCardForChallenge: F2 reuses the same closest-card selection for a sing
     makeCandidate({ wallet: "tz1Target", cardKey: "KT1:2", seed, level: 5 }),
   ];
 
-  const best = bestCardForChallenge(attackerStrength, targetCards, NOW);
+  const best = bestFittingCardForWallet(attackerStrength, targetCards, NOW);
   assert.equal(best?.cardKey, "KT1:2", "the closer-level card should be selected");
 });
 
