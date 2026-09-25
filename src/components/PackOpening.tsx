@@ -210,7 +210,7 @@ export default function PackOpening({
                     </div>
 
                     <div className="flex flex-col items-center gap-2">
-                      <span className="foil-ribbon flex h-10 items-center justify-center px-5 text-lg font-black tracking-wider text-text-primary">
+                      <span className="pack-foil-band foil-ribbon flex h-10 items-center justify-center px-5 text-lg font-black tracking-wider text-text-primary">
                         <span className="pack-band-label">OBJKT PACK</span>
                       </span>
                       <p className="text-xs text-text-secondary font-medium text-center">
@@ -220,7 +220,7 @@ export default function PackOpening({
                   </div>
 
                   {/* Pack Bottom Footer: full-bleed color band, like a set's product stripe */}
-                  <div className="relative z-10 mt-auto flex h-11 shrink-0 items-center justify-center bg-gradient-to-r from-accent to-accent-hover text-center shadow-[0_-2px_12px_rgb(0_0_0/0.35)]">
+                  <div className="relative z-10 mt-auto flex h-11 shrink-0 items-center justify-center pack-foil-band text-center shadow-[0_-2px_12px_rgb(0_0_0/0.35)]">
                     <span className="pack-band-label text-sm font-black uppercase tracking-widest text-text-primary">
                       {isLoading ? "Opening..." : "Click to Rip Open"}
                     </span>

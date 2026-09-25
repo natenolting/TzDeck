@@ -137,10 +137,11 @@ export default function Home() {
           onSelect={setActiveTab}
           className="tab-scroller -mx-4 my-6 flex items-center justify-start gap-2 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:justify-center sm:px-6 lg:-mx-8 lg:px-8"
           tabs={[
-            { id: "packs", label: "Booster Packs", icon: <CardsIcon /> },
+            { id: "packs", label: "Booster Packs", shortLabel: "Packs", icon: <CardsIcon /> },
             {
               id: "deck",
               label: "My Deck",
+              shortLabel: "Deck",
               icon: <DeckIcon />,
               badge: address && <span className="h-1.5 w-1.5 rounded-full bg-success" />,
             },

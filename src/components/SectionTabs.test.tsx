@@ -78,6 +78,27 @@ test("SectionTabs: exposes a named tablist whose tabs are named by their visible
   }
 });
 
+test("SectionTabs: a short label is for the eye only; the tab stays named by its full label", async () => {
+  const { render, screen, default: SectionTabs } = await loadTestHarness();
+  render(
+    <SectionTabs
+      label="Sections"
+      tabs={[
+        { id: "packs", label: "Booster Packs", shortLabel: "Packs", icon: null },
+        { id: "about", label: "About", icon: null },
+      ]}
+      selected="packs"
+      onSelect={() => {}}
+    />,
+  );
+
+  assert.ok(screen.getByRole("tab", { name: "Booster Packs" }), "the full label names the tab");
+  const short = screen.getByText("Packs");
+  assert.equal(short.getAttribute("aria-hidden"), "true", "screen readers don't hear it twice");
+  assert.ok("Booster Packs".includes(short.textContent ?? "?"), "what's on screen is part of the name");
+  assert.equal(screen.queryAllByText("About").length, 1, "a tab without one shows its label as before");
+});
+
 test("SectionTabs: only the selected tab is in the Tab order and points at its panel", async () => {
   const { sectionPanelId } = await loadTestHarness();
   const screen = await renderTabs("deck");
