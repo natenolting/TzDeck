@@ -163,6 +163,23 @@ export function mergeWishlists(existing: NFTCard[], incoming: NFTCard[]): NFTCar
   return [...existing, ...incoming.filter((card) => !seen.has(getCardKey(card)))];
 }
 
+/**
+ * A saved card's edition count as the app reads counts today. Wishlists saved
+ * before normalizeEditions existed can hold a 0 (a burned or unindexed token),
+ * which showed as "Editions: 0" and graded as scarce; this makes it Unknown and
+ * regrades the card. A stored 1 can't be judged here -- it may be a real 1 of 1
+ * or a missing supply filled in as 1 -- so the backfill asks OBJKT about those.
+ */
+export function repairStoredEditions(card: NFTCard): NFTCard {
+  const editions = normalizeEditions(card.editions);
+  if (editions === card.editions) return card;
+  return {
+    ...card,
+    editions,
+    rarity: card.price_xtz === undefined ? calculateSupplyRarity(editions) : calculateRarity(editions, card.price_xtz),
+  };
+}
+
 export interface RefreshedWishlist {
   cards: NFTCard[];
   /** Cards re-resolved against OBJKT. */
@@ -176,8 +193,11 @@ export interface RefreshedWishlist {
  * nothing to say about keeps whatever was stored -- an unreachable API or a
  * delisted token costs accuracy, never the entry itself.
  */
-export async function refreshWishlist(cards: NFTCard[]): Promise<RefreshedWishlist> {
-  const resolved = await fetchCardsByKeys(cards);
+export async function refreshWishlist(
+  cards: NFTCard[],
+  options: { throwOnError?: boolean } = {},
+): Promise<RefreshedWishlist> {
+  const resolved = await fetchCardsByKeys(cards, options);
   let refreshed = 0;
 
   const merged = cards.map((card) => {

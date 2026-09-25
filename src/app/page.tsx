@@ -14,7 +14,7 @@ import { useWallet } from "@/context/WalletContext";
 import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@/lib/objkt";
 import { DEMO_SHOWCASE_CARD, DEMO_SHOWCASE_SEED, randomDemoSeed } from "@/lib/battle/demo";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
-import { useWishlistMimeBackfill } from "@/hooks/useWishlistMimeBackfill";
+import { useWishlistBackfill } from "@/hooks/useWishlistBackfill";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -41,10 +41,11 @@ export default function Home() {
   const { address } = useWallet();
   const [activeTab, setActiveTab] = useState<ActiveTab>("packs");
   const wishlist = useWishlist();
-  // Cards saved before OBJKT's mime was stored render video tokens as stills,
-  // so a wishlist entry and a freshly pulled one disagree about the same NFT.
-  // This re-resolves them once, quietly.
-  useWishlistMimeBackfill(wishlist);
+  // Cards saved by an older version of the app can lack a mime (video tokens
+  // render as stills) or carry a guessed edition count, so a wishlist entry and
+  // a freshly pulled one disagree about the same NFT. This re-resolves them
+  // once, quietly.
+  useWishlistBackfill(wishlist);
   const rarityHeadingRef = useRef<HTMLHeadingElement>(null);
   const [demoBattle, setDemoBattle] = useState<{ card: NFTCardType; seed: number; source: "deck" | "pack" } | null>(null);
   const focusRarityRef = useRef(false);

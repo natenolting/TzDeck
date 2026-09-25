@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import type { NFTCard } from "@/lib/objkt";
+import { repairStoredEditions } from "@/lib/wishlistTransfer";
 
 const STORAGE_KEY = "tzdeck_wishlist";
 const CHANGE_EVENT = "tzdeck:wishlist-change";
@@ -25,7 +26,7 @@ function readWishlist(): NFTCard[] {
     }
 
     const parsed: unknown = JSON.parse(saved);
-    currentWishlist = Array.isArray(parsed) ? (parsed as NFTCard[]) : EMPTY_WISHLIST;
+    currentWishlist = Array.isArray(parsed) ? (parsed as NFTCard[]).map(repairStoredEditions) : EMPTY_WISHLIST;
   } catch (error) {
     console.error("Failed to load wishlist:", error);
     currentWishlist = EMPTY_WISHLIST;

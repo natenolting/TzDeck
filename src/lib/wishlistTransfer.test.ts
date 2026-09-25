@@ -7,6 +7,7 @@ import {
   mergeWishlists,
   parseWishlistExport,
   refreshWishlist,
+  repairStoredEditions,
   serializeWishlist,
   wishlistExportFilename,
 } from "./wishlistTransfer";
@@ -183,6 +184,21 @@ test("an edition count of zero imports as Unknown, not a scarce card", () => {
 
   assert.equal(imported.editions, undefined);
   assert.equal(imported.rarity, "common");
+});
+
+test("a saved edition count of zero is repaired to Unknown and the card regraded", () => {
+  const unlisted = repairStoredEditions(card({ editions: 0, price_xtz: undefined, rarity: "epic" }));
+  assert.equal(unlisted.editions, undefined);
+  assert.equal(unlisted.rarity, "common");
+
+  const listed = repairStoredEditions(card({ editions: 0, price_xtz: 200, rarity: "epic" }));
+  assert.equal(listed.editions, undefined);
+  assert.equal(listed.rarity, "rare", "a listed card grades on its price alone");
+});
+
+test("a saved card with a real edition count is returned untouched", () => {
+  const saved = card({ editions: 25 });
+  assert.equal(repairStoredEditions(saved), saved);
 });
 
 test("a video token's mime survives the export round-trip", () => {
