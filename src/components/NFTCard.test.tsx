@@ -257,7 +257,7 @@ test("facedown cards do not expose the token-details interaction", async () => {
   assert.ok(screen.getByRole("img", { name: "TzDeck shield" }));
   assert.equal(screen.queryByText("TZDECK"), null);
   assert.equal(
-    screen.getByText("Click to Reveal").classList.contains("animate-pulse"),
+    screen.getByText("Reveal").classList.contains("animate-pulse"),
     false,
   );
   assert.equal(

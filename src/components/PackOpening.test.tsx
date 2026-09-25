@@ -88,7 +88,7 @@ async function renderRevealingPack(props: { onDemoBattle?: (card: NFTCard) => vo
 
   fireEvent.click(screen.getByText("Rip it open"));
   await screen.findByText(
-    "Click on each card to reveal your pull",
+    "Reveal each card to see your pull",
     undefined,
     { timeout: 2_500 },
   );
@@ -138,7 +138,7 @@ test("unmounting clears a pending pack completion timer", async () => {
   };
   const { fireEvent, screen, unmount } = await renderRevealingPack();
 
-  for (const revealPrompt of screen.getAllByText("Click to Reveal")) {
+  for (const revealPrompt of screen.getAllByText("Reveal")) {
     fireEvent.click(revealPrompt);
   }
   unmount();
@@ -154,7 +154,7 @@ test("Reveal All cancels a pending completion callback", async () => {
   };
   const { fireEvent, screen } = await renderRevealingPack();
 
-  for (const revealPrompt of screen.getAllByText("Click to Reveal")) {
+  for (const revealPrompt of screen.getAllByText("Reveal")) {
     fireEvent.click(revealPrompt);
   }
   fireEvent.click(screen.getByRole("button", { name: "Reveal All" }));
@@ -170,7 +170,7 @@ test("resetting a pack clears a pending completion timer", async () => {
   };
   const { fireEvent, screen } = await renderRevealingPack();
 
-  for (const revealPrompt of screen.getAllByText("Click to Reveal")) {
+  for (const revealPrompt of screen.getAllByText("Reveal")) {
     fireEvent.click(revealPrompt);
   }
   fireEvent.click(screen.getByRole("button", { name: "Open Another Pack" }));
@@ -243,7 +243,7 @@ test("the pack and every card back are real buttons a keyboard can reach", async
 
   pack.click();
   await screen.findByText(
-    "Click on each card to reveal your pull",
+    "Reveal each card to see your pull",
     undefined,
     { timeout: 2_500 },
   );
