@@ -86,7 +86,7 @@ async function renderRevealingPack(props: { onDemoBattle?: (card: NFTCard) => vo
   mutePackSounds();
   const rendered = render(<PackOpening {...props} />);
 
-  fireEvent.click(screen.getByText("Click to Rip Open"));
+  fireEvent.click(screen.getByText("Rip it open"));
   await screen.findByText(
     "Click on each card to reveal your pull",
     undefined,
@@ -104,6 +104,14 @@ afterEach(() => {
   soundManager.playPackComplete = originalPlayPackComplete;
 });
 
+test("the sealed pack tells a first-time visitor it's free and what's inside", async () => {
+  const { render, screen, PackOpening } = await loadTestHarness();
+  render(<PackOpening />);
+
+  assert.ok(screen.getByText("5 random works listed on OBJKT right now. Free, no wallet needed."));
+  assert.equal(screen.queryAllByText("TZDECK").length, 0, "the pack face is about the pack, not the brand");
+});
+
 test("opening a pack ignores rapid duplicate clicks", async () => {
   const { act, render, screen, PackOpening } = await loadTestHarness();
   let requestCount = 0;
@@ -113,7 +121,7 @@ test("opening a pack ignores rapid duplicate clicks", async () => {
   }) as typeof fetch;
   mutePackSounds();
   render(<PackOpening />);
-  const packPrompt = screen.getByText("Click to Rip Open");
+  const packPrompt = screen.getByText("Rip it open");
 
   act(() => {
     packPrompt.click();
@@ -169,7 +177,7 @@ test("resetting a pack clears a pending completion timer", async () => {
   await new Promise((resolve) => setTimeout(resolve, 650));
 
   assert.equal(completionCount, 0);
-  assert.ok(screen.getByText("Click to Rip Open"));
+  assert.ok(screen.getByText("Rip it open"));
 });
 
 test("pack completion keeps rare-pull emphasis on the cards", async () => {

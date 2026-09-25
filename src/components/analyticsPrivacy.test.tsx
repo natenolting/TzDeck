@@ -138,7 +138,7 @@ async function openAPack(cards: NFTCard[]) {
   const { fireEvent, render, screen, PackOpening } = await loadTestHarness();
   stubPackRequest(cards);
   render(<PackOpening />);
-  fireEvent.click(screen.getByText("Click to Rip Open"));
+  fireEvent.click(screen.getByText("Rip it open"));
   await screen.findByText("Click on each card to reveal your pull", undefined, {
     timeout: 2_500,
   });

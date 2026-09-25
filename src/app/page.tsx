@@ -118,9 +118,6 @@ export default function Home() {
                     TzDeck
                   </Link>
                 </h1>
-                <span className="shrink-0 whitespace-nowrap rounded-full max-sm:hidden bg-accent-quiet px-2 py-0.5 text-2xs font-bold text-accent-hover border border-accent/30">
-                  OBJKT Gacha
-                </span>
               </div>
               <p className="truncate text-xs text-text-secondary">Pull. Collect. Battle.</p>
             </div>
@@ -138,7 +135,7 @@ export default function Home() {
           label="Sections"
           selected={activeTab}
           onSelect={setActiveTab}
-          className="tab-scroller -mx-4 my-4 flex items-center justify-start gap-2 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:my-6 sm:justify-center sm:px-6 lg:-mx-8 lg:px-8"
+          className="tab-scroller -mx-4 my-4 flex items-center justify-start gap-2 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:my-6 sm:px-6 lg:-mx-8 lg:px-8"
           tabs={[
             { id: "packs", label: "Booster Packs", shortLabel: "Packs", icon: <CardsIcon /> },
             {

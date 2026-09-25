@@ -181,14 +181,12 @@ export default function PackOpening({
                   <div className="pointer-events-none foil-glow-cool absolute -top-24 -left-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
                   <div className="pointer-events-none foil-glow-warm absolute -bottom-24 -right-24 h-56 w-56 rounded-full blur-2xl transition-colors" />
 
-                  {/* Pack Header: wordmark + corner count badge, like a rating stamp */}
-                  <div className="relative z-10 flex items-start justify-between px-5 pt-4">
-                    <span className="mt-1.5 text-xs font-black tracking-[0.2em] text-accent-hover">
-                      TZDECK
-                    </span>
-                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-full border-2 border-accent-hover/70 bg-surface-0/70 text-accent-hover shadow-md backdrop-blur-sm">
+                  {/* Pack Header: corner count badge, like a rating stamp. No wordmark:
+                      the header already names the site, and the face is about the pack. */}
+                  <div className="relative z-10 flex items-start justify-end px-5 pt-4">
+                    <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border-2 border-accent-hover/70 bg-surface-0/70 text-accent-hover shadow-md backdrop-blur-sm">
                       <span className="text-sm font-black leading-none">5</span>
-                      <span className="text-[0.55rem] font-bold leading-none tracking-wide">CARDS</span>
+                      <span className="text-2xs font-bold leading-none">CARDS</span>
                     </div>
                   </div>
 
@@ -214,7 +212,7 @@ export default function PackOpening({
                         <span className="pack-band-label">OBJKT PACK</span>
                       </span>
                       <p className="text-xs text-text-secondary font-medium text-center">
-                        Random Active Marketplace Pulls
+                        Live listings edition
                       </p>
                     </div>
                   </div>
@@ -222,7 +220,7 @@ export default function PackOpening({
                   {/* Pack Bottom Footer: full-bleed color band, like a set's product stripe */}
                   <div className="relative z-10 mt-auto flex h-11 shrink-0 items-center justify-center pack-foil-band text-center shadow-[0_-2px_12px_rgb(0_0_0/0.35)]">
                     <span className="pack-band-label text-sm font-black uppercase tracking-widest text-text-primary">
-                      {isLoading ? "Opening..." : "Click to Rip Open"}
+                      {isLoading ? "Opening..." : "Rip it open"}
                     </span>
                   </div>
                 </div>
@@ -234,6 +232,10 @@ export default function PackOpening({
                 aria-hidden="true"
               />
             </div>
+
+            <p className="mt-4 max-w-xs text-center text-sm text-text-secondary">
+              5 random works listed on OBJKT right now. Free, no wallet needed.
+            </p>
 
             {/* Error prompt */}
             {error && (
