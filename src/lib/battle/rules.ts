@@ -7,12 +7,14 @@ import { calculateSupplyRarity, type CardRarity } from "@/lib/objkt";
 // HP_FLOOR are calibrated (scripts/simulate-battles.ts) to an ~5-round
 // average fight between two random level-1 cards -- the original values
 // (legendary=200 ... common=70, floor=50) averaged 2.07 rounds, over
-// nearly every matchup decided in round 1 or 2. The HP:Power ratio, not
-// variance or crit chance, is what drives round count; level scaling
-// preserves the ratio, so this calibration holds at every level. A large
-// rarity gap still resolves in ~2-3 rounds rather than the flat 1 round it
-// did before -- still a clear, fast stomp relative to an ~5-round even
-// fight, just no longer instant.
+// nearly every matchup decided in round 1 or 2. That calibration ran before
+// crits and misses existed. Re-measured with them on 2026-09-25 (5,000
+// random matchups, seed 132), the average fight lasts 5.36 rounds at level
+// 1, 5.14 at level 10, 4.67 at level 20 and 3.97 at level 39. Level scaling
+// preserves the HP:Power ratio, but crit chance grows with level, so
+// high-level fights run shorter. A large rarity gap still resolves in ~2-3
+// rounds rather than the flat 1 round it did before -- still a clear, fast
+// stomp relative to an ~5-round even fight, just no longer instant.
 // ---------------------------------------------------------------------------
 
 export interface BaseSeed {
@@ -73,9 +75,9 @@ export function applyLevel(
 
 // ---------------------------------------------------------------------------
 // Critical hits and misses (docs/plans/2026-09-10-critical-hits-misses-design.md):
-// one shared d100 roll per side per round in resolveBattle, gated behind an
-// optional `levels` argument there. These three formulas are pure functions
-// of level, independently testable from combat resolution itself.
+// one shared d100 roll per side per round in resolveBattle, scaled by each
+// side's level. These three formulas are pure functions of level,
+// independently testable from combat resolution itself.
 // ---------------------------------------------------------------------------
 
 const CRIT_CHANCE_BASE = 0.01;
@@ -234,11 +236,9 @@ export function resolveBattle(
   attackerStats: { power: number; hp: number },
   defenderStats: { power: number; hp: number },
   variancePct: number,
-  rng?: Rng,
-  /** Opt-in: omitting this preserves today's exact behavior (no extra roll, always "hit"). */
-  levels?: { attacker: number; defender: number },
+  roll: Rng,
+  levels: { attacker: number; defender: number },
 ): BattleResult {
-  const roll = rng || Math.random;
   let hpA = attackerStats.hp;
   let hpB = defenderStats.hp;
   let rounds = 0;
@@ -250,10 +250,10 @@ export function resolveBattle(
     rounds += 1;
     const swingA = 1 + (roll() * 2 - 1) * variancePct;
     const swingB = 1 + (roll() * 2 - 1) * variancePct;
-    const resultA: RoundOutcome = levels ? rollRoundOutcome(levels.attacker, roll) : "hit";
-    const resultB: RoundOutcome = levels ? rollRoundOutcome(levels.defender, roll) : "hit";
-    const critMultiplierA = resultA === "critical" ? criticalHitMultiplier(levels!.attacker) : 1;
-    const critMultiplierB = resultB === "critical" ? criticalHitMultiplier(levels!.defender) : 1;
+    const resultA = rollRoundOutcome(levels.attacker, roll);
+    const resultB = rollRoundOutcome(levels.defender, roll);
+    const critMultiplierA = resultA === "critical" ? criticalHitMultiplier(levels.attacker) : 1;
+    const critMultiplierB = resultB === "critical" ? criticalHitMultiplier(levels.defender) : 1;
     roundDamageA = resultA === "miss" ? 0 : Math.max(0, attackerStats.power * swingA * critMultiplierA);
     roundDamageB = resultB === "miss" ? 0 : Math.max(0, defenderStats.power * swingB * critMultiplierB);
     hpB -= roundDamageA;

@@ -141,7 +141,7 @@ function main(): void {
   for (let trial = 1; trial <= flags.trials; trial += 1) {
     const cardA = rollCard(flags.aEditions, flags.aDesc, flags.aLevel, rng);
     const cardB = rollCard(flags.bEditions, flags.bDesc, flags.bLevel, rng);
-    const result = resolveBattle(cardA, cardB, flags.variance, rng);
+    const result = resolveBattle(cardA, cardB, flags.variance, rng, { attacker: cardA.level, defender: cardB.level });
 
     if (result.outcome === "A") winsA += 1;
     else if (result.outcome === "B") winsB += 1;

@@ -37,6 +37,9 @@ import {
 
 const FAR_FUTURE = new Date("2100-01-01");
 const NOW = new Date("2026-01-01");
+/** No damage swing, and a d100 of 51, which is neither a miss nor a crit at level 1. */
+const steady: Rng = () => 0.5;
+const LEVEL_ONE = { attacker: 1, defender: 1 };
 
 function makeCandidate(overrides: Partial<CandidateCard> & Pick<CandidateCard, "wallet" | "cardKey">): CandidateCard {
   return {
@@ -143,14 +146,14 @@ test("missChance starts at 10% for level 1 and decays 0.3%/level down to a 1% fl
 });
 
 test("resolveBattle: one side's HP reaches 0 first -- the surviving side wins, no tiebreak invoked", () => {
-  const result = resolveBattle({ power: 20, hp: 100 }, { power: 5, hp: 20 }, 0);
+  const result = resolveBattle({ power: 20, hp: 100 }, { power: 5, hp: 20 }, 0, steady, LEVEL_ONE);
   assert.equal(result.outcome, "A");
   assert.equal(result.finalHpB, 0);
   assert.ok(result.finalHpA > 0);
 });
 
 test("resolveBattle: both sides reach 0 the same round with unequal round damage -- higher-damage side wins", () => {
-  const result = resolveBattle({ power: 12, hp: 20 }, { power: 8, hp: 36 }, 0);
+  const result = resolveBattle({ power: 12, hp: 20 }, { power: 8, hp: 36 }, 0, steady, LEVEL_ONE);
   assert.equal(result.rounds, 3);
   assert.equal(result.roundDamageA, 12);
   assert.equal(result.roundDamageB, 8);
@@ -158,7 +161,7 @@ test("resolveBattle: both sides reach 0 the same round with unequal round damage
 });
 
 test("resolveBattle: records a per-round history with damage dealt and resulting HP for both sides", () => {
-  const result = resolveBattle({ power: 12, hp: 20 }, { power: 8, hp: 36 }, 0);
+  const result = resolveBattle({ power: 12, hp: 20 }, { power: 8, hp: 36 }, 0, steady, LEVEL_ONE);
   assert.equal(result.history.length, 3);
   assert.deepEqual(result.history[0], { round: 1, damageA: 12, damageB: 8, hpA: 12, hpB: 24, resultA: "hit", resultB: "hit" });
   assert.deepEqual(result.history[1], { round: 2, damageA: 12, damageB: 8, hpA: 4, hpB: 12, resultA: "hit", resultB: "hit" });
@@ -167,36 +170,27 @@ test("resolveBattle: records a per-round history with damage dealt and resulting
 });
 
 test("resolveBattle: both sides reach 0 the same round with exactly equal round damage -- true draw", () => {
-  const result = resolveBattle({ power: 10, hp: 30 }, { power: 10, hp: 30 }, 0);
+  const result = resolveBattle({ power: 10, hp: 30 }, { power: 10, hp: 30 }, 0, steady, LEVEL_ONE);
   assert.equal(result.roundDamageA, result.roundDamageB);
   assert.equal(result.outcome, "draw");
 });
 
 test("resolveBattle: identical stat inputs at 0% variance still draw (the tiebreak doesn't invent an asymmetry)", () => {
   const stats = { power: 31, hp: 77 };
-  const result = resolveBattle(stats, { ...stats }, 0);
+  const result = resolveBattle(stats, { ...stats }, 0, steady, LEVEL_ONE);
   assert.equal(result.outcome, "draw");
 });
 
 test("resolveBattle: seeded-RNG runs at a specific seed reproduce bit-identical results", () => {
   const attacker = { power: 30, hp: 80 };
   const defender = { power: 28, hp: 85 };
-  const first = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
-  const second = resolveBattle(attacker, defender, 0.2, mulberry32(90210));
+  const first = resolveBattle(attacker, defender, 0.2, mulberry32(90210), LEVEL_ONE);
+  const second = resolveBattle(attacker, defender, 0.2, mulberry32(90210), LEVEL_ONE);
   assert.deepEqual(first, second);
 });
 
-test("resolveBattle: without a levels argument, every round defaults to result 'hit' for both sides (crit/miss stays opt-in)", () => {
-  const result = resolveBattle({ power: 20, hp: 100 }, { power: 5, hp: 20 }, 0);
-  assert.ok(result.history.length > 0);
-  for (const round of result.history) {
-    assert.equal(round.resultA, "hit");
-    assert.equal(round.resultB, "hit");
-  }
-});
-
 test("resolveBattle: a roll of exactly 1 on the shared d100 is always a miss, dealing zero damage that round", () => {
-  // Roll order per round: swingA, swingB, then (only when levels is given) resultA's d100, resultB's d100.
+  // Roll order per round: swingA, swingB, then resultA's d100, resultB's d100.
   const rolls = [0.5, 0.5, 0, 0.5];
   let i = 0;
   const rng: Rng = () => rolls[i++ % rolls.length];

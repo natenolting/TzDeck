@@ -36,7 +36,7 @@ function makeCard(editions: number, descriptionLength: number, level: number): C
 function runDrawRate(cardA: Card, cardB: Card, variance: number, rng: Rng, trials: number): number {
   let draws = 0;
   for (let i = 0; i < trials; i += 1) {
-    const result = resolveBattle(cardA, cardB, variance, rng);
+    const result = resolveBattle(cardA, cardB, variance, rng, { attacker: cardA.level, defender: cardB.level });
     if (result.outcome === "draw") draws += 1;
   }
   return draws / trials;
@@ -69,7 +69,7 @@ console.log("\n=== Stronger-card advantage (>=5 levels, one full tier above) ===
   for (const variance of VARIANCE_LEVELS) {
     let strongWins = 0;
     for (let i = 0; i < TRIALS_PER_CELL; i += 1) {
-      const result = resolveBattle(strong, weak, variance, rng);
+      const result = resolveBattle(strong, weak, variance, rng, { attacker: strong.level, defender: weak.level });
       if (result.outcome === "A") strongWins += 1;
     }
     const winRate = strongWins / TRIALS_PER_CELL;
@@ -123,7 +123,7 @@ console.log("\n=== Random-population draw rate & new-player first-win-within-5 =
       const attacker = population[i];
       const pool = population.filter((_, idx) => idx !== i);
       const opponent = findClosestOpponent(attacker, pool);
-      const result = resolveBattle(attacker, opponent, variance, rng);
+      const result = resolveBattle(attacker, opponent, variance, rng, { attacker: attacker.level, defender: opponent.level });
       if (result.outcome === "draw") draws += 1;
     }
     console.log(`  variance ±${(variance * 100).toFixed(0)}%: ${((draws / battlesRun) * 100).toFixed(1)}% draws (target: <=20%)`);
@@ -139,7 +139,7 @@ console.log("\n=== Random-population draw rate & new-player first-win-within-5 =
     let wonAtLeastOnce = false;
     for (let battle = 0; battle < 5; battle += 1) {
       const opponent = findClosestOpponent(newCard, population);
-      const result = resolveBattle(newCard, opponent, newPlayerVariance, rng);
+      const result = resolveBattle(newCard, opponent, newPlayerVariance, rng, { attacker: newCard.level, defender: opponent.level });
       if (result.outcome === "A") {
         wonAtLeastOnce = true;
         break;
