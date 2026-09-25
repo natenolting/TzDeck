@@ -20,6 +20,7 @@ export type FunnelEvent =
   | { name: "card_inspected"; rarity: CardRarity }
   | { name: "card_shared"; rarity: CardRarity }
   | { name: "demo_battle_started"; source: "deck" | "pack" }
+  | { name: "demo_battle_replayed"; source: "deck" | "pack" }
   | { name: "wallet_connect_started" }
   | { name: "wallet_connected" };
 

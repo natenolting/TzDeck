@@ -127,6 +127,15 @@ export function normalizeDescriptionLength(description?: string | null): number 
 }
 
 /**
+ * How long a card rests after losing a battle it started. The database is
+ * authoritative: commit_battle and commit_trainer_battle each hard-code it
+ * as v_offensive_recovery. This copy is only for telling players the number
+ * (the demo battle's loss message); recoveryParity.test.ts reads the latest
+ * migrations and fails if the two disagree.
+ */
+export const OFFENSIVE_RECOVERY_HOURS: number = 4;
+
+/**
  * Stands in for an edition count upstream couldn't give: deep in the Common
  * tier, so an unknown card is never rewarded as scarce. The server seeds
  * battles with it (holdings.ts); anything simulating a fight in the browser

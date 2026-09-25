@@ -69,7 +69,15 @@ export default function DemoBattle({ card, source, initialSeed, onClose, onGoToD
       result={battle.result}
       wasOverkillTiebreak={battle.wasOverkillTiebreak}
       onClose={onClose}
-      demo={{ onReplay: () => setSeed(randomDemoSeed()), callToAction }}
+      demo={{
+        onReplay: () => {
+          // One per Replay press: a visitor who rerolls is the signal that the
+          // fight itself is fun, which a single start event can't show.
+          trackFunnelEvent({ name: "demo_battle_replayed", source: sourceRef.current });
+          setSeed(randomDemoSeed());
+        },
+        callToAction,
+      }}
     />
   );
 }
