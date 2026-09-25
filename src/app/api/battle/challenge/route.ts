@@ -6,12 +6,12 @@ import { fetchBattleTokenMetadata } from "@/lib/battle/holdings";
 import { authenticateAndClaim, isSignedRequestBodyShapeValid, splitCardKey, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import {
   baseXpAward,
-  bestCardForChallenge,
-  candidateStrength,
+  bestFittingCardForWallet,
   effectiveStats,
   levelForXp,
   mulberry32,
   resolveBattle,
+  strength,
   type BaseSeed,
   type CandidateCard,
 } from "@/lib/battle/rules";
@@ -136,15 +136,7 @@ export async function POST(request: NextRequest) {
     }
 
     const attackerStats = effectiveStats(attackerSeed, attackerLevel);
-    const attackerStrength = candidateStrength({
-      wallet,
-      cardKey: body.attackerCardKey,
-      seed: attackerSeed,
-      level: attackerLevel,
-      recoveryUntil: null,
-      defenseCount: 0,
-      defenseResetAt: new Date(0),
-    });
+    const attackerStrength = strength(attackerStats.power, attackerStats.hp);
 
     // No re-roll for a direct challenge -- a named wallet has no sensible substitute.
     const targetRows = await fetchWalletCandidateCards(body.defenderWallet);
@@ -153,7 +145,7 @@ export async function POST(request: NextRequest) {
       return errorResponse(409, "target_not_eligible");
     }
     const targetCards = targetRows.map(toCandidateCard);
-    const defenderCard = bestCardForChallenge(attackerStrength, targetCards, new Date());
+    const defenderCard = bestFittingCardForWallet(attackerStrength, targetCards, new Date());
     if (!defenderCard) {
       await failAttempt(nonce, generation, { error: "target_not_eligible" }, 409, false);
       return errorResponse(409, "target_not_eligible");

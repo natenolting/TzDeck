@@ -6,12 +6,12 @@ import { fetchBattleTokenMetadata } from "@/lib/battle/holdings";
 import { authenticateAndClaim, isSignedRequestBodyShapeValid, splitCardKey, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import {
   baseXpAward,
-  candidateStrength,
   effectiveStats,
   findMatch,
   levelForXp,
   mulberry32,
   resolveBattle,
+  strength,
   type BaseSeed,
   type CandidateCard,
 } from "@/lib/battle/rules";
@@ -134,15 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     const attackerStats = effectiveStats(attackerSeed, attackerLevel);
-    const attackerStrength = candidateStrength({
-      wallet,
-      cardKey: body.attackerCardKey,
-      seed: attackerSeed,
-      level: attackerLevel,
-      recoveryUntil: null,
-      defenseCount: 0,
-      defenseResetAt: new Date(0),
-    });
+    const attackerStrength = strength(attackerStats.power, attackerStats.hp);
 
     const poolRows = await fetchMatchmakingCandidatePool(wallet);
     const pool = poolRows.map(toCandidateCard);
