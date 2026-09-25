@@ -8,14 +8,14 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="flex items-center justify-between gap-4 border-t border-border-subtle pt-6 text-xs text-text-tertiary">
+    <footer className="flex items-center justify-between gap-2 border-t border-border-subtle pt-6 text-xs text-text-tertiary sm:gap-4">
       <div>
         <p className="font-display text-sm font-bold tracking-wide text-text-secondary">
           TzDeck
         </p>
         <p className="mt-1">Discover art on Tezos.</p>
       </div>
-      <nav aria-label="Footer" className="flex flex-wrap items-center gap-2">
+      <nav aria-label="Footer" className="flex shrink-0 items-center gap-1 sm:gap-2">
         <SupportLink iconOnly />
         {SOCIAL_LINKS.map(({ label, href, Icon }) => (
           <a
