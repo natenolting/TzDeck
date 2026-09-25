@@ -214,6 +214,12 @@ export interface BattleResult {
   history: RoundRecord[];
 }
 
+/** Every battle route resolves combat with this damage swing, ± as a fraction of Power. */
+export const COMBAT_VARIANCE = 0.2;
+
+/** Recorded with every committed battle, so a stored result names the rules it was fought under. */
+export const RULES_VERSION = "v1";
+
 const MAX_ROUNDS_SAFETY = 1000;
 
 /**
@@ -433,6 +439,23 @@ export function trainerTierGap(tier: CardRarity, cardLevel: number): number {
 export function trainerBaseXpAward(tier: CardRarity, gap: number): number {
   const base = Math.round(baseXpAward(tier, TRAINER_LEVEL_UNLOCK[tier]) * TRAINER_XP_DISCOUNT);
   return decayScaledAward(base, gap);
+}
+
+export interface TrainerSettlement {
+  outcome: "win" | "draw";
+  attackerWon: boolean;
+  /** Before repeat-win decay, which commit_trainer_battle applies. Zero unless the attacker won. */
+  baseXpAward: number;
+}
+
+/** What a resolved trainer battle commits. A trainer never earns XP, so only an attacker win pays. */
+export function settleTrainerBattle(combat: BattleResult, tier: CardRarity, attackerLevel: number): TrainerSettlement {
+  const attackerWon = combat.outcome === "A";
+  return {
+    outcome: combat.outcome === "draw" ? "draw" : "win",
+    attackerWon,
+    baseXpAward: attackerWon ? trainerBaseXpAward(tier, trainerTierGap(tier, attackerLevel)) : 0,
+  };
 }
 
 /** Full reference formula (both decay stages) -- for tests/parity only; the route never calls this directly. */

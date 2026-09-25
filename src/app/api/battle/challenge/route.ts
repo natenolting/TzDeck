@@ -5,6 +5,8 @@ import { verifyOwnership } from "@/lib/battle/ownership";
 import { fetchBattleTokenMetadata } from "@/lib/battle/holdings";
 import { authenticateAndClaim, isSignedRequestBodyShapeValid, splitCardKey, type SignedRequestBody } from "@/lib/battle/requestAuth";
 import {
+  COMBAT_VARIANCE,
+  RULES_VERSION,
   baseXpAward,
   bestCardForChallenge,
   candidateStrength,
@@ -26,8 +28,6 @@ import {
 
 export const maxDuration = 20;
 
-const COMBAT_VARIANCE = 0.2;
-const RULES_VERSION = "v1";
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
