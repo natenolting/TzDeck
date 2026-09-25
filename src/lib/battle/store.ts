@@ -397,7 +397,7 @@ export interface ProgressRow {
   seed_editions: number;
   seed_description_length: number;
   recovery_until: string | null;
-  recovery_reason: string | null;
+  recovery_reason: "offensive" | "defensive" | null;
   progress_version: string;
 }
 
