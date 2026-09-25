@@ -56,6 +56,8 @@ export interface BattleResult {
     finalHpB: number;
     history: RoundRecord[];
   };
+  /** Signed link to this battle's result page, on the attacker's wins only (#128). */
+  shareToken?: string;
 }
 
 type PanelState =

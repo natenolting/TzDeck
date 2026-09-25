@@ -85,3 +85,24 @@ export function ogImage(card: Pick<NFTCard, "contract_address" | "token_id">) {
   } as const;
 }
 
+
+/** Absolute URL of a won battle's page (#81): the signed token is the whole address. */
+export function battleShareLink(token: string): string {
+  return `${SITE_ORIGIN}/b/${token}`;
+}
+
+/**
+ * Bump when the battle preview's composition in `src/app/b/[token]/og/route.tsx`
+ * changes, for the same reason as OG_VERSION.
+ */
+const BATTLE_OG_VERSION = 1;
+
+/** A won battle's preview image, described for OpenGraph and Twitter alike. */
+export function battleOgImage(token: string) {
+  return {
+    url: `${battleShareLink(token)}/og?v=${BATTLE_OG_VERSION}`,
+    ...OG_IMAGE_SIZE,
+    type: "image/png",
+    alt: "A battle won on TzDeck",
+  } as const;
+}

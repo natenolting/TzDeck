@@ -410,6 +410,35 @@ test("the outcome banner and Close button stay hidden until the whole battle has
   assert.ok(await screen.findByRole("button", { name: /close/i }), "Close becomes available once the sequence completes");
 });
 
+test("a win that came with a share token offers Share beside Close; a loss and a tokenless win don't", async () => {
+  const { render, screen, cleanup, BattleResultScreen } = await loadTestHarness();
+  stubDefenderTokenFetch("Rival Card");
+
+  const cases: Array<[string, BattleResult, boolean]> = [
+    ["a signed win", baseResult({ shareToken: "payload.signature" }), true],
+    ["a win the server didn't sign", baseResult(), false],
+    ["a loss", baseResult({ winner: "defender" }), false],
+  ];
+  for (const [label, result, shareable] of cases) {
+    render(
+      <BattleResultScreen
+        attackerCard={attackerCard}
+        result={result}
+        wasOverkillTiebreak={false}
+        onClose={() => {}}
+        beatDelayMs={5}
+      />,
+    );
+    await screen.findByRole("button", { name: /close/i });
+    assert.equal(
+      screen.queryByRole("button", { name: "Share this win" }) !== null,
+      shareable,
+      label,
+    );
+    cleanup();
+  }
+});
+
 test("a win shows Victory and the XP awarded once the battle has played out", async () => {
   const { render, screen, BattleResultScreen } = await loadTestHarness();
   stubDefenderTokenFetch("Rival Card");

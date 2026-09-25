@@ -6,6 +6,7 @@ import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { RARITY_CONFIG } from "./rarityStyles";
 import { OFFENSIVE_RECOVERY_HOURS, type RoundOutcome, type RoundRecord } from "@/lib/battle/rules";
 import { trainerAvatarSvg } from "@/lib/battle/trainerAvatar";
+import BattleShareButton from "./BattleShareButton";
 import type { BattleResult } from "./BattlePanel";
 
 export const DEFAULT_BEAT_DELAY_MS = 650;
@@ -347,9 +348,18 @@ export default function BattleResultScreen({
             </div>
           </div>
         ) : sequenceComplete ? (
-          <button onClick={onClose} className="button-primary mt-6 w-full px-4 py-2.5 text-xs font-semibold">
-            Close
-          </button>
+          <div className="mt-6 flex gap-2">
+            <button onClick={onClose} className="button-primary flex-1 px-4 py-2.5 text-xs font-semibold">
+              Close
+            </button>
+            {result.shareToken ? (
+              <BattleShareButton
+                token={result.shareToken}
+                against={result.trainerTier ? "trainer" : "collector"}
+                variant="icon"
+              />
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>

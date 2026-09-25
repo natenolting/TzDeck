@@ -4,6 +4,7 @@ import { calculateSupplyRarity } from "@/lib/objkt";
 import { verifyOwnership } from "@/lib/battle/ownership";
 import { fetchBattleTokenMetadata } from "@/lib/battle/holdings";
 import { authenticateAndClaim, isSignedRequestBodyShapeValid, splitCardKey, type SignedRequestBody } from "@/lib/battle/requestAuth";
+import { withShareToken } from "@/lib/battle/shareToken";
 import {
   baseXpAward,
   bestCardForChallenge,
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "attempt_in_progress" }, { status: 409, headers: { "Retry-After": "2" } });
       case "terminal": {
         const status = auth.row.status_code ?? 200;
-        return NextResponse.json(auth.row.response, { status });
+        return NextResponse.json(withShareToken(auth.row.response, body.attackerCardKey), { status });
       }
       case "claimed":
         break;
@@ -246,7 +247,11 @@ export async function POST(request: NextRequest) {
       inputs: { attackerStats, defenderStats, combat },
     });
 
-    return NextResponse.json(commitResult.response, { status: commitResult.statusCode });
+    // A win gets a signed share link; see shareToken.ts. Added here rather
+    // than stored, so a replayed request above gets one the same way.
+    return NextResponse.json(withShareToken(commitResult.response, body.attackerCardKey), {
+      status: commitResult.statusCode,
+    });
   } catch (error) {
     console.error("Error in challenge route:", error);
     return errorResponse(500, "internal_error");

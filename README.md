@@ -83,6 +83,12 @@ Anyone can watch a battle without a wallet. **Watch a demo battle** on My Deck's
 
 The demo card's fight is pinned by `DEMO_SHOWCASE_SEED` so the first thing a visitor sees includes a miss, a critical hit and a close win. `demo.test.ts` fails if a rules change alters that fight; when it does, pick a new seed that still shows all three.
 
+### Battle links
+
+A win can be shared. The battle routes add a `shareToken` to every response where the attacker won, and the result screen's share button turns it into a link to `/b/<token>`: a page with both cards, the rounds and the HP left, plus a link preview (`/b/<token>/og`) showing only the winner's artwork. The opponent appears in the preview by rarity alone, and no wallet appears anywhere. Sharing sends one anonymous `battle_shared` analytics event tagged only `trainer` or `collector`.
+
+Nothing is stored for a link. The token is the battle's summary signed with a key derived from `BATTLE_AUTH_SECRET` (`src/lib/battle/shareToken.ts`), so links never expire and a changed token answers 404. If `BATTLE_AUTH_SECRET` is ever rotated, set `BATTLE_SHARE_PREVIOUS_SECRETS` to the old value (comma-separated for several) to keep links issued under it working. A card on the denylist drops out of every battle page and preview it appears in; previews are cached for a day so that change reaches links already shared.
+
 ### Frequently asked questions
 
 **Does battling ever cost Tezos?** No. Every battle action -- matchmaking, direct challenges, opting in, refreshing holdings -- is authenticated by asking your wallet to sign a message (`wallet.client.requestSignPayload` in `WalletContext.tsx`), never by broadcasting an on-chain operation. Nothing is transferred and no gas or storage fee is paid.

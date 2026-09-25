@@ -36,12 +36,14 @@ type NFTDetailsModalComponent = typeof import("./NFTDetailsModal")["default"];
 type ShareCardButtonComponent = typeof import("./ShareCardButton")["default"];
 type PackOpeningComponent = typeof import("./PackOpening")["default"];
 type DemoBattleComponent = typeof import("./DemoBattle")["default"];
+type BattleShareButtonComponent = typeof import("./BattleShareButton")["default"];
 
 let testingLibrary: TestingLibrary | undefined;
 let NFTDetailsModal: NFTDetailsModalComponent | undefined;
 let ShareCardButton: ShareCardButtonComponent | undefined;
 let PackOpening: PackOpeningComponent | undefined;
 let DemoBattle: DemoBattleComponent | undefined;
+let BattleShareButton: BattleShareButtonComponent | undefined;
 
 const originalFetch = globalThis.fetch;
 const originalPlayPackRip = soundManager.playPackRip;
@@ -54,7 +56,8 @@ async function loadTestHarness() {
   ShareCardButton ||= (await import("./ShareCardButton")).default;
   PackOpening ||= (await import("./PackOpening")).default;
   DemoBattle ||= (await import("./DemoBattle")).default;
-  return { ...testingLibrary, NFTDetailsModal, ShareCardButton, PackOpening, DemoBattle };
+  BattleShareButton ||= (await import("./BattleShareButton")).default;
+  return { ...testingLibrary, NFTDetailsModal, ShareCardButton, PackOpening, DemoBattle, BattleShareButton };
 }
 
 /**
@@ -206,6 +209,23 @@ test("each of the three share paths sends one card_shared carrying nothing but t
     assert.deepStrictEqual(recorded, expected, `the ${path} path`);
     cleanup();
     Reflect.deleteProperty(globalThis.navigator, "share");
+  }
+});
+
+test("sharing a won battle sends one battle_shared carrying nothing but who it was against", async () => {
+  const { act, fireEvent, render, screen, BattleShareButton, cleanup } = await loadTestHarness();
+  stubClipboard();
+
+  for (const against of ["trainer", "collector"] as const) {
+    const recorded = recordEvents();
+    render(<BattleShareButton token="payload.signature" against={against} variant="icon" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Share this win" }));
+    });
+    assert.deepStrictEqual(recorded, [
+      ["event", { name: "battle_shared", data: { against }, options: undefined }],
+    ]);
+    cleanup();
   }
 });
 

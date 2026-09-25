@@ -7,6 +7,7 @@ import { objktClient } from "@/lib/objkt";
 import { bytesToSign, issueNonce, type NonceEnvelope } from "@/lib/battle/auth";
 import { getSql } from "@/lib/battle/store";
 import { TRAINER_LEVEL_UNLOCK } from "@/lib/battle/rules";
+import { verifyBattleShare } from "@/lib/battle/shareToken";
 import { POST } from "./route";
 
 process.env.BATTLE_AUTH_SECRET ||= "test-secret-do-not-use-in-production";
@@ -78,6 +79,33 @@ test("POST /api/battle/trainer: happy path resolves a battle against the common 
       assert.equal(response.status, 200);
       assert.ok(["win", "draw"].includes(json.outcome));
       assert.equal(json.trainerTier, "common");
+    });
+  } finally {
+    await cleanupWallet(address);
+  }
+});
+
+test("POST /api/battle/trainer: a win carries a signed share token naming the trainer, and nothing else does", async () => {
+  // A real-format card key: share tokens only ever name cards the card route could open.
+  const cardKey = "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton:42";
+  const { signer, publicKey, address } = await testSigner();
+  try {
+    const body = await buildSignedBody(signer, publicKey, address, "trainer", [cardKey, "common"]);
+    await withObjktStub(alwaysHeldStub(), async () => {
+      const response = await POST(postRequest({ ...body, attackerCardKey: cardKey, trainerTier: "common" }));
+      const json = await response.json();
+      assert.equal(response.status, 200);
+
+      // The fight is random, so each run checks whichever branch it got.
+      if (json.winner === "attacker") {
+        const share = verifyBattleShare(json.shareToken);
+        assert.ok(share, "a win's token verifies");
+        assert.deepEqual(share.opponent, { kind: "trainer", tier: "common" });
+        assert.equal(`${share.winner.contract}:${share.winner.tokenId}`, cardKey);
+        assert.equal(share.rounds, json.combat.rounds);
+      } else {
+        assert.equal(json.shareToken, undefined, "a loss or draw gets no link");
+      }
     });
   } finally {
     await cleanupWallet(address);
