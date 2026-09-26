@@ -3,7 +3,7 @@ import { afterEach, test } from "node:test";
 
 import { JSDOM } from "jsdom";
 
-import type { NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 import { objktClient } from "@/lib/objkt";
 import type { BattleResult } from "./BattlePanel";
 

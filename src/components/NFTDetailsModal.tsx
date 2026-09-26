@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 
 import { trackFunnelEvent } from "@/lib/analytics";
 
-import { getArtistProfileUrl, getCardImageSources, getCardKey, getCollectionUrl, distinctCollectionName, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/objkt";
+import { getArtistProfileUrl, getCollectionUrl, distinctCollectionName, isImageArtifact, isPlayableVideo, type NFTCard } from "@/lib/card";
+import { getCardImageSources } from "@/lib/ipfs";
+import { getCardKey } from "@/lib/cardKey";
 import { useDialogBehavior } from "@/hooks/useDialogBehavior";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";

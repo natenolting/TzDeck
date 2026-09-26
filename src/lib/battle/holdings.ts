@@ -1,3 +1,4 @@
+import { cardKey } from "@/lib/cardKey";
 import { objktClient } from "@/lib/objkt";
 import { deriveBaseSeed, UNKNOWN_EDITIONS_FALLBACK, type BaseSeed } from "./rules";
 
@@ -71,7 +72,7 @@ export async function fetchBattleTokenMetadata(
   contractAddress: string,
   tokenId: string,
 ): Promise<MetadataResult> {
-  const cardKey = `${contractAddress}:${tokenId}`;
+  const key = cardKey(contractAddress, tokenId);
   try {
     const query = `
       query SingleTokenMetadata($address: String!, $contract: String!, $tokenId: String!) {
@@ -106,7 +107,7 @@ export async function fetchBattleTokenMetadata(
     return {
       status: "ok",
       metadata: {
-        cardKey,
+        cardKey: key,
         contractAddress,
         tokenId,
         seed: deriveBaseSeed(editions, row.token.description),
@@ -188,7 +189,7 @@ export async function fetchBattleHoldingsPage(
     const cards: BattleTokenMetadata[] = rows
       .filter((row) => !isSelfMintedByHolder(address, row.token.creators))
       .map((row) => ({
-        cardKey: `${row.token.fa_contract}:${row.token.token_id}`,
+        cardKey: cardKey(row.token.fa_contract, row.token.token_id),
         contractAddress: row.token.fa_contract,
         tokenId: row.token.token_id,
         seed: deriveBaseSeed(resolveEditions(row.token.supply), row.token.description),

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import type { NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 import { refreshWishlist } from "@/lib/wishlistTransfer";
 import { saveWishlist } from "./useWishlist";
 

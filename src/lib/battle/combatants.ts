@@ -1,7 +1,7 @@
 import { reject } from "./failures";
 import { fetchBattleTokenMetadata } from "./holdings";
 import { verifyOwnership, type OwnershipResult } from "./ownership";
-import { splitCardKey } from "./requestAuth";
+import { parseCardKey } from "@/lib/cardKey";
 import { levelForXp, type CandidateCard, type Combatant } from "./rules";
 import { fetchProgress, type CandidatePoolRow } from "./store";
 
@@ -11,8 +11,15 @@ export interface Attacker extends Combatant {
 }
 
 /** A fresh upstream check that this wallet holds this card right now. */
+/** A card key the server stored or checked; one without a separator is a bug, not input. */
+function tokenOf(key: string): { contractAddress: string; tokenId: string } {
+  const token = parseCardKey(key);
+  if (!token) throw new Error(`malformed card key: ${key}`);
+  return token;
+}
+
 export function ownershipOf(card: Pick<Combatant, "wallet" | "cardKey">): Promise<OwnershipResult> {
-  const { contractAddress, tokenId } = splitCardKey(card.cardKey);
+  const { contractAddress, tokenId } = tokenOf(card.cardKey);
   return verifyOwnership(card.wallet, contractAddress, tokenId);
 }
 
@@ -42,7 +49,7 @@ export async function resolveAttacker(wallet: string, cardKey: string): Promise<
     };
   }
 
-  const { contractAddress, tokenId } = splitCardKey(cardKey);
+  const { contractAddress, tokenId } = tokenOf(cardKey);
   const metadata = await fetchBattleTokenMetadata(wallet, contractAddress, tokenId);
   if (metadata.status === "self_minted") reject("attacker_card_self_minted");
   if (metadata.status !== "ok") reject("attacker_metadata_unavailable");

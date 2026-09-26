@@ -3,11 +3,8 @@
 import { useMemo } from "react";
 
 import { useFailoverImage } from "@/hooks/useFailoverImage";
-import {
-  getCardImageSources,
-  isImageArtifact,
-  type NFTCard,
-} from "@/lib/objkt";
+import { getCardImageSources } from "@/lib/ipfs";
+import { isImageArtifact, type NFTCard } from "@/lib/card";
 import { ImageOffIcon } from "./icons";
 
 export default function SharedCardArtwork({ card }: { card: NFTCard }) {

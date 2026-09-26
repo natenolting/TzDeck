@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 import { buildDemoBattle, DEMO_SHOWCASE_CARD, DEMO_SHOWCASE_SEED, DEMO_TRAINER_TIER } from "./demo";
 import { deriveBaseSeed, effectiveStats, trainerStats, UNKNOWN_EDITIONS_FALLBACK } from "./rules";
 

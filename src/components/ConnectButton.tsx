@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
-import { formatShortAddress } from "@/lib/objkt";
+import { formatShortAddress } from "@/lib/card";
 import { CheckIcon, CopyIcon, LogoutIcon } from "./icons";
 
 interface ConnectButtonProps {

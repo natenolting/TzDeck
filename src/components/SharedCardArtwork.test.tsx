@@ -3,7 +3,7 @@ import { afterEach, test } from "node:test";
 
 import { JSDOM } from "jsdom";
 
-import type { NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost/",

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useCallback, useState, useMemo } from "react";
-import {
-  distinctCollectionName, NFTCard as NFTCardType, getCardImageSources, isImageArtifact } from "@/lib/objkt";
+import { distinctCollectionName, NFTCard as NFTCardType, isImageArtifact } from "@/lib/card";
+import { getCardImageSources } from "@/lib/ipfs";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { motion } from "framer-motion";
 import Image from "next/image";

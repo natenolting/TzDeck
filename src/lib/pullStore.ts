@@ -1,6 +1,7 @@
 import { after } from "next/server";
 
 import { getSql } from "@/lib/battle/store";
+import { cardKey } from "./cardKey";
 import { ALLOW_ALL, type DenylistIndex, type ExclusionRecord } from "./pullFilter";
 
 /**
@@ -43,12 +44,12 @@ export async function loadDenylist(now: number = Date.now()): Promise<DenylistIn
     const tokens = new Set<string>();
     for (const row of rows) {
       if (row.token_id === null) contracts.add(row.fa_contract);
-      else tokens.add(`${row.fa_contract}:${row.token_id}`);
+      else tokens.add(cardKey(row.fa_contract, row.token_id));
     }
 
     const index: DenylistIndex = {
       has: (faContract, tokenId) =>
-        contracts.has(faContract) || tokens.has(`${faContract}:${tokenId}`),
+        contracts.has(faContract) || tokens.has(cardKey(faContract, tokenId)),
     };
 
     cached = { index, loadedAt: now };

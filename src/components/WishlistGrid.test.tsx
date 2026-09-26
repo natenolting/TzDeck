@@ -41,7 +41,7 @@ dom.window.URL.revokeObjectURL = (url: string) => {
 
 type TestingLibrary = typeof import("@testing-library/react");
 type WishlistGridComponent = typeof import("./WishlistGrid")["default"];
-type NFTCard = import("@/lib/objkt").NFTCard;
+type NFTCard = import("@/lib/card").NFTCard;
 type StubbedClient = {
   request: (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
 };

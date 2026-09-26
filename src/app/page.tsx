@@ -13,7 +13,8 @@ import SectionTabs, { sectionPanelId, sectionTabId } from "@/components/SectionT
 import SupportLink from "@/components/SupportLink";
 import { RARITY_CONFIG } from "@/components/rarityStyles";
 import { useWallet } from "@/context/WalletContext";
-import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey } from "@/lib/cardKey";
+import { NFTCard as NFTCardType } from "@/lib/card";
 import { RARITY_RULES, RARITY_TIERS } from "@/lib/rarity";
 import { DEMO_SHOWCASE_CARD, DEMO_SHOWCASE_SEED, randomDemoSeed } from "@/lib/battle/demo";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";

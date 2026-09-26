@@ -14,7 +14,8 @@ import BattlePanel, {
 } from "./BattlePanel";
 import { useBattleStatus } from "@/hooks/useBattleStatus";
 import { baseStatsFromSeed, deriveBaseSeed } from "@/lib/battle/rules";
-import { objktClient, type NFTCard } from "@/lib/objkt";
+import { objktClient } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   url: "http://localhost/",

@@ -1,12 +1,9 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import {
-  fetchCardsByKeys,
-  getCardKey,
-  NFTCard as NFTCardType,
-  parseTokenReference,
-} from "@/lib/objkt";
+import { fetchCardsByKeys } from "@/lib/objkt";
+import { getCardKey, parseTokenReference } from "@/lib/cardKey";
+import { NFTCard as NFTCardType } from "@/lib/card";
 import {
   mergeWishlists,
   parseWishlistExport,

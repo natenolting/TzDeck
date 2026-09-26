@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { convertIpfsUrl, extractIpfsHash, IPFS_GATEWAYS } from "@/lib/objkt";
+import { convertIpfsUrl, extractIpfsHash, IPFS_GATEWAYS } from "@/lib/ipfs";
 
 /** NFT hosts are unbounded and often just slow rather than erroring, and a
  * stalled fetch never fires the `<img>` error event the gateway/source

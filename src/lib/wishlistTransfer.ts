@@ -1,9 +1,6 @@
-import {
-  fetchCardsByKeys,
-  getCardKey,
-  normalizeEditions,
-  type NFTCard,
-} from "./objkt";
+import { fetchCardsByKeys } from "./objkt";
+import { getCardKey } from "./cardKey";
+import { getObjktAssetUrl, normalizeEditions, type NFTCard } from "./card";
 import { isCardRarity, rarityFor } from "./rarity";
 
 /** Bumped only when the file shape changes incompatibly; `parseWishlistExport` stays lenient. */
@@ -69,7 +66,7 @@ function readCard(entry: unknown): NFTCard | null {
     price_xtz: priceXtz,
     // Never trusted from the file -- a link the user clicks is rebuilt from the
     // token's own contract and id, so a tampered file can't point at a drainer.
-    objkt_url: `https://objkt.com/asset/${contractAddress}/${tokenId}`,
+    objkt_url: getObjktAssetUrl(contractAddress, tokenId),
     rarity: isCardRarity(rarity) ? rarity : rarityFor(editions, priceXtz),
     quantity_owned: readFiniteNumber(raw.quantity_owned),
     // Absent on every wishlist saved before video playback existed, which is
@@ -155,19 +152,46 @@ export function mergeWishlists(existing: NFTCard[], incoming: NFTCard[]): NFTCar
 }
 
 /**
- * A saved card's edition count as the app reads counts today. Wishlists saved
- * before normalizeEditions existed can hold a 0 (a burned or unindexed token),
- * which showed as "Editions: 0" and graded as scarce; this makes it Unknown and
- * regrades the card. A stored 1 can't be judged here -- it may be a real 1 of 1
- * or a missing supply filled in as 1 -- so the backfill asks OBJKT about those.
+ * The URL a media link saved by the unfinished /api/media proxy wrapped, which
+ * the image path reads like any other. That route no longer exists, so a link
+ * still pointing at it can only 404.
  */
-export function repairStoredEditions(card: NFTCard): NFTCard {
+function unwrapMediaProxy(uri: string | undefined): string | undefined {
+  if (!uri?.startsWith("/api/media?")) return uri;
+  const params = new URLSearchParams(uri.slice(uri.indexOf("?") + 1));
+  return params.get("url") ?? params.get("ipfs") ?? uri;
+}
+
+/**
+ * A saved card as the app reads cards today, repaired once as the wishlist
+ * loads rather than on every render.
+ *
+ * - Wishlists saved before normalizeEditions existed can hold a 0 (a burned or
+ *   unindexed token), which showed as "Editions: 0" and graded as scarce; this
+ *   makes it Unknown and regrades the card. A stored 1 can't be judged here --
+ *   it may be a real 1 of 1 or a missing supply filled in as 1 -- so the
+ *   backfill asks OBJKT about those.
+ * - The earliest wishlists saved image links through the unfinished media
+ *   proxy; this unwraps them.
+ */
+export function repairStoredCard(card: NFTCard): NFTCard {
   const editions = normalizeEditions(card.editions);
-  if (editions === card.editions) return card;
+  const display_uri = unwrapMediaProxy(card.display_uri);
+  const thumbnail_uri = unwrapMediaProxy(card.thumbnail_uri);
+  const artifact_uri = unwrapMediaProxy(card.artifact_uri);
+  if (
+    editions === card.editions
+    && display_uri === card.display_uri
+    && thumbnail_uri === card.thumbnail_uri
+    && artifact_uri === card.artifact_uri
+  ) return card;
   return {
     ...card,
     editions,
-    rarity: rarityFor(editions, card.price_xtz),
+    rarity: editions === card.editions ? card.rarity : rarityFor(editions, card.price_xtz),
+    display_uri,
+    thumbnail_uri,
+    artifact_uri,
   };
 }
 

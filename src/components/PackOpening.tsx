@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  getCardKey,
-  NFTCard as NFTCardType,
-} from "@/lib/objkt";
+import { getCardKey } from "@/lib/cardKey";
+import { NFTCard as NFTCardType } from "@/lib/card";
 import NFTCard from "./NFTCard";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { soundManager } from "@/lib/sound";

@@ -3,7 +3,8 @@ import { afterEach, test } from "node:test";
 
 import { JSDOM } from "jsdom";
 
-import { getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey } from "@/lib/cardKey";
+import type { NFTCard as NFTCardType } from "@/lib/card";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
 import type { BattleCardStats } from "./NFTDetailsModal";
 
