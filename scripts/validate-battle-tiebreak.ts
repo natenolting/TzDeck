@@ -13,7 +13,7 @@ import {
   resolveBattle,
   type Rng,
 } from "../src/lib/battle/rules";
-import type { CardRarity } from "../src/lib/objkt";
+import type { CardRarity } from "../src/lib/rarity";
 
 const SEED = 90210;
 const TRIALS_PER_CELL = 3000;

@@ -1,4 +1,4 @@
-import type { CardRarity } from "@/lib/objkt";
+import { RARITY_LABELS, type CardRarity } from "@/lib/rarity";
 
 /**
  * Presentation for each rarity tier.
@@ -12,6 +12,8 @@ export const RARITY_CONFIG: Record<
   CardRarity,
   {
     label: string;
+    /** A small solid swatch, as in the About page's legend. */
+    dot: string;
     ring: string;
     badge: string;
     text: string;
@@ -19,35 +21,40 @@ export const RARITY_CONFIG: Record<
   }
 > = {
   common: {
-    label: "Common",
+    label: RARITY_LABELS.common,
+    dot: "bg-rarity-common",
     ring: "ring-1 ring-rarity-common/60 hover:ring-rarity-common",
     text: "text-rarity-common",
     badge: "border-rarity-common/40 bg-rarity-common/15 text-rarity-common",
     glow: "shadow-[0_0_24px_-10px_var(--rarity-common)] hover:shadow-[0_0_30px_-7px_var(--rarity-common)]",
   },
   uncommon: {
-    label: "Uncommon",
+    label: RARITY_LABELS.uncommon,
+    dot: "bg-rarity-uncommon",
     ring: "ring-1 ring-rarity-uncommon/60 hover:ring-rarity-uncommon",
     text: "text-rarity-uncommon",
     badge: "border-rarity-uncommon/40 bg-rarity-uncommon/15 text-rarity-uncommon",
     glow: "shadow-[0_0_24px_-10px_var(--rarity-uncommon)] hover:shadow-[0_0_30px_-7px_var(--rarity-uncommon)]",
   },
   rare: {
-    label: "Rare",
+    label: RARITY_LABELS.rare,
+    dot: "bg-rarity-rare",
     ring: "ring-1 ring-rarity-rare/60 hover:ring-rarity-rare",
     text: "text-rarity-rare",
     badge: "border-rarity-rare/40 bg-rarity-rare/15 text-rarity-rare",
     glow: "shadow-[0_0_24px_-10px_var(--rarity-rare)] hover:shadow-[0_0_30px_-7px_var(--rarity-rare)]",
   },
   epic: {
-    label: "Epic",
+    label: RARITY_LABELS.epic,
+    dot: "bg-rarity-epic",
     ring: "ring-1 ring-rarity-epic/60 hover:ring-rarity-epic",
     text: "text-rarity-epic",
     badge: "border-rarity-epic/40 bg-rarity-epic/15 text-rarity-epic",
     glow: "shadow-[0_0_24px_-10px_var(--rarity-epic)] hover:shadow-[0_0_30px_-7px_var(--rarity-epic)]",
   },
   legendary: {
-    label: "Legendary",
+    label: RARITY_LABELS.legendary,
+    dot: "bg-rarity-legendary",
     ring: "ring-1 ring-rarity-legendary/60 hover:ring-rarity-legendary",
     text: "text-rarity-legendary",
     badge: "border-rarity-legendary/40 bg-rarity-legendary/15 font-bold text-rarity-legendary",

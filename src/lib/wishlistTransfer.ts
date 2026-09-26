@@ -1,13 +1,10 @@
 import {
-  calculateRarity,
-  calculateSupplyRarity,
   fetchCardsByKeys,
   getCardKey,
   normalizeEditions,
-  RARITY_LEGEND,
-  type CardRarity,
   type NFTCard,
 } from "./objkt";
+import { isCardRarity, rarityFor } from "./rarity";
 
 /** Bumped only when the file shape changes incompatibly; `parseWishlistExport` stays lenient. */
 export const WISHLIST_EXPORT_VERSION = 1;
@@ -19,8 +16,6 @@ export interface ParsedWishlist {
   /** Entries dropped for missing an identity or repeating one already read. */
   skipped: number;
 }
-
-const RARITY_TIERS = new Set<string>(RARITY_LEGEND.map((entry) => entry.tier));
 
 // An export is a file the user can hand-edit or receive from someone else, and
 // every URL in it ends up in an <img src> or an <a href>. Only these two schemes
@@ -75,11 +70,7 @@ function readCard(entry: unknown): NFTCard | null {
     // Never trusted from the file -- a link the user clicks is rebuilt from the
     // token's own contract and id, so a tampered file can't point at a drainer.
     objkt_url: `https://objkt.com/asset/${contractAddress}/${tokenId}`,
-    rarity: rarity && RARITY_TIERS.has(rarity)
-      ? (rarity as CardRarity)
-      : (priceXtz === undefined
-        ? calculateSupplyRarity(editions)
-        : calculateRarity(editions, priceXtz)),
+    rarity: isCardRarity(rarity) ? rarity : rarityFor(editions, priceXtz),
     quantity_owned: readFiniteNumber(raw.quantity_owned),
     // Absent on every wishlist saved before video playback existed, which is
     // correct: no mime means the card renders as an image, exactly as before.
@@ -176,7 +167,7 @@ export function repairStoredEditions(card: NFTCard): NFTCard {
   return {
     ...card,
     editions,
-    rarity: card.price_xtz === undefined ? calculateSupplyRarity(editions) : calculateRarity(editions, card.price_xtz),
+    rarity: rarityFor(editions, card.price_xtz),
   };
 }
 

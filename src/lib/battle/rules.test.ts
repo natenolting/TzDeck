@@ -22,7 +22,6 @@ import {
   resolveBattle,
   xpThresholdForLevel,
   xpWithinLevel,
-  TRAINER_TIER_ORDER,
   TRAINER_LEVEL_UNLOCK,
   trainerId,
   trainerStats,
@@ -38,6 +37,7 @@ import {
   type CandidateCard,
   type Rng,
 } from "./rules";
+import { RARITY_TIERS } from "@/lib/rarity";
 
 const FAR_FUTURE = new Date("2100-01-01");
 const NOW = new Date("2026-01-01");
@@ -405,7 +405,7 @@ test("trainerId: namespaces a tier as a synthetic id, never a real tz/KT1 addres
 });
 
 test("trainerStats: fixed, deterministic per tier, strictly increasing power/hp/level up the roster", () => {
-  const stats = TRAINER_TIER_ORDER.map((tier) => trainerStats(tier));
+  const stats = RARITY_TIERS.map((tier) => trainerStats(tier));
   for (let i = 1; i < stats.length; i++) {
     assert.ok(stats[i].power > stats[i - 1].power, `power should increase at index ${i}`);
     assert.ok(stats[i].hp > stats[i - 1].hp, `hp should increase at index ${i}`);
@@ -420,7 +420,7 @@ test("highestUnlockedTrainerTier: a card below every threshold is stuck at commo
 });
 
 test("highestUnlockedTrainerTier: unlocks exactly at each tier's threshold", () => {
-  for (const tier of TRAINER_TIER_ORDER) {
+  for (const tier of RARITY_TIERS) {
     assert.equal(highestUnlockedTrainerTier(TRAINER_LEVEL_UNLOCK[tier]), tier);
   }
 });
@@ -434,7 +434,7 @@ test("isTrainerTierUnlocked: legendary is locked for a level-1 card, common neve
 test("trainerTierGap: zero at your own ceiling, positive below it", () => {
   const cardLevel = TRAINER_LEVEL_UNLOCK.epic;
   assert.equal(trainerTierGap("epic", cardLevel), 0);
-  assert.equal(trainerTierGap("common", cardLevel), TRAINER_TIER_ORDER.indexOf("epic") - TRAINER_TIER_ORDER.indexOf("common"));
+  assert.equal(trainerTierGap("common", cardLevel), RARITY_TIERS.indexOf("epic") - RARITY_TIERS.indexOf("common"));
 });
 
 test("trainerBaseXpAward: fighting at your ceiling pays more than fighting two tiers below it", () => {

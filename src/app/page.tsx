@@ -11,8 +11,10 @@ import Footer from "@/components/Footer";
 import PageBackdrop from "@/components/PageBackdrop";
 import SectionTabs, { sectionPanelId, sectionTabId } from "@/components/SectionTabs";
 import SupportLink from "@/components/SupportLink";
+import { RARITY_CONFIG } from "@/components/rarityStyles";
 import { useWallet } from "@/context/WalletContext";
-import { CardRarity, getCardKey, NFTCard as NFTCardType, RARITY_LEGEND } from "@/lib/objkt";
+import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
+import { RARITY_RULES, RARITY_TIERS } from "@/lib/rarity";
 import { DEMO_SHOWCASE_CARD, DEMO_SHOWCASE_SEED, randomDemoSeed } from "@/lib/battle/demo";
 import { saveWishlist, useWishlist } from "@/hooks/useWishlist";
 import { useWishlistBackfill } from "@/hooks/useWishlistBackfill";
@@ -29,14 +31,6 @@ import {
 } from "@/components/icons";
 
 type ActiveTab = "packs" | "deck" | "wishlist" | "about";
-
-const RARITY_DOT_CLASS: Record<CardRarity, string> = {
-  legendary: "bg-rarity-legendary",
-  epic: "bg-rarity-epic",
-  rare: "bg-rarity-rare",
-  uncommon: "bg-rarity-uncommon",
-  common: "bg-rarity-common",
-};
 
 export default function Home() {
   const { address } = useWallet();
@@ -282,14 +276,14 @@ export default function Home() {
                       Pack rarity reflects edition size and listed price. Pulls are random; the grade follows these rules.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-text-secondary">
-                      {RARITY_LEGEND.map(({ tier, label, rule }) => (
+                      {[...RARITY_TIERS].reverse().map((tier) => (
                         <span
                           key={tier}
                           className="flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-1/80 px-3 py-1.5"
                         >
-                          <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${RARITY_DOT_CLASS[tier]}`} />
-                          <span className="font-semibold text-text-primary">{label}</span>
-                          <span>{rule}</span>
+                          <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${RARITY_CONFIG[tier].dot}`} />
+                          <span className="font-semibold text-text-primary">{RARITY_CONFIG[tier].label}</span>
+                          <span>{RARITY_RULES[tier]}</span>
                         </span>
                       ))}
                     </div>

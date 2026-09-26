@@ -1,4 +1,5 @@
-import { calculateSupplyRarity, type NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/objkt";
+import { calculateSupplyRarity } from "@/lib/rarity";
 import type { BattleResult } from "@/components/BattlePanel";
 import {
   deriveBaseSeed,

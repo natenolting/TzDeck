@@ -5,6 +5,7 @@ import { useWallet } from "@/context/WalletContext";
 import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
 import { useBattleStatus } from "@/hooks/useBattleStatus";
 import type { BattleCardStatus } from "@/lib/battle/status";
+import { isCardRarity, RARITY_LABELS, RARITY_TIERS, type CardRarity } from "@/lib/rarity";
 import NFTCard from "./NFTCard";
 import BattlePanel from "./BattlePanel";
 import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
@@ -82,7 +83,7 @@ export default function DeckGrid({
 
   // Filters and Sorting
   const [searchQuery, setSearchQuery] = useState("");
-  const [rarityFilter, setRarityFilter] = useState<string>("all");
+  const [rarityFilter, setRarityFilter] = useState<CardRarity | "all">("all");
   const [sortBy, setSortBy] = useState<SortBy>("latest");
 
   useEffect(() => {
@@ -240,15 +241,15 @@ export default function DeckGrid({
           {/* Rarity Filter */}
           <select
             value={rarityFilter}
-            onChange={(e) => setRarityFilter(e.target.value)}
+            onChange={(e) => setRarityFilter(isCardRarity(e.target.value) ? e.target.value : "all")}
             className={SELECT_CLASS}
           >
             <option value="all">All Rarities</option>
-            <option value="legendary">Legendary</option>
-            <option value="epic">Epic</option>
-            <option value="rare">Rare</option>
-            <option value="uncommon">Uncommon</option>
-            <option value="common">Common</option>
+            {[...RARITY_TIERS].reverse().map((tier) => (
+              <option key={tier} value={tier}>
+                {RARITY_LABELS[tier]}
+              </option>
+            ))}
           </select>
 
           {/* Sort By */}

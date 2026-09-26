@@ -1,4 +1,4 @@
-import type { CardRarity } from "@/lib/objkt";
+import type { CardRarity } from "@/lib/rarity";
 import { mulberry32, trainerId } from "./rules";
 
 const GRID = 44;

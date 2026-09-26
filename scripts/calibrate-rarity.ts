@@ -1,18 +1,8 @@
-import {
-  calculateRarity,
-  objktClient,
-  RARITY_THRESHOLDS,
-} from "../src/lib/objkt";
-import type { CardRarity } from "../src/lib/objkt";
+import { objktClient } from "../src/lib/objkt";
+import { RARITY_THRESHOLDS, RARITY_TIERS, rarityFor, type CardRarity } from "../src/lib/rarity";
 
 const SAMPLE_SIZE = 500;
-const RARITIES: CardRarity[] = [
-  "legendary",
-  "epic",
-  "rare",
-  "uncommon",
-  "common",
-];
+const RARITIES = [...RARITY_TIERS].reverse();
 
 interface CalibrationResponse {
   listing: Array<{
@@ -118,7 +108,7 @@ async function main() {
 
   for (const listing of data.listing) {
     const priceXtz = listing.price / 1_000_000;
-    counts[calculateRarity(listing.token.supply ?? undefined, priceXtz)] += 1;
+    counts[rarityFor(listing.token.supply ?? undefined, priceXtz)] += 1;
   }
 
   const distribution = RARITIES.map((rarity) => ({
