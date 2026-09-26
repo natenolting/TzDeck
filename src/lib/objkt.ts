@@ -7,62 +7,10 @@ import {
   type DenylistIndex,
   type ExclusionRecord,
 } from "./pullFilter";
+import { calculateSupplyRarity, rarityFor, type CardRarity } from "./rarity";
 
 const OBJKT_API_URL = process.env.NEXT_PUBLIC_OBJKT_API_URL || "https://data.objkt.com/v3/graphql";
 export const objktClient = new GraphQLClient(OBJKT_API_URL);
-
-export type CardRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
-
-export const RARITY_THRESHOLDS = {
-  topTierPrice: 500,
-  epicEditions: 5,
-  scarceTierPrice: 180,
-  rareEditions: 1,
-  rarePrice: 110,
-  // Edition-only "rare" breakpoint for calculateSupplyRarity's 5-tier ladder --
-  // distinct from rareEditions above, which is a price-inclusive threshold.
-  // Placeholder value (Open Questions: exact epic/legendary edition thresholds).
-  supplyRareEditions: 10,
-  uncommonEditions: 25,
-  uncommonPrice: 5,
-} as const;
-
-/** Renders an edition ceiling the way a collector reads it: a lone edition is "1 of 1". */
-function formatEditionRule(maximumEditions: number): string {
-  return maximumEditions === 1 ? "1 of 1" : `≤${maximumEditions} editions`;
-}
-
-export const RARITY_LEGEND: ReadonlyArray<{
-  tier: CardRarity;
-  label: string;
-  rule: string;
-}> = [
-  {
-    tier: "legendary",
-    label: "Legendary",
-    rule: `${formatEditionRule(1)} and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
-  },
-  {
-    tier: "epic",
-    label: "Epic",
-    rule: `${formatEditionRule(RARITY_THRESHOLDS.epicEditions)} and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`,
-  },
-  {
-    tier: "rare",
-    label: "Rare",
-    rule: `${formatEditionRule(RARITY_THRESHOLDS.rareEditions)} or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`,
-  },
-  {
-    tier: "uncommon",
-    label: "Uncommon",
-    rule: `${formatEditionRule(RARITY_THRESHOLDS.uncommonEditions)} or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`,
-  },
-  {
-    tier: "common",
-    label: "Common",
-    rule: `>${RARITY_THRESHOLDS.uncommonEditions} editions and under ${RARITY_THRESHOLDS.uncommonPrice}ꜩ`,
-  },
-];
 
 export interface NFTCard {
   listing_id?: number;
@@ -278,34 +226,6 @@ export function shuffleArray<T>(items: T[]): T[] {
   return result;
 }
 
-export function calculateRarity(editions?: number, priceXtz?: number): CardRarity {
-  if (editions === 1
-    && priceXtz !== undefined
-    && priceXtz >= RARITY_THRESHOLDS.topTierPrice) return "legendary";
-  if ((editions !== undefined
-      && editions <= RARITY_THRESHOLDS.epicEditions
-      && priceXtz !== undefined
-      && priceXtz >= RARITY_THRESHOLDS.scarceTierPrice)
-    || (priceXtz !== undefined
-      && priceXtz >= RARITY_THRESHOLDS.topTierPrice)) return "epic";
-  if ((editions !== undefined && editions <= RARITY_THRESHOLDS.rareEditions)
-    || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.rarePrice)) return "rare";
-  if ((editions !== undefined && editions <= RARITY_THRESHOLDS.uncommonEditions)
-    || (priceXtz !== undefined && priceXtz >= RARITY_THRESHOLDS.uncommonPrice)) return "uncommon";
-  return "common";
-}
-
-export function calculateSupplyRarity(editions?: number): CardRarity {
-  if (editions === 1) return "legendary";
-  if (editions !== undefined
-    && editions <= RARITY_THRESHOLDS.epicEditions) return "epic";
-  if (editions !== undefined
-    && editions <= RARITY_THRESHOLDS.supplyRareEditions) return "rare";
-  if (editions !== undefined
-    && editions <= RARITY_THRESHOLDS.uncommonEditions) return "uncommon";
-  return "common";
-}
-
 /**
  * A token's edition count, or undefined when upstream can't give one. OBJKT
  * reports a null supply for tokens it hasn't indexed and 0 for fully burned
@@ -388,9 +308,7 @@ export function normalizeObjktToken(
     price_mutez: options.priceMutez,
     price_xtz: priceXtz !== undefined ? Number(priceXtz.toFixed(3)) : undefined,
     objkt_url: `https://objkt.com/asset/${token.fa_contract}/${token.token_id}`,
-    rarity: priceXtz === undefined
-      ? calculateSupplyRarity(editions)
-      : calculateRarity(editions, priceXtz),
+    rarity: rarityFor(editions, priceXtz),
     quantity_owned: options.quantityOwned,
     mime: token.mime || undefined,
   };

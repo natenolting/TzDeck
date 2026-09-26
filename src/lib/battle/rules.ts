@@ -1,4 +1,4 @@
-import { calculateSupplyRarity, type CardRarity } from "@/lib/objkt";
+import { calculateSupplyRarity, RARITY_THRESHOLDS, RARITY_TIERS, type CardRarity } from "@/lib/rarity";
 
 // ---------------------------------------------------------------------------
 // U4: card stat derivation (Power/HP), ported directly from the validated
@@ -363,8 +363,6 @@ export function xpWithinLevel(xp: number): number {
 // a real wallet's card. See docs/brainstorms/2026-09-15-battle-trainers-design.md.
 // ---------------------------------------------------------------------------
 
-export const TRAINER_TIER_ORDER: readonly CardRarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
-
 /** Level a card must reach before it can challenge this tier's trainer. Tuning placeholder. */
 export const TRAINER_LEVEL_UNLOCK: Record<CardRarity, number> = {
   common: 1,
@@ -377,15 +375,15 @@ export const TRAINER_LEVEL_UNLOCK: Record<CardRarity, number> = {
 /**
  * Trainers have no real NFT, so there's no seed to derive stats from --
  * these representative edition counts feed the existing baseStatsFromSeed
- * formula purely to produce a fixed, sensible stat block per tier. Matches
- * the deck rarity ladder's own edition breakpoints (README's Battle system
- * section), not an arbitrary choice.
+ * formula purely to produce a fixed, sensible stat block per tier. Each is
+ * the most editions a card can have and still grade into that tier on the
+ * supply ladder. Common has no ceiling, so it takes a plainly common count.
  */
 const TRAINER_REPRESENTATIVE_EDITIONS: Record<CardRarity, number> = {
   legendary: 1,
-  epic: 5,
-  rare: 10,
-  uncommon: 25,
+  epic: RARITY_THRESHOLDS.epicEditions,
+  rare: RARITY_THRESHOLDS.supplyRareEditions,
+  uncommon: RARITY_THRESHOLDS.uncommonEditions,
   common: 100,
 };
 
@@ -412,20 +410,20 @@ export function trainerStats(tier: CardRarity): TrainerStats {
 /** The highest trainer tier a card at this level may challenge. */
 export function highestUnlockedTrainerTier(cardLevel: number): CardRarity {
   let unlocked: CardRarity = "common";
-  for (const tier of TRAINER_TIER_ORDER) {
+  for (const tier of RARITY_TIERS) {
     if (TRAINER_LEVEL_UNLOCK[tier] <= cardLevel) unlocked = tier;
   }
   return unlocked;
 }
 
 export function isTrainerTierUnlocked(tier: CardRarity, cardLevel: number): boolean {
-  return TRAINER_TIER_ORDER.indexOf(tier) <= TRAINER_TIER_ORDER.indexOf(highestUnlockedTrainerTier(cardLevel));
+  return RARITY_TIERS.indexOf(tier) <= RARITY_TIERS.indexOf(highestUnlockedTrainerTier(cardLevel));
 }
 
 /** Always >= 0: a player can never choose a tier above what's unlocked. */
 export function trainerTierGap(tier: CardRarity, cardLevel: number): number {
   const ceiling = highestUnlockedTrainerTier(cardLevel);
-  return TRAINER_TIER_ORDER.indexOf(ceiling) - TRAINER_TIER_ORDER.indexOf(tier);
+  return RARITY_TIERS.indexOf(ceiling) - RARITY_TIERS.indexOf(tier);
 }
 
 /**

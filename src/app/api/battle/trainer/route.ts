@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import type { CardRarity } from "@/lib/objkt";
+import { isCardRarity, type CardRarity } from "@/lib/rarity";
 import { resolveAttacker } from "@/lib/battle/combatants";
 import { reject } from "@/lib/battle/failures";
 import type { SignedRequestBody } from "@/lib/battle/requestAuth";
@@ -12,7 +12,6 @@ import {
   resolveBattle,
   settleTrainerBattle,
   trainerStats,
-  TRAINER_TIER_ORDER,
 } from "@/lib/battle/rules";
 import { signedAttemptRoute } from "@/lib/battle/signedRoute";
 import { commitTrainerBattle } from "@/lib/battle/store";
@@ -20,10 +19,6 @@ import { commitTrainerBattle } from "@/lib/battle/store";
 interface TrainerBattleBody extends SignedRequestBody {
   attackerCardKey: string;
   trainerTier: CardRarity;
-}
-
-function isCardRarity(value: unknown): value is CardRarity {
-  return typeof value === "string" && (TRAINER_TIER_ORDER as readonly string[]).includes(value);
 }
 
 export const POST = signedAttemptRoute<TrainerBattleBody>({

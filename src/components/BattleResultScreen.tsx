@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchTokenByKey, formatShortAddress, getCardImageSources, isImageArtifact, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { fetchTokenByKey, formatShortAddress, getCardImageSources, isImageArtifact, type NFTCard as NFTCardType } from "@/lib/objkt";
+import type { CardRarity } from "@/lib/rarity";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { RARITY_CONFIG } from "./rarityStyles";
 import { OFFENSIVE_RECOVERY_HOURS, type RoundOutcome, type RoundRecord } from "@/lib/battle/rules";

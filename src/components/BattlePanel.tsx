@@ -3,7 +3,8 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
 import type { BattleStatusState } from "@/hooks/useBattleStatus";
-import { getCardImageSources, getCardKey, isImageArtifact, type CardRarity, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardImageSources, getCardKey, isImageArtifact, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { RARITY_TIERS, type CardRarity } from "@/lib/rarity";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { battleErrorMessage } from "@/lib/battle/errorMessages";
 import {
@@ -11,7 +12,6 @@ import {
   deriveBaseSeed,
   isTrainerTierUnlocked,
   TRAINER_LEVEL_UNLOCK,
-  TRAINER_TIER_ORDER,
   type RoundRecord,
 } from "@/lib/battle/rules";
 import { trainerAvatarSvg } from "@/lib/battle/trainerAvatar";
@@ -674,7 +674,7 @@ export default function BattlePanel({ card, battleStatus, onClose }: BattlePanel
 
                 {mode === "trainer" && (
                   <div className="grid grid-cols-5 gap-1.5">
-                    {TRAINER_TIER_ORDER.map((tier) => {
+                    {RARITY_TIERS.map((tier) => {
                       const unlocked = isTrainerTierUnlocked(tier, ownCardStatus?.level ?? 1);
                       return (
                         <button

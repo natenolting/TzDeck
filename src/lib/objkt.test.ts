@@ -3,8 +3,6 @@ import test from "node:test";
 
 import {
   distinctCollectionName,
-  calculateRarity,
-  calculateSupplyRarity,
   convertIpfsUrl,
   extractIpfsHash,
   fetchCardsByKeys,
@@ -21,9 +19,7 @@ import {
   objktClient,
   parseTokenReference,
   PACK_MAX_PER_ARTIST,
-  RARITY_LEGEND,
   selectDiverseListings,
-  RARITY_THRESHOLDS,
   shuffleArray,
 } from "./objkt";
 
@@ -97,46 +93,6 @@ function filterableRow(
     },
   };
 }
-
-test("rarity legend matches calculateRarity boundaries", () => {
-  assert.deepEqual(
-    RARITY_LEGEND.map(({ tier, rule }) => [tier, rule]),
-    [
-      ["legendary", `1 of 1 and ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
-      ["epic", `≤${RARITY_THRESHOLDS.epicEditions} editions and ${RARITY_THRESHOLDS.scarceTierPrice}ꜩ+ · or ${RARITY_THRESHOLDS.topTierPrice}ꜩ+`],
-      ["rare", `1 of 1 or ${RARITY_THRESHOLDS.rarePrice}ꜩ+`],
-      ["uncommon", `≤${RARITY_THRESHOLDS.uncommonEditions} editions or ${RARITY_THRESHOLDS.uncommonPrice}ꜩ+`],
-      ["common", `>${RARITY_THRESHOLDS.uncommonEditions} editions and under ${RARITY_THRESHOLDS.uncommonPrice}ꜩ`],
-    ],
-  );
-
-  assert.equal(calculateRarity(1, RARITY_THRESHOLDS.topTierPrice), "legendary");
-  assert.equal(calculateRarity(1, RARITY_THRESHOLDS.topTierPrice - 0.001), "epic");
-  assert.equal(
-    calculateRarity(RARITY_THRESHOLDS.epicEditions, RARITY_THRESHOLDS.scarceTierPrice),
-    "epic",
-  );
-  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.topTierPrice), "epic");
-  assert.equal(calculateRarity(RARITY_THRESHOLDS.rareEditions, 0), "rare");
-  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.rarePrice), "rare");
-  assert.equal(calculateRarity(RARITY_THRESHOLDS.uncommonEditions, 0), "uncommon");
-  assert.equal(calculateRarity(200, RARITY_THRESHOLDS.uncommonPrice), "uncommon");
-  assert.equal(
-    calculateRarity(RARITY_THRESHOLDS.uncommonEditions + 1, 0),
-    "common",
-  );
-});
-
-test("calculateSupplyRarity grades wallet holdings without listing prices", () => {
-  assert.equal(calculateSupplyRarity(1), "legendary");
-  assert.equal(calculateSupplyRarity(5), "epic");
-  assert.equal(calculateSupplyRarity(6), "rare");
-  assert.equal(calculateSupplyRarity(10), "rare");
-  assert.equal(calculateSupplyRarity(11), "uncommon");
-  assert.equal(calculateSupplyRarity(25), "uncommon");
-  assert.equal(calculateSupplyRarity(26), "common");
-  assert.equal(calculateSupplyRarity(undefined), "common");
-});
 
 test("formatShortAddress creates the shared compact wallet label", () => {
   assert.equal(

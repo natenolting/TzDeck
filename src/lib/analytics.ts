@@ -1,6 +1,6 @@
 import { track } from "@vercel/analytics";
 
-import type { CardRarity } from "./objkt";
+import type { CardRarity } from "./rarity";
 
 /**
  * Every custom analytics event this app is allowed to send.

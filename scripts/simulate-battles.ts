@@ -22,7 +22,7 @@ import {
   resolveBattle,
   type Rng,
 } from "../src/lib/battle/rules";
-import type { CardRarity } from "../src/lib/objkt";
+import type { CardRarity } from "../src/lib/rarity";
 
 interface Flags {
   trials: number;
