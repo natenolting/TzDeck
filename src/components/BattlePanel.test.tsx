@@ -220,7 +220,7 @@ test("resubmitBattleAttempt retries a 409 attempt_in_progress, honoring Retry-Af
   const post = async () => {
     const status = statuses[postCalls];
     postCalls += 1;
-    if (status === 409) return jsonResponse(409, { error: "attempt_in_progress" }, { "Retry-After": "2" });
+    if (status === 409) return jsonResponse(409, { error: "attempt_in_progress", retryable: true }, { "Retry-After": "2" });
     return jsonResponse(200, { outcome: "win" });
   };
   const delays: number[] = [];
@@ -241,7 +241,7 @@ test("resubmitBattleAttempt retries a 429 rate_limited using the default delay w
   const post = async () => {
     const status = statuses[postCalls];
     postCalls += 1;
-    if (status === 429) return jsonResponse(429, { error: "rate_limited" });
+    if (status === 429) return jsonResponse(429, { error: "rate_limited", retryable: true });
     return jsonResponse(200, { outcome: "win" });
   };
   const delays: number[] = [];
@@ -332,7 +332,7 @@ test("resubmitBattleAttempt gives up after maxAttempts of a persistently retryab
   let postCalls = 0;
   const post = async () => {
     postCalls += 1;
-    return jsonResponse(503, { error: "ownership_unverifiable" });
+    return jsonResponse(503, { error: "ownership_unverifiable", retryable: true });
   };
   const delays: number[] = [];
   const wait = async (ms: number) => {
@@ -368,13 +368,13 @@ test("applyBattleOutcome: attack_cap_reached and defense_cap_reached map to the 
   assert.deepEqual(defense.panelState, { kind: "cap_reached" });
 });
 
-test("applyBattleOutcome: a terminal rejection with no language key surfaces the raw code and clears the pending attempt", () => {
+test("applyBattleOutcome: a terminal rejection with an unknown code shows a generic sentence, never the code", () => {
   const { panelState, clearPendingAttempt } = applyBattleOutcome({
     kind: "terminal",
     status: 400,
     error: "no_such_battle_code",
   });
-  assert.deepEqual(panelState, { kind: "error", message: "no_such_battle_code" });
+  assert.deepEqual(panelState, { kind: "error", message: "Something went wrong with that battle, so please try again." });
   assert.equal(clearPendingAttempt, true);
 });
 
@@ -645,7 +645,7 @@ test("automatic retries and a manual Retry after exhaustion both reuse the origi
     if (url.includes("/api/battle/random")) {
       randomCalls += 1;
       if (randomCalls <= autoAttemptsBeforeUncertain) {
-        return new Response(JSON.stringify({ error: "attempt_in_progress" }), {
+        return new Response(JSON.stringify({ error: "attempt_in_progress", retryable: true }), {
           status: 409,
           headers: { "Retry-After": "0" },
         });

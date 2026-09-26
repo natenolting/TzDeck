@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { battleErrorMessage } from "./errorMessages";
-import { BATTLE_FAILURES } from "./failures";
 
 test("battleErrorMessage translates a code that has copy", () => {
   assert.equal(
@@ -44,13 +43,8 @@ test("battleErrorMessage translates an unexpected server failure", () => {
   assert.equal(battleErrorMessage("internal_error"), "Something went wrong on our end, so please try that again.");
 });
 
-test("battleErrorMessage returns an unmapped code unchanged", () => {
-  assert.equal(battleErrorMessage("no_such_battle_code"), "no_such_battle_code");
-  assert.equal(battleErrorMessage("toString"), "toString");
-});
-
-test("every failure a battle route can reject with has player-facing copy", () => {
-  for (const code of Object.keys(BATTLE_FAILURES)) {
-    assert.notEqual(battleErrorMessage(code), code, `${code} would reach the player as a raw code`);
-  }
+test("battleErrorMessage gives an unknown code a generic sentence, never the code itself", () => {
+  const generic = "Something went wrong with that battle, so please try again.";
+  assert.equal(battleErrorMessage("no_such_battle_code"), generic);
+  assert.equal(battleErrorMessage("toString"), generic, "an inherited property is not copy");
 });

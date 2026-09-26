@@ -57,6 +57,7 @@ test("commit_participation: a lost holdings-generation race recovers on retry by
 
     const [attempt] = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${nonce}`;
     assert.equal(attempt.retryable, true, "a lost race is operational timing, not a business rule the caller broke");
+    assert.deepEqual(result.response, { error: "stale_holdings_generation", retryable: true }, "the body says what the ledger says");
 
     // Asserting retryable alone doesn't prove recovery -- actually perform
     // the retry a client would: reclaim the attempt, then resume the sync
@@ -127,7 +128,7 @@ test("commit_participation: a call from a genuinely superseded (older) generatio
     await sql`UPDATE battle_attempts SET generation = '1'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
     const result = await commitParticipation(nonce, "1", WALLET, "test", true, syncId);
     assert.equal(result.statusCode, 409);
-    assert.equal((result.response as { error: string }).error, "invalid_holdings_sync");
+    assert.deepEqual(result.response, { error: "invalid_holdings_sync", retryable: false });
   } finally {
     await cleanup();
   }
