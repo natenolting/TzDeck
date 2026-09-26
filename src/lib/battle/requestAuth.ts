@@ -31,7 +31,7 @@ export function isSignedRequestBodyShapeValid(body: unknown): body is SignedRequ
 }
 
 export type AuthenticateAndClaimResult =
-  | { outcome: "claimed"; wallet: string; nonce: string; generation: string }
+  | { outcome: "claimed"; wallet: string; nonce: string; generation: string; paramHash: string }
   | { outcome: "terminal"; row: AttemptRow }
   | { outcome: "in_progress" }
   | { outcome: "rejected"; status: number; reason: string };
@@ -105,7 +105,7 @@ export async function authenticateAndClaim(
       }
       const reclaimed = await reclaimAttempt(verifyResult.nonce, identity);
       if (reclaimed) {
-        return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation };
+        return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation, paramHash: identity.paramHash };
       }
       // Still within its retry horizon with a live lease: a genuinely
       // in-flight worker owns it right now.
@@ -133,7 +133,7 @@ export async function authenticateAndClaim(
 
   switch (claim.kind) {
     case "claimed":
-      return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: claim.row.generation };
+      return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: claim.row.generation, paramHash: identity.paramHash };
     case "terminal":
       return { outcome: "terminal", row: claim.row };
     case "in_progress": {
@@ -145,7 +145,7 @@ export async function authenticateAndClaim(
       }
       const reclaimed = await reclaimAttempt(verifyResult.nonce, identity);
       if (reclaimed) {
-        return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation };
+        return { outcome: "claimed", wallet: verifyResult.wallet, nonce: verifyResult.nonce, generation: reclaimed.generation, paramHash: identity.paramHash };
       }
       return { outcome: "in_progress" };
     }

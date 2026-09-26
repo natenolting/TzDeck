@@ -1,5 +1,14 @@
+import { reject } from "./failures";
 import { fetchBattleHoldingsPage, type BattleTokenMetadata } from "./holdings";
-import { failAttempt, releaseLeaseForContinuation, stageHoldingsPage, type StagedCard } from "./store";
+import type { ClaimedAttempt } from "./signedRoute";
+import {
+  ensureWalletExists,
+  releaseLeaseForContinuation,
+  stageHoldingsPage,
+  startOrResumeHoldingsSync,
+  type CommitResult,
+  type StagedCard,
+} from "./store";
 
 // ---------------------------------------------------------------------------
 // Review follow-up item 5: opt-in/route.ts and refresh/route.ts each allowed
@@ -37,10 +46,7 @@ function toStagedCard(metadata: BattleTokenMetadata): StagedCard {
   };
 }
 
-export type BoundedHoldingsSyncResult =
-  | { outcome: "complete" }
-  | { outcome: "continue" }
-  | { outcome: "failed"; error: string; status: number };
+export type BoundedHoldingsSyncResult = { outcome: "complete" } | { outcome: "continue" };
 
 export interface BoundedHoldingsSyncParams {
   nonce: string;
@@ -62,6 +68,7 @@ export interface BoundedHoldingsSyncParams {
  * A fully staged sync with too little time left to safely promote also
  * returns "continue": the next invocation sees status "complete" and goes
  * straight to promotion with a fresh budget, never a partial snapshot.
+ * Rejects the attempt when a page cannot be fetched or staged.
  */
 export async function runBoundedHoldingsSync(params: BoundedHoldingsSyncParams): Promise<BoundedHoldingsSyncResult> {
   const now = params.now ?? Date.now;
@@ -76,10 +83,7 @@ export async function runBoundedHoldingsSync(params: BoundedHoldingsSyncParams):
     }
 
     const page = await fetchBattleHoldingsPage(params.wallet, cursor, PAGE_SIZE);
-    if (page.status !== "ok") {
-      await failAttempt(params.nonce, params.generation, { error: "holdings_unavailable" }, 503, true);
-      return { outcome: "failed", error: "holdings_unavailable", status: 503 };
-    }
+    if (page.status !== "ok") reject("holdings_unavailable");
     const staged = await stageHoldingsPage(
       params.nonce,
       params.syncId,
@@ -88,20 +92,9 @@ export async function runBoundedHoldingsSync(params: BoundedHoldingsSyncParams):
       page.complete ? null : String(page.nextCursor),
       page.complete,
     );
-    if (staged.stale) {
-      // A newer generation already took over this sync -- this worker's
-      // authorization has already been superseded.
-      await failAttempt(params.nonce, params.generation, { error: "sync_superseded" }, 409, true);
-      return { outcome: "failed", error: "sync_superseded", status: 409 };
-    }
-    if (staged.too_large) {
-      // H4: the collection exceeds the total staged-card cap -- paging
-      // further would only keep growing an already-oversized jsonb blob.
-      // Not retryable: the wallet's holdings, not a transient condition,
-      // are what's over the limit.
-      await failAttempt(params.nonce, params.generation, { error: "collection_too_large" }, 413, false);
-      return { outcome: "failed", error: "collection_too_large", status: 413 };
-    }
+    if (staged.stale) reject("sync_superseded");
+    // Paging further would only keep growing an already-oversized jsonb blob.
+    if (staged.too_large) reject("collection_too_large");
     cursor = page.nextCursor;
     complete = page.complete;
     pagesThisInvocation += 1;
@@ -118,4 +111,34 @@ export async function runBoundedHoldingsSync(params: BoundedHoldingsSyncParams):
   }
 
   return { outcome: "complete" };
+}
+
+const SYNC_IN_PROGRESS: CommitResult = { response: { status: "in_progress" }, statusCode: 202 };
+
+/**
+ * Stages the wallet's current holdings for this attempt within the
+ * invocation's time budget, then runs `commit` against the fully staged sync.
+ * A sync that runs out of budget answers 202, and the client resubmits the
+ * same signed request, which reclaims this attempt and resumes from the saved
+ * cursor. The sync id is derived from the nonce for exactly that reason.
+ */
+export async function syncHoldingsThen(
+  attempt: ClaimedAttempt,
+  commit: (syncId: string) => Promise<CommitResult>,
+): Promise<CommitResult> {
+  const { wallet, nonce, generation } = attempt;
+  const walletRow = await ensureWalletExists(wallet);
+  const syncId = `sync:${nonce}`;
+  const sync = await startOrResumeHoldingsSync(syncId, wallet, nonce, generation, walletRow.holdings_generation);
+
+  const result = await runBoundedHoldingsSync({
+    nonce,
+    generation,
+    wallet,
+    syncId,
+    initialCursor: sync.cursor ? Number(sync.cursor) : null,
+    initialComplete: sync.status === "complete",
+    deadline: attempt.receivedAt + INVOCATION_DEADLINE_MS,
+  });
+  return result.outcome === "continue" ? SYNC_IN_PROGRESS : commit(syncId);
 }

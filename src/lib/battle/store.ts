@@ -560,13 +560,14 @@ export interface CommitBattleParams {
   inputs: unknown;
 }
 
-export interface CommitBattleResult {
+/** What every commit function answers with. */
+export interface CommitResult {
   /** The exact payload persisted to battle_attempts.response -- a first attempt and a later replay are byte-identical. */
   response: unknown;
   statusCode: number;
 }
 
-export async function commitBattle(params: CommitBattleParams): Promise<CommitBattleResult> {
+export async function commitBattle(params: CommitBattleParams): Promise<CommitResult> {
   const sql = getSql();
   const rows = await sql<{ response: unknown; status_code: number }>`
     SELECT * FROM commit_battle(
@@ -617,12 +618,7 @@ export interface CommitTrainerBattleParams {
   inputs: unknown;
 }
 
-export interface CommitTrainerBattleResult {
-  response: unknown;
-  statusCode: number;
-}
-
-export async function commitTrainerBattle(params: CommitTrainerBattleParams): Promise<CommitTrainerBattleResult> {
+export async function commitTrainerBattle(params: CommitTrainerBattleParams): Promise<CommitResult> {
   const sql = getSql();
   const rows = await sql<{ response: unknown; status_code: number }>`
     SELECT * FROM commit_trainer_battle(
@@ -685,21 +681,21 @@ export async function promoteHoldingsSnapshot(syncId: string): Promise<Promotion
 export async function commitParticipation(
   nonce: string, generation: string, wallet: string, paramHash: string,
   optedIn: boolean, syncId: string | null,
-): Promise<{ response: unknown; status_code: number }> {
+): Promise<CommitResult> {
   const sql = getSql();
-  const [result] = await sql<{ response: unknown; status_code: number }>`
+  const [row] = await sql<{ response: unknown; status_code: number }>`
     SELECT * FROM commit_participation(${nonce}, ${generation}::bigint, ${wallet}, ${paramHash}, ${optedIn}, ${syncId})
   `;
-  return result;
+  return { response: row.response, statusCode: row.status_code };
 }
 
 /** Refresh's atomic promote+complete -- never touches wallets.opted_in, unlike commitParticipation. */
 export async function commitHoldingsRefresh(
   nonce: string, generation: string, wallet: string, paramHash: string, syncId: string,
-): Promise<{ response: unknown; status_code: number }> {
+): Promise<CommitResult> {
   const sql = getSql();
-  const [result] = await sql<{ response: unknown; status_code: number }>`
+  const [row] = await sql<{ response: unknown; status_code: number }>`
     SELECT * FROM commit_holdings_refresh(${nonce}, ${generation}::bigint, ${wallet}, ${paramHash}, ${syncId})
   `;
-  return result;
+  return { response: row.response, statusCode: row.status_code };
 }

@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { AttemptRejection, BATTLE_FAILURES } from "./failures";
 import { authenticateAndClaim, isSignedRequestBodyShapeValid, type SignedRequestBody } from "./requestAuth";
-import { checkRateLimit, failAttempt } from "./store";
+import { checkRateLimit, failAttempt, type CommitResult } from "./store";
 
 export interface ClaimedAttempt {
   wallet: string;
   nonce: string;
   generation: string;
+  /** The hash of the signed parameters, which the participation and refresh commits check. */
+  paramHash: string;
+  /** When the request arrived, so a time budget covers the auth and database work too. */
+  receivedAt: number;
 }
 
 export interface SignedAttemptRoute<B extends SignedRequestBody> {
@@ -18,7 +22,7 @@ export interface SignedAttemptRoute<B extends SignedRequestBody> {
   /** The positional parameters the wallet signed for this action. */
   params: (body: B) => ReadonlyArray<string | number | boolean>;
   /** The claimed attempt's work. Throw through `reject()` to turn the attempt down. */
-  run: (attempt: ClaimedAttempt, body: B) => Promise<{ response: unknown; statusCode: number }>;
+  run: (attempt: ClaimedAttempt, body: B) => Promise<CommitResult>;
 }
 
 function errorJson(status: number, error: string) {
@@ -32,6 +36,7 @@ function errorJson(status: number, error: string) {
  */
 export function signedAttemptRoute<B extends SignedRequestBody>(route: SignedAttemptRoute<B>) {
   return async function POST(request: NextRequest): Promise<NextResponse> {
+    const receivedAt = Date.now();
     let raw: unknown;
     try {
       raw = await request.json();
@@ -57,7 +62,13 @@ export function signedAttemptRoute<B extends SignedRequestBody>(route: SignedAtt
           break;
       }
 
-      const attempt: ClaimedAttempt = { wallet: auth.wallet, nonce: auth.nonce, generation: auth.generation };
+      const attempt: ClaimedAttempt = {
+        wallet: auth.wallet,
+        nonce: auth.nonce,
+        generation: auth.generation,
+        paramHash: auth.paramHash,
+        receivedAt,
+      };
       try {
         const { response, statusCode } = await route.run(attempt, body);
         return NextResponse.json(response, { status: statusCode });

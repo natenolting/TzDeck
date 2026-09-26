@@ -52,7 +52,7 @@ test("commit_participation: a lost holdings-generation race recovers on retry by
     await sql`UPDATE wallets SET holdings_generation = holdings_generation + 1 WHERE address = ${WALLET}`;
 
     const result = await commitParticipation(nonce, generation, WALLET, "test", true, syncId);
-    assert.equal(result.status_code, 409);
+    assert.equal(result.statusCode, 409);
     assert.equal((result.response as { error: string }).error, "stale_holdings_generation");
 
     const [attempt] = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${nonce}`;
@@ -74,7 +74,7 @@ test("commit_participation: a lost holdings-generation race recovers on retry by
 
     await stageHoldingsPage(nonce, syncId, reclaimed.generation, [card("KT1A:1"), card("KT1C:3")], null, true);
     const retryResult = await commitParticipation(nonce, reclaimed.generation, WALLET, "test", true, syncId);
-    assert.equal(retryResult.status_code, 200, "restarting under the current generation must let the retry actually succeed");
+    assert.equal(retryResult.statusCode, 200, "restarting under the current generation must let the retry actually succeed");
     assert.deepEqual(retryResult.response, { optedIn: true });
 
     const holdings = await sql<{ card_key: string }>`SELECT card_key FROM wallet_holdings WHERE wallet = ${WALLET} ORDER BY card_key`;
@@ -101,7 +101,7 @@ test("commit_participation: an attempt reclaimed to a new generation after stagi
     await sql`UPDATE battle_attempts SET generation = ${reclaimedGeneration}::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
 
     const result = await commitParticipation(nonce, reclaimedGeneration, WALLET, "test", true, syncId);
-    assert.equal(result.status_code, 200, "a reclaimed generation must still be able to promote a sync staged under an older generation");
+    assert.equal(result.statusCode, 200, "a reclaimed generation must still be able to promote a sync staged under an older generation");
     assert.deepEqual(result.response, { optedIn: true });
 
     const [wallet] = await sql<{ opted_in: boolean }>`SELECT opted_in FROM wallets WHERE address = ${WALLET}`;
@@ -126,7 +126,7 @@ test("commit_participation: a call from a genuinely superseded (older) generatio
     // This call still thinks it's generation 1 -- genuinely superseded, not just resumed.
     await sql`UPDATE battle_attempts SET generation = '1'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
     const result = await commitParticipation(nonce, "1", WALLET, "test", true, syncId);
-    assert.equal(result.status_code, 409);
+    assert.equal(result.statusCode, 409);
     assert.equal((result.response as { error: string }).error, "invalid_holdings_sync");
   } finally {
     await cleanup();
@@ -146,7 +146,7 @@ test("commit_holdings_refresh: a lost holdings-generation race recovers on retry
     await sql`UPDATE wallets SET holdings_generation = holdings_generation + 1 WHERE address = ${WALLET}`;
 
     const result = await commitHoldingsRefresh(nonce, generation, WALLET, "test", syncId);
-    assert.equal(result.status_code, 409);
+    assert.equal(result.statusCode, 409);
     assert.equal((result.response as { error: string }).error, "stale_holdings_generation");
 
     const [attempt] = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${nonce}`;
@@ -167,7 +167,7 @@ test("commit_holdings_refresh: a lost holdings-generation race recovers on retry
 
     await stageHoldingsPage(nonce, syncId, reclaimed.generation, [card("KT1A:1"), card("KT1D:4")], null, true);
     const retryResult = await commitHoldingsRefresh(nonce, reclaimed.generation, WALLET, "test", syncId);
-    assert.equal(retryResult.status_code, 200, "restarting under the current generation must let the retry actually succeed");
+    assert.equal(retryResult.statusCode, 200, "restarting under the current generation must let the retry actually succeed");
     assert.deepEqual(retryResult.response, { refreshed: true });
 
     const holdings = await sql<{ card_key: string }>`SELECT card_key FROM wallet_holdings WHERE wallet = ${WALLET} ORDER BY card_key`;
@@ -194,7 +194,7 @@ test("commit_holdings_refresh: an attempt reclaimed to a new generation after st
     await sql`UPDATE battle_attempts SET generation = ${reclaimedGeneration}::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
 
     const result = await commitHoldingsRefresh(nonce, reclaimedGeneration, WALLET, "test", syncId);
-    assert.equal(result.status_code, 200, "a reclaimed generation must still be able to promote a sync staged under an older generation");
+    assert.equal(result.statusCode, 200, "a reclaimed generation must still be able to promote a sync staged under an older generation");
     assert.deepEqual(result.response, { refreshed: true });
 
     const holdings = await sql`SELECT * FROM wallet_holdings WHERE wallet = ${WALLET}`;
@@ -219,7 +219,7 @@ test("commit_holdings_refresh: a call from a genuinely superseded (older) genera
     // This call still thinks it's generation 1 -- genuinely superseded, not just resumed.
     await sql`UPDATE battle_attempts SET generation = '1'::bigint, lease_expires_at = now() + interval '1 minute' WHERE nonce = ${nonce}`;
     const result = await commitHoldingsRefresh(nonce, "1", WALLET, "test", syncId);
-    assert.equal(result.status_code, 409);
+    assert.equal(result.statusCode, 409);
     assert.equal((result.response as { error: string }).error, "invalid_holdings_sync");
   } finally {
     await cleanup();

@@ -11,14 +11,14 @@ import {
   type CandidateCard,
 } from "./rules";
 import type { ClaimedAttempt } from "./signedRoute";
-import { commitBattle, type CommitBattleResult } from "./store";
+import { commitBattle, type CommitResult } from "./store";
 
 /** Resolves a battle between two wallets' verified cards and commits it, forwarding exactly what commit_battle stored. */
 export function fightPlayerBattle(
   { nonce, generation }: ClaimedAttempt,
   attacker: Attacker,
   defender: CandidateCard,
-): Promise<CommitBattleResult> {
+): Promise<CommitResult> {
   const attackerStats = effectiveStats(attacker.seed, attacker.level);
   const defenderStats = effectiveStats(defender.seed, defender.level);
   const rngSeed = randomInt(0, 2 ** 31).toString();

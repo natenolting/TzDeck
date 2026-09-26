@@ -13,6 +13,11 @@ export const BATTLE_FAILURES = {
   self_challenge: { status: 400, retryable: false },
   target_not_eligible: { status: 409, retryable: false },
   trainer_tier_locked: { status: 409, retryable: false },
+  holdings_unavailable: { status: 503, retryable: true },
+  /** A newer generation took this sync over, so this worker no longer owns it. */
+  sync_superseded: { status: 409, retryable: true },
+  /** The wallet itself is over the staged-card cap, so trying again cannot help. */
+  collection_too_large: { status: 413, retryable: false },
 } as const satisfies Record<string, { status: number; retryable: boolean }>;
 
 export type BattleFailureCode = keyof typeof BATTLE_FAILURES;
