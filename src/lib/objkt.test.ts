@@ -1056,3 +1056,81 @@ test("normalizeObjktToken falls back when a name is only whitespace", () => {
   assert.equal(card.name, "OBJKT #8");
   assert.equal(card.collection_name, "Tezos Art");
 });
+
+async function holdingsWith(objkt: () => Promise<unknown>, tzktBalances: unknown[]) {
+  const client = objktClient as unknown as { request: () => Promise<unknown> };
+  const originalRequest = client.request;
+  const originalFetch = globalThis.fetch;
+  client.request = objkt;
+  globalThis.fetch = (async () => ({ json: async () => tzktBalances })) as unknown as typeof fetch;
+  try {
+    return await fetchUserHoldings("tz1Collector");
+  } finally {
+    client.request = originalRequest;
+    globalThis.fetch = originalFetch;
+  }
+}
+
+const objktDown = async () => {
+  throw new Error("OBJKT is down");
+};
+
+test("a deck loaded through the TzKT fallback matches the same deck loaded from OBJKT", async () => {
+  const artist = "tz1TSvCEq3x4YWdY9ysDU5cXSx5gRn3wGcx1";
+  const fromObjkt = await holdingsWith(async () => ({
+    token_holder: [{
+      quantity: 2,
+      token: {
+        name: " Butterfly of Hope ",
+        token_id: "7",
+        fa_contract: "KT1Same",
+        display_uri: "ipfs://QmDisplay",
+        artifact_uri: "ipfs://QmArtifact",
+        thumbnail_uri: "ipfs://QmThumb",
+        supply: 12,
+        mime: null,
+        description: "A description",
+        creators: [{ holder: { alias: null, address: artist } }],
+        fa: { name: "Same Collection" },
+      },
+    }],
+  }), []);
+  const fromTzkt = await holdingsWith(objktDown, [{
+    balance: "2",
+    token: {
+      tokenId: "7",
+      totalSupply: "12",
+      contract: { address: "KT1Same", alias: "Same Collection" },
+      metadata: {
+        name: " Butterfly of Hope ",
+        description: "A description",
+        displayUri: "ipfs://QmDisplay",
+        artifactUri: "ipfs://QmArtifact",
+        thumbnailUri: "ipfs://QmThumb",
+        creators: [artist],
+      },
+    },
+  }]);
+
+  assert.equal(fromObjkt.length, 1);
+  assert.deepEqual(fromTzkt, fromObjkt);
+});
+
+test("the TzKT fallback shows a creator listed by name as that name", async () => {
+  const [card] = await holdingsWith(objktDown, [{
+    balance: "1",
+    token: { tokenId: "1", contract: { address: "KT1Named" }, metadata: { name: "Named", artifactUri: "ipfs://QmArt", creators: ["Ada Lovelace"] } },
+  }]);
+
+  assert.equal(card.artist_alias, "Ada Lovelace");
+  assert.equal(card.artist_address, undefined);
+});
+
+test("the TzKT fallback names an unnamed collection the way OBJKT cards do", async () => {
+  const [card] = await holdingsWith(objktDown, [{
+    balance: "1",
+    token: { tokenId: "1", contract: { address: "KT1Anon" }, metadata: { name: "Anon", artifactUri: "ipfs://QmArt" } },
+  }]);
+
+  assert.equal(card.collection_name, "Tezos Art");
+});
