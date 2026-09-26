@@ -1,9 +1,7 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { packDataBytes } from "@taquito/michel-codec";
-import type { StringLiteral } from "@taquito/michel-codec";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getPkhfromPk, verifySignature } from "@taquito/utils";
 import { canonicalEncode } from "./canonicalEncode";
-import { isImplicitAccountPublicKey } from "./signPayload";
+import { bytesToSign, isImplicitAccountPublicKey, type ActionParams, type NonceEnvelope, type ProtocolInfo } from "./signPayload";
 
 export { canonicalEncode, isImplicitAccountPublicKey };
 
@@ -35,12 +33,6 @@ function requireAppId(): string {
   return appId;
 }
 
-export interface NonceEnvelope {
-  timestamp: number;
-  random: string;
-  mac: string;
-}
-
 function computeEnvelopeMac(timestamp: number, random: string): string {
   const encoded = canonicalEncode([PROTOCOL_VERSION, requireAppId(), timestamp, random]);
   return createHmac("sha256", requireSecret()).update(encoded).digest("hex");
@@ -61,7 +53,7 @@ export function issueNonce(): NonceEnvelope {
  * separate NEXT_PUBLIC_ env var the client would have to keep in sync with
  * the server's own value) means there's exactly one source of truth.
  */
-export function getPublicProtocolInfo(): { appId: string; protocolVersion: number } {
+export function getPublicProtocolInfo(): ProtocolInfo {
   return { appId: requireAppId(), protocolVersion: PROTOCOL_VERSION };
 }
 
@@ -89,22 +81,6 @@ export function nonceFromEnvelope(envelope: NonceEnvelope): string {
   return envelope.mac;
 }
 
-/** Hash over the canonically-encoded, positionally-fixed action parameters. */
-export function computeParamHash(params: ReadonlyArray<string | number | boolean>): string {
-  return createHash("sha256").update(canonicalEncode(params)).digest("hex");
-}
-
-function buildSignedMessage(envelope: NonceEnvelope, action: string, paramHash: string): string {
-  return canonicalEncode([PROTOCOL_VERSION, requireAppId(), envelope.mac, action, paramHash]);
-}
-
-/** The exact bytes a client must sign for a given envelope/action/params triple. */
-export function bytesToSign(envelope: NonceEnvelope, action: string, params: ReadonlyArray<string | number | boolean>): string {
-  const message = buildSignedMessage(envelope, action, computeParamHash(params));
-  const literal: StringLiteral = { string: message };
-  return packDataBytes(literal).bytes;
-}
-
 export type VerifyResult =
   | { ok: true; wallet: string; nonce: string }
   // The envelope was authentic and the signature checked out, but its
@@ -128,16 +104,16 @@ export type VerifyResult =
  * expects to have been signed from the envelope plus the actual request's
  * own route and parameters, and only then checks the signature against them.
  */
-export function verifySignedAction(params: {
+export async function verifySignedAction(params: {
   envelope: NonceEnvelope;
   publicKey: string;
   signature: string;
   claimedAddress: string;
   action: string;
-  actionParams: ReadonlyArray<string | number | boolean>;
+  actionParams: ActionParams;
   /** Test seam only -- production callers rely on the default (Date.now()). */
   now?: number;
-}): VerifyResult {
+}): Promise<VerifyResult> {
   const envelopeCheck = verifyEnvelope(params.envelope, params.now);
   // A forged or not-yet-valid envelope is rejected outright -- nothing after
   // this point can be trusted. An EXPIRED envelope (freshness only) still
@@ -162,7 +138,7 @@ export function verifySignedAction(params: {
 
   let expectedBytes: string;
   try {
-    expectedBytes = bytesToSign(params.envelope, params.action, params.actionParams);
+    expectedBytes = await bytesToSign(params.envelope, getPublicProtocolInfo(), params.action, params.actionParams);
   } catch {
     return { ok: false, reason: "malformed" };
   }

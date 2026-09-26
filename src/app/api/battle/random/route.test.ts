@@ -5,7 +5,8 @@ import { NextRequest } from "next/server";
 import { InMemorySigner } from "@taquito/signer";
 
 import { objktClient } from "@/lib/objkt";
-import { bytesToSign, issueNonce, type NonceEnvelope } from "@/lib/battle/auth";
+import { issueNonce, getPublicProtocolInfo } from "@/lib/battle/auth";
+import { bytesToSign, type NonceEnvelope } from "@/lib/battle/signPayload";
 import { getSql } from "@/lib/battle/store";
 import { POST } from "./route";
 
@@ -94,7 +95,7 @@ async function buildSignedBody(
   params: ReadonlyArray<string | number | boolean>,
 ): Promise<{ envelope: NonceEnvelope; publicKey: string; signature: string; claimedAddress: string }> {
   const envelope = issueNonce();
-  const bytes = bytesToSign(envelope, action, params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), action, params);
   const { prefixSig } = await signer.sign(bytes);
   return { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 }

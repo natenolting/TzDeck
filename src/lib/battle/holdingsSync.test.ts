@@ -3,7 +3,8 @@ import test from "node:test";
 import { InMemorySigner } from "@taquito/signer";
 
 import { objktClient } from "@/lib/objkt";
-import { bytesToSign, computeParamHash, issueNonce, type NonceEnvelope } from "./auth";
+import { issueNonce, getPublicProtocolInfo } from "./auth";
+import { bytesToSign, computeParamHash, type NonceEnvelope } from "./signPayload";
 import { authenticateAndClaim, type SignedRequestBody } from "./requestAuth";
 import { ensureWalletExists, getSql, reclaimAttempt, startOrResumeHoldingsSync } from "./store";
 import { INVOCATION_DEADLINE_MS, runBoundedHoldingsSync } from "./holdingsSync";
@@ -36,7 +37,7 @@ async function claimAttempt(
   address: string,
 ): Promise<{ nonce: string; generation: string }> {
   const envelope: NonceEnvelope = issueNonce();
-  const bytes = bytesToSign(envelope, "refresh", []);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "refresh", []);
   const { prefixSig } = await signer.sign(bytes);
   const body: SignedRequestBody = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
   const auth = await authenticateAndClaim(body, "refresh", []);
@@ -223,7 +224,7 @@ test("runBoundedHoldingsSync: resuming after a time-bounded continuation picks u
       const reclaimed = await reclaimAttempt(nonce, {
         wallet: address,
         action: "refresh",
-        paramHash: computeParamHash([]),
+        paramHash: await computeParamHash([]),
       });
       if (!reclaimed) throw new Error("expected the released lease to be reclaimable");
       const resumedSync = await startOrResumeHoldingsSync(syncId, address, nonce, reclaimed.generation, 1);
