@@ -1,4 +1,4 @@
-import { computeParamHash, verifySignedAction, type NonceEnvelope } from "./auth";
+import { computeParamHash, verifySignedAction, type NonceEnvelope, type VerifyResult } from "./auth";
 import { claimOrLookupAttempt, lookupAttemptByNonce, reclaimAttempt, type AttemptRow } from "./store";
 
 export interface SignedRequestBody {
@@ -30,11 +30,18 @@ export function isSignedRequestBodyShapeValid(body: unknown): body is SignedRequ
   return true;
 }
 
+/** Why a signed request was turned away before any attempt could be claimed. */
+export type AuthRejection =
+  | Exclude<Extract<VerifyResult, { ok: false }>["reason"], "expired">
+  | "nonce_expired"
+  | "rate_limited"
+  | "identity_mismatch";
+
 export type AuthenticateAndClaimResult =
   | { outcome: "claimed"; wallet: string; nonce: string; generation: string; paramHash: string }
   | { outcome: "terminal"; row: AttemptRow }
   | { outcome: "in_progress" }
-  | { outcome: "rejected"; status: number; reason: string };
+  | { outcome: "rejected"; status: number; reason: AuthRejection };
 
 /**
  * Shared by every wallet-attributed write route: verify the action-bound

@@ -170,26 +170,6 @@ export async function resubmitWhilePending(
 // signature.
 // ---------------------------------------------------------------------------
 
-/**
- * Fallback for error responses that don't carry the server's own `retryable`
- * flag: error strings the battle-route/attempt-ledger contract marks retryable
- * (server called failAttempt/commit_battle with retryable=true, or the
- * request never reached a persisted attempt at all -- attempt_in_progress).
- * Every other non-2xx response is a terminal business rejection per the
- * existing contract (random/route.ts, challenge/route.ts, commit_battle.sql)
- * -- NOT every 409 is retryable: attack_cap_reached, self_challenge,
- * attacker_card_not_held, etc. are all 409 and all terminal, while
- * conflicting_first_use_materialization is also 409 but IS retryable.
- */
-const RETRYABLE_BATTLE_ERRORS = new Set([
-  "attempt_in_progress",
-  "rate_limited",
-  "ownership_unverifiable",
-  "attacker_metadata_unavailable",
-  "attempt_expired",
-  "conflicting_first_use_materialization",
-]);
-
 const BATTLE_RETRY_MAX_ATTEMPTS = 5;
 const BATTLE_RETRY_DELAY_MS = 2000;
 
@@ -220,8 +200,9 @@ async function classifyBattleResponse(post: () => Promise<Response>): Promise<Cl
 
   const error = typeof json.error === "string" ? json.error : "battle_request_failed";
   if (error === "nonce_expired") return { kind: "expired" };
-  const retryable = typeof json.retryable === "boolean" ? json.retryable : RETRYABLE_BATTLE_ERRORS.has(error);
-  if (retryable) {
+  // The server says which failures a resubmission can fix. A 429 from the
+  // platform's own firewall carries no body of ours, so its status speaks for it.
+  if (json.retryable === true || response.status === 429) {
     const retryAfterHeader = response.headers.get("Retry-After");
     const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
     return { kind: "retry", retryAfterMs };

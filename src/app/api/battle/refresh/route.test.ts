@@ -208,7 +208,7 @@ test("POST /api/battle/refresh: a genuinely live attempt is reported as in-progr
     const response = await POST(postRequest(body));
     assert.equal(response.status, 409);
     const json = await response.json();
-    assert.equal(json.error, "attempt_in_progress");
+    assert.deepEqual(json, { error: "attempt_in_progress", retryable: true });
     assert.equal(response.headers.get("Retry-After"), "2");
   } finally {
     await cleanupWallet(address);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AttemptRejection, BATTLE_FAILURES } from "./failures";
-import { authenticateAndClaim, isSignedRequestBodyShapeValid, type SignedRequestBody } from "./requestAuth";
+import { authenticateAndClaim, isSignedRequestBodyShapeValid, type AuthRejection, type SignedRequestBody } from "./requestAuth";
 import { checkRateLimit, failAttempt, type CommitResult } from "./store";
 
 export interface ClaimedAttempt {
@@ -25,8 +25,11 @@ export interface SignedAttemptRoute<B extends SignedRequestBody> {
   run: (attempt: ClaimedAttempt, body: B) => Promise<CommitResult>;
 }
 
-function errorJson(status: number, error: string) {
-  return NextResponse.json({ error }, { status });
+/** What this shell answers with itself, around an attempt's own work. */
+export type RequestFailureCode = "invalid_json_body" | "missing_required_fields" | "attempt_in_progress" | "internal_error";
+
+function errorJson(status: number, error: RequestFailureCode | AuthRejection, retryable = false, headers?: HeadersInit) {
+  return NextResponse.json({ error, retryable }, { status, headers });
 }
 
 /**
@@ -53,9 +56,9 @@ export function signedAttemptRoute<B extends SignedRequestBody>(route: SignedAtt
       });
       switch (auth.outcome) {
         case "rejected":
-          return errorJson(auth.status, auth.reason);
+          return errorJson(auth.status, auth.reason, auth.reason === "rate_limited");
         case "in_progress":
-          return NextResponse.json({ error: "attempt_in_progress" }, { status: 409, headers: { "Retry-After": "2" } });
+          return errorJson(409, "attempt_in_progress", true, { "Retry-After": "2" });
         case "terminal":
           return NextResponse.json(auth.row.response, { status: auth.row.status_code ?? 200 });
         case "claimed":
