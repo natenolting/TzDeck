@@ -3,7 +3,8 @@ import { afterEach, test } from "node:test";
 
 import { JSDOM } from "jsdom";
 
-import { getCardKey, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey } from "@/lib/cardKey";
+import type { NFTCard as NFTCardType } from "@/lib/card";
 import { calculateDeckStats } from "./DeckGrid";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {

@@ -4,7 +4,7 @@ import { afterEach, test } from "node:test";
 import { JSDOM } from "jsdom";
 
 import { trackFunnelEvent } from "@/lib/analytics";
-import type { NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 import { soundManager } from "@/lib/sound";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {

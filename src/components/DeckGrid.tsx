@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useWallet } from "@/context/WalletContext";
-import { getCardKey, NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardKey } from "@/lib/cardKey";
+import { NFTCard as NFTCardType } from "@/lib/card";
 import { useBattleStatus } from "@/hooks/useBattleStatus";
 import type { BattleCardStatus } from "@/lib/battle/status";
 import { isCardRarity, RARITY_LABELS, RARITY_TIERS, type CardRarity } from "@/lib/rarity";

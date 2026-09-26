@@ -3,7 +3,9 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useWallet, UnsupportedWalletTypeError } from "@/context/WalletContext";
 import type { BattleStatusState } from "@/hooks/useBattleStatus";
-import { getCardImageSources, getCardKey, isImageArtifact, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { getCardImageSources } from "@/lib/ipfs";
+import { getCardKey } from "@/lib/cardKey";
+import { isImageArtifact, type NFTCard as NFTCardType } from "@/lib/card";
 import { RARITY_TIERS, type CardRarity } from "@/lib/rarity";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { battleErrorMessage } from "@/lib/battle/errorMessages";

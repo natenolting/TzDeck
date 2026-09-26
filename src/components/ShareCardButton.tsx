@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { trackFunnelEvent } from "@/lib/analytics";
 import { shareLink } from "@/lib/share";
-import type { NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 import { CheckIcon, ShareIcon } from "./icons";
 
 /**

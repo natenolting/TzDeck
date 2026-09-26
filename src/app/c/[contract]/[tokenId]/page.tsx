@@ -5,12 +5,7 @@ import { notFound } from "next/navigation";
 import { RARITY_CONFIG } from "@/components/rarityStyles";
 import ShareCardButton from "@/components/ShareCardButton";
 import SharedCardArtwork from "@/components/SharedCardArtwork";
-import {
-  getArtistProfileUrl,
-  getCollectionUrl,
-  distinctCollectionName,
-  type NFTCard,
-} from "@/lib/objkt";
+import { getArtistProfileUrl, getCollectionUrl, distinctCollectionName, type NFTCard } from "@/lib/card";
 import { ogImage, parseCardRef } from "@/lib/share";
 import { loadSharedCard } from "@/lib/shareServer";
 

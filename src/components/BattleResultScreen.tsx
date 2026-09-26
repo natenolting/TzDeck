@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchTokenByKey, formatShortAddress, getCardImageSources, isImageArtifact, type NFTCard as NFTCardType } from "@/lib/objkt";
+import { fetchTokenByKey } from "@/lib/objkt";
+import { formatShortAddress, isImageArtifact, type NFTCard as NFTCardType } from "@/lib/card";
+import { parseCardKey } from "@/lib/cardKey";
+import { getCardImageSources } from "@/lib/ipfs";
 import type { CardRarity } from "@/lib/rarity";
 import { useFailoverImage } from "@/hooks/useFailoverImage";
 import { RARITY_CONFIG } from "./rarityStyles";
@@ -209,12 +212,10 @@ export default function BattleResultScreen({
   useEffect(() => {
     let cancelled = false;
     if (result.trainerTier || !result.defenderCardKey) return;
-    const separatorIndex = result.defenderCardKey.lastIndexOf(":");
-    if (separatorIndex === -1) return;
-    const contractAddress = result.defenderCardKey.slice(0, separatorIndex);
-    const tokenId = result.defenderCardKey.slice(separatorIndex + 1);
+    const defenderToken = parseCardKey(result.defenderCardKey);
+    if (!defenderToken) return;
 
-    fetchTokenByKey(contractAddress, tokenId).then((card) => {
+    fetchTokenByKey(defenderToken.contractAddress, defenderToken.tokenId).then((card) => {
       if (!cancelled) setDefenderCard(card);
     });
     return () => {

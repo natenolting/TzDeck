@@ -5,7 +5,7 @@ import ConnectButton from "./ConnectButton";
 import BattleResultScreen from "./BattleResultScreen";
 import { useWallet } from "@/context/WalletContext";
 import { trackFunnelEvent } from "@/lib/analytics";
-import type { NFTCard as NFTCardType } from "@/lib/objkt";
+import type { NFTCard as NFTCardType } from "@/lib/card";
 import { buildDemoBattle, randomDemoSeed } from "@/lib/battle/demo";
 
 interface DemoBattleProps {

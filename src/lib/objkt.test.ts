@@ -1,27 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  distinctCollectionName,
-  convertIpfsUrl,
-  extractIpfsHash,
-  fetchCardsByKeys,
-  fetchRandomPack,
-  fetchTokenByKey,
-  fetchUserHoldings,
-  formatShortAddress,
-  getCardKey,
-  getCardImageSources,
-  isImageArtifact,
-  isPlayableVideo,
-  normalizeEditions,
-  normalizeObjktToken,
-  objktClient,
-  parseTokenReference,
-  PACK_MAX_PER_ARTIST,
-  selectDiverseListings,
-  shuffleArray,
-} from "./objkt";
+import { distinctCollectionName, formatShortAddress, isImageArtifact, isPlayableVideo, normalizeEditions } from "./card";
+import { convertIpfsUrl, extractIpfsHash, getCardImageSources } from "./ipfs";
+import { fetchCardsByKeys, fetchRandomPack, fetchTokenByKey, fetchUserHoldings, objktClient } from "./objkt";
+import { getCardKey, parseTokenReference } from "./cardKey";
+import { normalizeObjktToken } from "./objktToken";
+import { PACK_MAX_PER_ARTIST, selectDiverseListings, shuffleArray } from "./pullDraw";
 
 function listingRow(
   id: number,
@@ -378,8 +363,6 @@ test("convertIpfsUrl normalizes supported URL representations to the primary gat
     `ipfs://ipfs/${cid}`,
     `https://gateway.pinata.cloud/ipfs/${cid}`,
     `https://dweb.link/ipfs/${cid}`,
-    `/api/media?ipfs=${cid}`,
-    `/api/media?url=${encodeURIComponent(expected)}`,
     expected,
   ]) {
     assert.equal(convertIpfsUrl(uri), expected, uri);
@@ -432,23 +415,6 @@ test("convertIpfsUrl leaves ordinary HTTPS media URLs unchanged", () => {
   );
 });
 
-test("convertIpfsUrl restores an IPFS URL saved by the unfinished media proxy", () => {
-  assert.equal(
-    convertIpfsUrl(
-      "/api/media?ipfs=bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm",
-      1,
-    ),
-    "https://bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm.ipfs.dweb.link/",
-  );
-});
-
-test("convertIpfsUrl restores an HTTPS URL saved by the unfinished media proxy", () => {
-  assert.equal(
-    convertIpfsUrl("/api/media?url=https%3A%2F%2Fexample.com%2Fart.jpg"),
-    "https://example.com/art.jpg",
-  );
-});
-
 test("getCardImageSources skips duplicate representations of the same IPFS asset", () => {
   const cid = "QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU";
 
@@ -456,7 +422,6 @@ test("getCardImageSources skips duplicate representations of the same IPFS asset
     getCardImageSources(
       `ipfs://${cid}`,
       `https://gateway.pinata.cloud/ipfs/${cid}`,
-      "/api/media?ipfs=QmZYcvkVeWWJRra8xafzBLbaVHDnt3hwxtA2egjmy32JFU",
       "https://example.com/artifact.jpg",
     ),
     [`ipfs://${cid}`, "https://example.com/artifact.jpg"],

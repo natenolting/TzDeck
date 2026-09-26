@@ -1,7 +1,9 @@
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
-import { fetchCardsByKeys, getCardKey, type NFTCard } from "@/lib/objkt";
+import { fetchCardsByKeys } from "@/lib/objkt";
+import { getCardKey } from "@/lib/cardKey";
+import type { NFTCard } from "@/lib/card";
 import type { CardRef } from "@/lib/share";
 
 /**

@@ -1,5 +1,4 @@
 import { GraphQLClient } from "graphql-request";
-import { CID } from "multiformats/cid";
 
 import {
   ALLOW_ALL,
@@ -7,237 +6,20 @@ import {
   type DenylistIndex,
   type ExclusionRecord,
 } from "./pullFilter";
-import { rarityFor, type CardRarity } from "./rarity";
+import type { NFTCard } from "./card";
+import { getCardKey } from "./cardKey";
+import {
+  isTzktTokenBalance,
+  normalizeObjktToken,
+  tzktToRawToken,
+  type ObjktListingRow,
+  type ObjktRawToken,
+  type PullListingRow,
+} from "./objktToken";
+import { cheapestPerToken, selectDiverseListings, shuffleArray } from "./pullDraw";
 
 const OBJKT_API_URL = process.env.NEXT_PUBLIC_OBJKT_API_URL || "https://data.objkt.com/v3/graphql";
 export const objktClient = new GraphQLClient(OBJKT_API_URL);
-
-export interface NFTCard {
-  listing_id?: number;
-  token_id: string;
-  contract_address: string;
-  name: string;
-  description?: string;
-  artifact_uri?: string;
-  display_uri?: string;
-  thumbnail_uri?: string;
-  artist_alias?: string;
-  artist_address?: string;
-  collection_name?: string;
-  editions?: number;
-  price_mutez?: number;
-  price_xtz?: number;
-  objkt_url: string;
-  rarity: CardRarity;
-  quantity_owned?: number;
-  /** OBJKT's media type for the artifact, e.g. "image/png" or "video/mp4". */
-  mime?: string;
-}
-
-/**
- * Container formats the browser `<video>` element can actually decode. About
- * 6.5% of active listings are video, and nearly all of that is mp4 -- but
- * video/quicktime (0.6%) frequently will not play, so it is deliberately absent
- * here and those tokens keep showing their poster image instead of a dead
- * player.
- */
-const PLAYABLE_VIDEO_MIMES = new Set(["video/mp4", "video/webm", "video/ogg"]);
-
-export function isPlayableVideo(
-  card: Pick<NFTCard, "mime" | "artifact_uri">,
-): boolean {
-  if (!card.mime || !card.artifact_uri) return false;
-  return PLAYABLE_VIDEO_MIMES.has(card.mime.toLowerCase());
-}
-
-/**
- * Whether a token's artifact is worth keeping in an <img> failover chain.
- *
- * An unknown mime stays true on purpose: wishlists saved before the field
- * existed carry none, and that is exactly the behaviour they had. A known
- * non-image artifact is dropped -- handing a 124MB mp4 to an <img> can only
- * fail, slowly, on whatever connection the viewer happens to have.
- */
-export function isImageArtifact(card: Pick<NFTCard, "mime">): boolean {
-  if (!card.mime) return true;
-  return card.mime.toLowerCase().startsWith("image/");
-}
-
-export function formatShortAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-export function getArtistProfileUrl(artistAddress?: string): string | undefined {
-  return artistAddress ? `https://objkt.com/users/${artistAddress}` : undefined;
-}
-
-/**
- * The collection name worth showing beside the artist, if any.
- *
- * Solo artists routinely name a collection after themselves, so rendering both
- * prints the same words twice in a row, which reads as a fault rather than a
- * fact. Roughly one active listing in five does this.
- */
-export function distinctCollectionName(
-  card: Pick<NFTCard, "artist_alias" | "collection_name">,
-): string | undefined {
-  const collection = card.collection_name?.trim();
-  if (!collection) return undefined;
-  const artist = card.artist_alias?.trim() ?? "";
-  return collection.toLowerCase() === artist.toLowerCase() ? undefined : collection;
-}
-
-export function getCollectionUrl(contractAddress: string): string {
-  return `https://objkt.com/collection/${contractAddress}`;
-}
-
-export function getCardKey(
-  card: Pick<NFTCard, "contract_address" | "token_id">,
-): string {
-  return `${card.contract_address}:${card.token_id}`;
-}
-
-/**
- * Reads an OBJKT token link, or a bare `contract/id` or `contract:id` pair,
- * back into the identity `getCardKey` is built from.
- *
- * The pair is matched anywhere in the input rather than anchored to a path, so
- * one rule covers the full URL, the scheme-less form, a trailing slash and a
- * query string without enumerating OBJKT path prefixes, which change. The
- * character class is base58, which is why `0`, `O`, `I` and `l` are missing
- * from it. A collection URL has no numeric tail and so falls through to null.
- */
-export function parseTokenReference(
-  input: string,
-): Pick<NFTCard, "contract_address" | "token_id"> | null {
-  const match = input.match(/(KT1[123456789A-HJ-NP-Za-km-z]{33})[/:](\d+)/);
-  if (!match) return null;
-  return { contract_address: match[1], token_id: match[2] };
-}
-
-/**
- * OBJKT's own pre-resized still of a token, addressed by key alone.
- *
- * This is the server-side counterpart to the client's IPFS failover chain, and
- * it is a better answer wherever a single blocking fetch has to succeed:
- * measured over 300 active listings it answered 300/300 with a p50 of 105KB in
- * 491ms, where an IPFS gateway ladder is several seconds of retries. It also
- * returns a still poster for video tokens, so no caller has to special-case
- * mime. `thumb400` and `thumb288` are the only derivatives that exist;
- * `display` and `artifact` both 404.
- *
- * Animated GIF and WebP are the exception: every derivative returns the full
- * animation, around 1.7MB, so a caller with a byte budget has to reject them.
- */
-export function getObjktThumbnailUrl(
-  card: Pick<NFTCard, "contract_address" | "token_id">,
-  variant: "thumb288" | "thumb400" = "thumb400",
-): string {
-  return `https://assets.objkt.media/file/assets-003/${card.contract_address}/${card.token_id}/${variant}`;
-}
-
-// Pinata's public gateway now rate-limits every anonymous request (429,
-// verified 2026-09-05) -- it is a dead hop, not a real fallback, so it is
-// left out rather than kept as a step every retry chain has to burn through.
-export const IPFS_GATEWAYS = [
-  "https://ipfs.filebase.io/ipfs/",
-  "https://{cid}.ipfs.dweb.link/",
-];
-
-export function extractIpfsHash(uri?: string): string | null {
-  if (!uri) return null;
-  const clean = uri.trim();
-  if (clean.startsWith("/api/media?")) {
-    const params = new URLSearchParams(clean.slice(clean.indexOf("?") + 1));
-    const proxiedIpfs = params.get("ipfs");
-    if (proxiedIpfs) return extractIpfsHash(proxiedIpfs);
-  }
-  if (clean.startsWith("ipfs://ipfs/")) return clean.slice(12);
-  if (clean.startsWith("ipfs://")) return clean.slice(7);
-  const subdomain = clean.match(/^https?:\/\/([^.]+)\.ipfs\.[^/?#]+(.*)$/i);
-  if (subdomain) return subdomain[1] + (subdomain[2] === "/" ? "" : subdomain[2]);
-  const match = clean.match(/\/ipfs\/(.+)/);
-  if (match) return match[1];
-  try {
-    CID.parse(clean.split(/[/?#]/, 1)[0]);
-    return clean;
-  } catch {
-    return null;
-  }
-}
-
-export function convertIpfsUrl(uri?: string, gatewayIndex = 0): string {
-  if (!uri) return "";
-  const clean = uri.trim();
-
-  if (clean.startsWith("/api/media?")) {
-    const params = new URLSearchParams(clean.slice(clean.indexOf("?") + 1));
-    const proxiedUrl = params.get("url");
-    if (proxiedUrl) return convertIpfsUrl(proxiedUrl, gatewayIndex);
-  }
-
-  const hash = extractIpfsHash(uri);
-  if (hash) {
-    const gateway = IPFS_GATEWAYS[gatewayIndex % IPFS_GATEWAYS.length];
-    if (gateway.includes("{cid}")) {
-      const [cid] = hash.split(/[/?#]/, 1);
-      const suffix = hash.slice(cid.length);
-      try {
-        // DNS hostnames require CIDv1/base32, including for legacy Qm… CIDs.
-        const hostnameCid = CID.parse(cid).toV1().toString();
-        return `${gateway.replace("{cid}", hostnameCid)}${suffix.replace(/^\//, "")}`;
-      } catch {
-        // Malformed token metadata must not throw during card rendering.
-        return uri;
-      }
-    }
-    return `${gateway}${hash}`;
-  }
-  return uri;
-}
-
-export function getCardImageSources(...uris: Array<string | undefined>): string[] {
-  const sources: string[] = [];
-  const seen = new Set<string>();
-
-  for (const uri of uris) {
-    const clean = uri?.trim();
-    if (!clean) continue;
-
-    const hash = extractIpfsHash(clean);
-    const identity = hash ? `ipfs:${hash}` : `url:${clean}`;
-    if (seen.has(identity)) continue;
-
-    seen.add(identity);
-    sources.push(clean);
-  }
-
-  return sources;
-}
-
-export function shuffleArray<T>(items: T[]): T[] {
-  const result = [...items];
-
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
-  }
-
-  return result;
-}
-
-/**
- * A token's edition count, or undefined when upstream can't give one. OBJKT
- * reports a null supply for tokens it hasn't indexed and 0 for fully burned
- * ones, and TzKT sends counts as strings. None of those gaps is a count: the
- * rarity ladders read 1 as a 1 of 1, so filling one in with 1 (or letting 0
- * through, which the battle seed rounds up to 1) grades an unknown token as
- * the scarcest tier there is. Undefined grades on price alone, or Common.
- */
-export function normalizeEditions(raw: unknown): number | undefined {
-  const value = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : raw;
-  return typeof value === "number" && Number.isFinite(value) && value >= 1 ? Math.trunc(value) : undefined;
-}
 
 /** The token fields every OBJKT query selects: what a card needs to render. */
 const TOKEN_FIELDS = `
@@ -267,92 +49,11 @@ const PULL_TOKEN_FIELDS = `
   fa { live }
 `;
 
-/** A token as TOKEN_FIELDS selects it. */
-export interface ObjktRawToken {
-  name: string | null;
-  token_id: string;
-  fa_contract: string;
-  display_uri: string | null;
-  artifact_uri: string | null;
-  thumbnail_uri: string | null;
-  supply: number | null;
-  description?: string | null;
-  mime?: string | null;
-  creators?: Array<{ holder: { alias: string | null; address: string } }>;
-  fa?: { name: string | null };
-}
-
-/**
- * A token as PULL_TOKEN_FIELDS selects it. The filter fields are always
- * present, though OBJKT can still send null, which the filter fails closed on.
- */
-export interface PullToken extends ObjktRawToken {
-  pk: number | null;
-  flag: string | null;
-  creators: Array<{ verified: boolean | null; holder: { alias: string | null; address: string; flag: string | null } }>;
-  fa: { name: string | null; live: boolean | null };
-}
-
-interface NormalizeTokenOptions {
-  listingId?: number;
-  priceMutez?: number;
-  quantityOwned?: number;
-}
-
-export function normalizeObjktToken(
-  token: ObjktRawToken,
-  options: NormalizeTokenOptions = {},
-): NFTCard {
-  const editions = normalizeEditions(token.supply);
-  const priceXtz = options.priceMutez !== undefined
-    ? options.priceMutez / 1_000_000
-    : undefined;
-  const artist = token.creators?.[0]?.holder;
-  const displayUri = token.display_uri || token.thumbnail_uri || token.artifact_uri || "";
-
-  return {
-    listing_id: options.listingId,
-    token_id: token.token_id,
-    contract_address: token.fa_contract,
-    name: token.name?.trim() || `OBJKT #${token.token_id}`,
-    description: token.description || undefined,
-    display_uri: convertIpfsUrl(displayUri),
-    artifact_uri: convertIpfsUrl(token.artifact_uri || undefined),
-    thumbnail_uri: convertIpfsUrl(token.thumbnail_uri || displayUri),
-    // Names, aliases and collection titles are trimmed here rather than at each
-    // surface. OBJKT carries stray leading and trailing whitespace often enough
-    // that it reaches places HTML cannot re-flow: an aria-label reading
-    // "Share  Butterfly of Hope", a document title, an OG card.
-    artist_alias: artist?.alias?.trim() || (artist?.address
-      ? formatShortAddress(artist.address)
-      : "Unknown Artist"),
-    artist_address: artist?.address || undefined,
-    collection_name: token.fa?.name?.trim() || "Tezos Art",
-    editions,
-    price_mutez: options.priceMutez,
-    price_xtz: priceXtz !== undefined ? Number(priceXtz.toFixed(3)) : undefined,
-    objkt_url: `https://objkt.com/asset/${token.fa_contract}/${token.token_id}`,
-    rarity: rarityFor(editions, priceXtz),
-    quantity_owned: options.quantityOwned,
-    mime: token.mime || undefined,
-  };
-}
-
 interface ObjktTokenHolderResponse {
   token_holder: Array<{
     quantity: number;
     token: ObjktRawToken;
   }>;
-}
-
-export interface ObjktListingRow {
-  id: number;
-  price: number;
-  token: ObjktRawToken;
-}
-
-export interface PullListingRow extends ObjktListingRow {
-  token: PullToken;
 }
 
 interface PullListingResponse {
@@ -364,68 +65,6 @@ interface ObjktPackWindowsResponse {
   w1?: PullListingRow[];
   w2?: PullListingRow[];
   w3?: PullListingRow[];
-}
-
-interface TzktTokenBalance {
-  balance?: number | string;
-  token?: {
-    tokenId?: number | string;
-    token_id?: number | string;
-    totalSupply?: number | string;
-    contract?: {
-      address?: string;
-      alias?: string;
-    };
-    metadata?: {
-      name?: string;
-      description?: string;
-      artifactUri?: string;
-      displayUri?: string;
-      thumbnailUri?: string;
-      editions?: number | string;
-      creators?: string[];
-      artist?: string;
-      collectionName?: string;
-    };
-  };
-}
-
-type TzktBalanceWithMetadata = TzktTokenBalance & {
-  token: NonNullable<TzktTokenBalance["token"]> & { metadata: NonNullable<NonNullable<TzktTokenBalance["token"]>["metadata"]> };
-};
-
-function isTzktTokenBalance(value: unknown): value is TzktBalanceWithMetadata {
-  if (!value || typeof value !== "object") return false;
-  const token = (value as { token?: unknown }).token;
-  if (!token || typeof token !== "object") return false;
-  const metadata = (token as { metadata?: unknown }).metadata;
-  return Boolean(metadata && typeof metadata === "object");
-}
-
-const TEZOS_ADDRESS = /^(tz[1-4]|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
-
-/**
- * A TzKT balance in OBJKT's shape, so both indexers' cards go through one
- * normalizer and look alike. TZIP metadata lists a creator by address or by
- * plain name, so a name becomes the alias rather than a mangled address.
- */
-function tzktToRawToken({ token }: TzktBalanceWithMetadata): ObjktRawToken {
-  const { metadata } = token;
-  const creator = metadata.creators?.[0] || metadata.artist;
-  return {
-    name: metadata.name ?? null,
-    token_id: String(token.tokenId || token.token_id || "0"),
-    fa_contract: token.contract?.address || "",
-    display_uri: metadata.displayUri ?? null,
-    artifact_uri: metadata.artifactUri ?? null,
-    thumbnail_uri: metadata.thumbnailUri ?? null,
-    supply: normalizeEditions(token.totalSupply) ?? normalizeEditions(metadata.editions) ?? null,
-    description: metadata.description ?? null,
-    creators: creator
-      ? [{ holder: TEZOS_ADDRESS.test(creator) ? { alias: null, address: creator } : { alias: creator, address: "" } }]
-      : [],
-    fa: { name: token.contract?.alias || metadata.collectionName || null },
-  };
 }
 
 export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
@@ -591,66 +230,6 @@ export async function fetchCardsByKeys(
   }
 
   return resolved;
-}
-
-/** At most this many cards from one artist, so a bulk lister cannot fill a pack. */
-export const PACK_MAX_PER_ARTIST = 2;
-
-function listingArtistKey(listing: ObjktListingRow): string {
-  const holder = listing.token.creators?.[0]?.holder;
-  return holder?.address
-    || holder?.alias
-    || `unattributed:${listing.token.fa_contract}`;
-}
-
-/**
- * Picks `count` listings, taking no more than `maxPerArtist` from any one
- * artist. If the pool is too concentrated to fill a pack under that cap, the
- * remainder is filled without it -- a short pack would be worse than a
- * repetitive one.
- */
-export function selectDiverseListings(
-  listings: ObjktListingRow[],
-  count: number,
-  maxPerArtist = PACK_MAX_PER_ARTIST,
-): ObjktListingRow[] {
-  const chosen: ObjktListingRow[] = [];
-  const taken = new Set<ObjktListingRow>();
-  const perArtist = new Map<string, number>();
-
-  for (const listing of listings) {
-    if (chosen.length === count) break;
-    const key = listingArtistKey(listing);
-    const used = perArtist.get(key) ?? 0;
-    if (used >= maxPerArtist) continue;
-    chosen.push(listing);
-    taken.add(listing);
-    perArtist.set(key, used + 1);
-  }
-
-  for (const listing of listings) {
-    if (chosen.length === count) break;
-    if (taken.has(listing)) continue;
-    chosen.push(listing);
-    taken.add(listing);
-  }
-
-  return chosen;
-}
-
-/** Keeps one listing per token, preferring the cheapest so "Collect" shows the best price. */
-function cheapestPerToken(listings: ObjktListingRow[]): ObjktListingRow[] {
-  const byToken = new Map<string, ObjktListingRow>();
-
-  for (const item of listings) {
-    const key = `${item.token.fa_contract}:${item.token.token_id}`;
-    const existing = byToken.get(key);
-    if (!existing || item.price < existing.price) {
-      byToken.set(key, item);
-    }
-  }
-
-  return [...byToken.values()];
 }
 
 export interface PackDraw {

@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { objktClient, type NFTCard } from "./objkt";
+import { objktClient } from "./objkt";
+import type { NFTCard } from "./card";
+import { convertIpfsUrl } from "./ipfs";
 import {
   WISHLIST_EXPORT_VERSION,
   mergeWishlists,
   parseWishlistExport,
   refreshWishlist,
-  repairStoredEditions,
+  repairStoredCard,
   serializeWishlist,
   wishlistExportFilename,
 } from "./wishlistTransfer";
@@ -187,18 +189,31 @@ test("an edition count of zero imports as Unknown, not a scarce card", () => {
 });
 
 test("a saved edition count of zero is repaired to Unknown and the card regraded", () => {
-  const unlisted = repairStoredEditions(card({ editions: 0, price_xtz: undefined, rarity: "epic" }));
+  const unlisted = repairStoredCard(card({ editions: 0, price_xtz: undefined, rarity: "epic" }));
   assert.equal(unlisted.editions, undefined);
   assert.equal(unlisted.rarity, "common");
 
-  const listed = repairStoredEditions(card({ editions: 0, price_xtz: 200, rarity: "epic" }));
+  const listed = repairStoredCard(card({ editions: 0, price_xtz: 200, rarity: "epic" }));
   assert.equal(listed.editions, undefined);
   assert.equal(listed.rarity, "rare", "a listed card grades on its price alone");
 });
 
+test("a saved IPFS link from the unfinished media proxy renders exactly as it did", () => {
+  const cid = "bafybeifpsex56m54o2npibd7np5vil4hqrk7tufaxgqwt5hir7swvy7vcm";
+  const repaired = repairStoredCard(card({ display_uri: `/api/media?ipfs=${cid}` }));
+
+  assert.equal(convertIpfsUrl(repaired.display_uri, 1), `https://${cid}.ipfs.dweb.link/`);
+});
+
+test("a saved HTTPS link from the unfinished media proxy renders exactly as it did", () => {
+  const repaired = repairStoredCard(card({ thumbnail_uri: "/api/media?url=https%3A%2F%2Fexample.com%2Fart.jpg" }));
+
+  assert.equal(convertIpfsUrl(repaired.thumbnail_uri), "https://example.com/art.jpg");
+});
+
 test("a saved card with a real edition count is returned untouched", () => {
   const saved = card({ editions: 25 });
-  assert.equal(repairStoredEditions(saved), saved);
+  assert.equal(repairStoredCard(saved), saved);
 });
 
 test("a video token's mime survives the export round-trip", () => {

@@ -1,4 +1,5 @@
-import { fetchRandomPack, PACK_MAX_PER_ARTIST } from "../src/lib/objkt";
+import { fetchRandomPack } from "../src/lib/objkt";
+import { PACK_MAX_PER_ARTIST } from "../src/lib/pullDraw";
 
 const PACKS = 12;
 

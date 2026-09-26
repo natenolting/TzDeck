@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { RARITY_CONFIG, RARITY_HEX } from "@/components/rarityStyles";
 import { coversText, readCodepointCoverage } from "@/lib/fontCoverage";
-import { getObjktThumbnailUrl, type NFTCard } from "@/lib/objkt";
+import { getObjktThumbnailUrl, type NFTCard } from "@/lib/card";
 import { OG_IMAGE_SIZE, parseCardRef } from "@/lib/share";
 import { loadSharedCard } from "@/lib/shareServer";
 

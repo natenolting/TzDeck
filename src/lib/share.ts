@@ -1,4 +1,4 @@
-import type { NFTCard } from "@/lib/objkt";
+import type { NFTCard } from "@/lib/card";
 
 /**
  * Canonical origin. The sole home of the host string: `metadataBase` in the

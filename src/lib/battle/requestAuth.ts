@@ -186,13 +186,3 @@ export function getClientIp(request: { headers: { get(name: string): string | nu
   }
   return request.headers.get("x-real-ip") ?? "unknown";
 }
-
-/** Splits "KT1Contract:123" into its contract address and token id. */
-export function splitCardKey(cardKey: string): { contractAddress: string; tokenId: string } {
-  const separatorIndex = cardKey.lastIndexOf(":");
-  if (separatorIndex === -1) throw new Error(`malformed card key: ${cardKey}`);
-  return {
-    contractAddress: cardKey.slice(0, separatorIndex),
-    tokenId: cardKey.slice(separatorIndex + 1),
-  };
-}
