@@ -379,6 +379,7 @@ test("commit_battle: a failed eligibility guard leaves zero trace outside battle
     const attempt = await sql<{ status: string; status_code: number }>`SELECT status, status_code FROM battle_attempts WHERE nonce = ${nonce}`;
     assert.equal(attempt[0].status, "failed");
     assert.equal(attempt[0].status_code, 409, "the rejection's status code must be persisted, not default to 200 on replay");
+    assert.deepEqual(result.response, { error: "stale_defender_version", retryable: false });
   } finally {
     await cleanup();
   }
