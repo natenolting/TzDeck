@@ -441,6 +441,42 @@ export function trainerBaseXpAward(tier: CardRarity, gap: number): number {
   return decayScaledAward(base, gap);
 }
 
+/** A wallet's card as a battle side, whichever side it is on. */
+export interface Combatant {
+  wallet: string;
+  cardKey: string;
+  seed: BaseSeed;
+  level: number;
+}
+
+export type PlayerSettlement =
+  | { outcome: "draw"; winner: null; loser: null; loserRecoveryReason: null; baseXpAward: 0 }
+  | {
+      outcome: "win";
+      winner: Combatant;
+      loser: Combatant;
+      /** An attacker who loses recovers longer than a defender who loses. */
+      loserRecoveryReason: "offensive" | "defensive";
+      /** Before repeat-win decay, which commit_battle applies. */
+      baseXpAward: number;
+    };
+
+/** What a resolved battle between two wallets commits. The winner earns XP for the card it beat, and the loser recovers. */
+export function settlePlayerBattle(combat: BattleResult, attacker: Combatant, defender: Combatant): PlayerSettlement {
+  if (combat.outcome === "draw") {
+    return { outcome: "draw", winner: null, loser: null, loserRecoveryReason: null, baseXpAward: 0 };
+  }
+  const attackerWon = combat.outcome === "A";
+  const [winner, loser] = attackerWon ? [attacker, defender] : [defender, attacker];
+  return {
+    outcome: "win",
+    winner,
+    loser,
+    loserRecoveryReason: attackerWon ? "defensive" : "offensive",
+    baseXpAward: baseXpAward(calculateSupplyRarity(loser.seed.editions), loser.level),
+  };
+}
+
 export interface TrainerSettlement {
   outcome: "win" | "draw";
   attackerWon: boolean;
@@ -470,14 +506,12 @@ export function trainerXpAward(tier: CardRarity, gap: number, recentWinsAgainstT
 // not a stored sortable column).
 // ---------------------------------------------------------------------------
 
-export interface CandidateCard {
-  wallet: string;
-  cardKey: string;
-  seed: BaseSeed;
-  level: number;
+export interface CandidateCard extends Combatant {
   recoveryUntil: Date | null;
   defenseCount: number;
   defenseResetAt: Date;
+  /** The progress row version a commit against this card expects. */
+  progressVersion: string;
 }
 
 const DEFENSE_CAP_MAX = 20; // tuning placeholder (Open Questions: exact daily cap values)

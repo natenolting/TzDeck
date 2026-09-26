@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { CardRarity } from "@/lib/objkt";
-import { resolveAttacker } from "@/lib/battle/attacker";
+import { resolveAttacker } from "@/lib/battle/combatants";
 import { reject } from "@/lib/battle/failures";
 import type { SignedRequestBody } from "@/lib/battle/requestAuth";
 import {
