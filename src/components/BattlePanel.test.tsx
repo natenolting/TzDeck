@@ -853,3 +853,39 @@ test("a 202 continuation from Refresh Holdings is resubmitted with the identical
   assert.equal(signChallengeCalls, 1, "bounded continuation resubmits the same signed body -- it never re-signs");
   assert.equal(new Set(bodiesSeen).size, 1, "every resubmission sends byte-identical signed bytes");
 });
+
+async function renderWithFailingSync(endpoint: string, status: number, error: string) {
+  const { render, screen, WalletContext } = await loadTestHarness();
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("/api/battle/status")) return new Response(JSON.stringify(statusJson()), { status: 200 });
+    if (url.includes(endpoint)) return new Response(JSON.stringify({ error, retryable: status === 503 }), { status });
+    throw new Error(`unexpected fetch in BattlePanel render test: ${url}`);
+  }) as typeof fetch;
+  render(
+    <WalletContext.Provider value={mockWalletValue()}>
+      <BattlePanelWithStatus card={attackerCard} onClose={() => {}} />
+    </WalletContext.Provider>,
+  );
+  return screen;
+}
+
+test("a Refresh Holdings failure shows its sentence, never the raw error code", async () => {
+  const { fireEvent } = await loadTestHarness();
+  const screen = await renderWithFailingSync("/api/battle/refresh", 413, "collection_too_large");
+
+  fireEvent.click(await screen.findByRole("button", { name: "Refresh" }));
+
+  assert.ok(await screen.findByText("Your collection is larger than battles can take in right now, so it can't be synced."));
+  assert.equal(screen.queryByText("collection_too_large"), null);
+});
+
+test("an opt-in failure shows its sentence, never the raw error code", async () => {
+  const { fireEvent } = await loadTestHarness();
+  const screen = await renderWithFailingSync("/api/battle/opt-in", 503, "holdings_unavailable");
+
+  fireEvent.click(await screen.findByRole("switch", { name: "Defend against other wallets" }));
+
+  assert.ok(await screen.findByText("We couldn't read your collection from OBJKT right now, so please try again in a moment."));
+  assert.equal(screen.queryByText("holdings_unavailable"), null);
+});

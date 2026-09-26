@@ -345,40 +345,45 @@ export default function BattlePanel({ card, battleStatus, onClose }: BattlePanel
     panelState.kind === "submitting" ||
     panelState.kind === "refreshing_holdings";
 
-  const toggleOptIn = async () => {
-    // Duplicate-invocation guard beyond the disabled control (item 2).
-    if (isBusy || !status) return;
-    const nextOptedIn = !status.optedIn;
+  /**
+   * Signs a holdings sync once, then resubmits that same signed body on every
+   * 202 (bounded continuation) or 429 (the wallet's own request budget -- the
+   * server marks the attempt retryable, never abandons it). Re-signing would
+   * mint a new nonce and restart a large wallet's sync from scratch.
+   */
+  const runSignedSync = async (sync: {
+    action: "opt-in" | "refresh";
+    params: ReadonlyArray<boolean>;
+    extraBody: Record<string, unknown>;
+    runningState: "syncing" | "refreshing_holdings";
+    timedOutMessage: string;
+    failedMessage: string;
+  }) => {
     setPanelState({ kind: "awaiting_signature" });
     try {
-      const signed = await signChallenge("opt-in", [nextOptedIn]);
-      // The signed envelope carries a nonce the server uses to resume this
-      // exact attempt -- re-signing would mint a new nonce and restart a
-      // large wallet's holdings sync from scratch, so the same signed body
-      // is resubmitted on every 202 (bounded continuation) or 429 (the
-      // wallet's own request budget -- the server marks the attempt
-      // retryable, never abandons it) rather than re-prompting the wallet.
-      const requestBody = JSON.stringify({ ...signed, claimedAddress: signed.address, optedIn: nextOptedIn });
-      const postOptIn = () =>
-        fetch("/api/battle/opt-in", {
+      const signed = await signChallenge(sync.action, sync.params);
+      const requestBody = JSON.stringify({ ...signed, claimedAddress: signed.address, ...sync.extraBody });
+      const post = () =>
+        fetch(`/api/battle/${sync.action}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: requestBody,
         });
 
-      setPanelState({ kind: "syncing" });
-      const { response, timedOut } = await resubmitWhilePending(postOptIn, HOLDINGS_SYNC_MAX_ATTEMPTS, HOLDINGS_SYNC_POLL_DELAY_MS);
+      setPanelState({ kind: sync.runningState });
+      const { response, timedOut } = await resubmitWhilePending(post, HOLDINGS_SYNC_MAX_ATTEMPTS, HOLDINGS_SYNC_POLL_DELAY_MS);
       if (timedOut) {
         // A clear restart path: this signed attempt's own bounded budget
         // (continuation or rate-limit backoff) ran out, well short of the
         // server's own retry window -- clicking again mints a fresh
         // signature and attempt rather than leaving the user stuck.
-        setPanelState({ kind: "error", message: "Opt-in sync is taking too long. Please try again." });
+        setPanelState({ kind: "error", message: sync.timedOutMessage });
         return;
       }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setPanelState({ kind: "error", message: body.error || "Failed to update opt-in status." });
+        const message = typeof body.error === "string" ? battleErrorMessage(body.error) : sync.failedMessage;
+        setPanelState({ kind: "error", message });
         return;
       }
       setPanelState({ kind: "idle" });
@@ -392,46 +397,34 @@ export default function BattlePanel({ card, battleStatus, onClose }: BattlePanel
     }
   };
 
-  // Item 4: an explicit, authenticated holdings refresh -- opt-in only reads
-  // status today, so a card acquired after opting in stays outside the
-  // defender pool until the wallet opts out and back in. Signs the existing
-  // `refresh` action with `[]` (GET /api/battle/status stays read-only) and
-  // reuses the same bounded-continuation/rate-limit handling as opt-in,
-  // since refresh/route.ts shares the identical materialization pipeline --
-  // opt-in state itself is never touched by this call.
-  const refreshHoldings = async () => {
-    if (isBusy) return;
-    setPanelState({ kind: "awaiting_signature" });
-    try {
-      const signed = await signChallenge("refresh", []);
-      const requestBody = JSON.stringify({ ...signed, claimedAddress: signed.address });
-      const postRefresh = () =>
-        fetch("/api/battle/refresh", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: requestBody,
-        });
+  const toggleOptIn = () => {
+    // Duplicate-invocation guard beyond the disabled control (item 2).
+    if (isBusy || !status) return;
+    const optedIn = !status.optedIn;
+    return runSignedSync({
+      action: "opt-in",
+      params: [optedIn],
+      extraBody: { optedIn },
+      runningState: "syncing",
+      timedOutMessage: "Opt-in sync is taking too long. Please try again.",
+      failedMessage: "Failed to update opt-in status.",
+    });
+  };
 
-      setPanelState({ kind: "refreshing_holdings" });
-      const { response, timedOut } = await resubmitWhilePending(postRefresh, HOLDINGS_SYNC_MAX_ATTEMPTS, HOLDINGS_SYNC_POLL_DELAY_MS);
-      if (timedOut) {
-        setPanelState({ kind: "error", message: "Holdings refresh is taking too long. Please try again." });
-        return;
-      }
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        setPanelState({ kind: "error", message: body.error || "Failed to refresh holdings." });
-        return;
-      }
-      setPanelState({ kind: "idle" });
-      await refreshStatus();
-    } catch (error) {
-      if (error instanceof UnsupportedWalletTypeError) {
-        setPanelState({ kind: "unsupported_wallet" });
-        return;
-      }
-      setPanelState({ kind: "declined" });
-    }
+  // An explicit, authenticated holdings refresh, so a card acquired after
+  // opting in joins the defender pool without opting out and back in. It
+  // signs `[]` (GET /api/battle/status stays read-only) and never touches
+  // opt-in state.
+  const refreshHoldings = () => {
+    if (isBusy) return;
+    return runSignedSync({
+      action: "refresh",
+      params: [],
+      extraBody: {},
+      runningState: "refreshing_holdings",
+      timedOutMessage: "Holdings refresh is taking too long. Please try again.",
+      failedMessage: "Failed to refresh holdings.",
+    });
   };
 
   // Submits (or resubmits, on manual Retry) one already-signed attempt.

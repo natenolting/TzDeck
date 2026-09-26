@@ -261,6 +261,7 @@ test("POST /api/battle/refresh: an upstream holdings fetch failure is a retryabl
         const json = await response.json();
         assert.equal(response.status, 503, JSON.stringify(json));
         assert.equal(json.error, "holdings_unavailable");
+        assert.equal(json.retryable, true);
       },
     );
     const [attempt] = await sql<{ retryable: boolean | null }>`SELECT retryable FROM battle_attempts WHERE nonce = ${body.envelope.mac}`;
@@ -289,6 +290,7 @@ test("POST /api/battle/refresh: a takeover mid-request is reported as sync_super
         const json = await response.json();
         assert.equal(response.status, 409, JSON.stringify(json));
         assert.equal(json.error, "sync_superseded");
+        assert.equal(json.retryable, true);
       },
     );
     // The route's own failAttempt call still carries the OLD generation it

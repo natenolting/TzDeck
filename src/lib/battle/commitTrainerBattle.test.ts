@@ -9,7 +9,7 @@ import {
   getSql,
   type AttemptIdentity,
   type CommitTrainerBattleParams,
-  type CommitTrainerBattleResult,
+  type CommitResult,
 } from "./store";
 
 const ATTACKER = "tz1CommitTrainerAttacker0000000000000";
@@ -83,11 +83,11 @@ function baseParams(overrides: Partial<CommitTrainerBattleParams> & Pick<CommitT
   };
 }
 
-function isCommitted(result: CommitTrainerBattleResult): boolean {
+function isCommitted(result: CommitResult): boolean {
   return result.statusCode === 200;
 }
 
-function errorOf(result: CommitTrainerBattleResult): string | undefined {
+function errorOf(result: CommitResult): string | undefined {
   return (result.response as { error?: string })?.error;
 }
 
