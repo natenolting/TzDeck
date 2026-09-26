@@ -7,7 +7,7 @@ import {
   type DenylistIndex,
   type ExclusionRecord,
 } from "./pullFilter";
-import { calculateSupplyRarity, rarityFor, type CardRarity } from "./rarity";
+import { rarityFor, type CardRarity } from "./rarity";
 
 const OBJKT_API_URL = process.env.NEXT_PUBLIC_OBJKT_API_URL || "https://data.objkt.com/v3/graphql";
 export const objktClient = new GraphQLClient(OBJKT_API_URL);
@@ -239,6 +239,35 @@ export function normalizeEditions(raw: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value >= 1 ? Math.trunc(value) : undefined;
 }
 
+/** The token fields every OBJKT query selects: what a card needs to render. */
+const TOKEN_FIELDS = `
+  name
+  token_id
+  fa_contract
+  display_uri
+  artifact_uri
+  thumbnail_uri
+  supply
+  mime
+  description
+  creators { holder { alias address } }
+  fa { name }
+`;
+
+/**
+ * TOKEN_FIELDS plus what the pull filter judges. Only the pack draw selects
+ * these: a wallet's own holdings and a known card are not discovery surfaces.
+ * GraphQL merges the repeated creators and fa selections into one.
+ */
+const PULL_TOKEN_FIELDS = `
+  ${TOKEN_FIELDS}
+  pk
+  flag
+  creators { verified holder { flag } }
+  fa { live }
+`;
+
+/** A token as TOKEN_FIELDS selects it. */
 export interface ObjktRawToken {
   name: string | null;
   token_id: string;
@@ -248,25 +277,20 @@ export interface ObjktRawToken {
   thumbnail_uri: string | null;
   supply: number | null;
   description?: string | null;
-  /** Optional: only the pack draw and holdings queries select it. */
   mime?: string | null;
-  // Pull-filter fields. Optional because fetchUserHoldings and fetchTokenByKey
-  // share this interface and deliberately do not select them -- a wallet's own
-  // holdings and a known battle opponent's card are not discovery surfaces.
-  pk?: number | null;
-  flag?: string | null;
-  creators?: Array<{
-    verified?: boolean;
-    holder: {
-      alias: string | null;
-      address: string;
-      flag?: string | null;
-    };
-  }>;
-  fa?: {
-    name: string | null;
-    live?: boolean | null;
-  };
+  creators?: Array<{ holder: { alias: string | null; address: string } }>;
+  fa?: { name: string | null };
+}
+
+/**
+ * A token as PULL_TOKEN_FIELDS selects it. The filter fields are always
+ * present, though OBJKT can still send null, which the filter fails closed on.
+ */
+export interface PullToken extends ObjktRawToken {
+  pk: number | null;
+  flag: string | null;
+  creators: Array<{ verified: boolean | null; holder: { alias: string | null; address: string; flag: string | null } }>;
+  fa: { name: string | null; live: boolean | null };
 }
 
 interface NormalizeTokenOptions {
@@ -302,7 +326,7 @@ export function normalizeObjktToken(
     artist_alias: artist?.alias?.trim() || (artist?.address
       ? formatShortAddress(artist.address)
       : "Unknown Artist"),
-    artist_address: artist?.address,
+    artist_address: artist?.address || undefined,
     collection_name: token.fa?.name?.trim() || "Tezos Art",
     editions,
     price_mutez: options.priceMutez,
@@ -327,15 +351,19 @@ export interface ObjktListingRow {
   token: ObjktRawToken;
 }
 
-interface ObjktListingResponse {
-  listing: ObjktListingRow[];
+export interface PullListingRow extends ObjktListingRow {
+  token: PullToken;
+}
+
+interface PullListingResponse {
+  listing: PullListingRow[];
 }
 
 /** Three independently offset windows, aliased so one round trip covers them all. */
 interface ObjktPackWindowsResponse {
-  w1?: ObjktListingRow[];
-  w2?: ObjktListingRow[];
-  w3?: ObjktListingRow[];
+  w1?: PullListingRow[];
+  w2?: PullListingRow[];
+  w3?: PullListingRow[];
 }
 
 interface TzktTokenBalance {
@@ -362,12 +390,42 @@ interface TzktTokenBalance {
   };
 }
 
-function isTzktTokenBalance(value: unknown): value is TzktTokenBalance {
+type TzktBalanceWithMetadata = TzktTokenBalance & {
+  token: NonNullable<TzktTokenBalance["token"]> & { metadata: NonNullable<NonNullable<TzktTokenBalance["token"]>["metadata"]> };
+};
+
+function isTzktTokenBalance(value: unknown): value is TzktBalanceWithMetadata {
   if (!value || typeof value !== "object") return false;
   const token = (value as { token?: unknown }).token;
   if (!token || typeof token !== "object") return false;
   const metadata = (token as { metadata?: unknown }).metadata;
   return Boolean(metadata && typeof metadata === "object");
+}
+
+const TEZOS_ADDRESS = /^(tz[1-4]|KT1)[1-9A-HJ-NP-Za-km-z]{33}$/;
+
+/**
+ * A TzKT balance in OBJKT's shape, so both indexers' cards go through one
+ * normalizer and look alike. TZIP metadata lists a creator by address or by
+ * plain name, so a name becomes the alias rather than a mangled address.
+ */
+function tzktToRawToken({ token }: TzktBalanceWithMetadata): ObjktRawToken {
+  const { metadata } = token;
+  const creator = metadata.creators?.[0] || metadata.artist;
+  return {
+    name: metadata.name ?? null,
+    token_id: String(token.tokenId || token.token_id || "0"),
+    fa_contract: token.contract?.address || "",
+    display_uri: metadata.displayUri ?? null,
+    artifact_uri: metadata.artifactUri ?? null,
+    thumbnail_uri: metadata.thumbnailUri ?? null,
+    supply: normalizeEditions(token.totalSupply) ?? normalizeEditions(metadata.editions) ?? null,
+    description: metadata.description ?? null,
+    creators: creator
+      ? [{ holder: TEZOS_ADDRESS.test(creator) ? { alias: null, address: creator } : { alias: creator, address: "" } }]
+      : [],
+    fa: { name: token.contract?.alias || metadata.collectionName || null },
+  };
 }
 
 export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
@@ -382,26 +440,7 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
         order_by: { last_incremented_at: desc_nulls_last }
       ) {
         quantity
-        token {
-          name
-          token_id
-          fa_contract
-          display_uri
-          artifact_uri
-          thumbnail_uri
-          supply
-          mime
-          description
-          creators {
-            holder {
-              alias
-              address
-            }
-          }
-          fa {
-            name
-          }
-        }
+        token { ${TOKEN_FIELDS} }
       }
     }
   `;
@@ -429,30 +468,7 @@ export async function fetchUserHoldings(address: string): Promise<NFTCard[]> {
     if (Array.isArray(tzktData)) {
       return tzktData
         .filter(isTzktTokenBalance)
-        .map((item) => {
-          const token = item.token!;
-          const metadata = token.metadata!;
-          const contractAddress = token.contract?.address || "";
-          const tokenId = String(token.tokenId || token.token_id || "0");
-          const editions = normalizeEditions(token.totalSupply) ?? normalizeEditions(metadata.editions);
-          const displayUri = metadata.displayUri || metadata.thumbnailUri || metadata.artifactUri || "";
-
-          return {
-            token_id: tokenId,
-            contract_address: contractAddress,
-            name: metadata.name || `OBJKT #${tokenId}`,
-            description: metadata.description || undefined,
-            display_uri: convertIpfsUrl(displayUri),
-            artifact_uri: convertIpfsUrl(metadata.artifactUri || undefined),
-            thumbnail_uri: convertIpfsUrl(metadata.thumbnailUri || displayUri),
-            artist_alias: metadata.creators?.[0] || metadata.artist || "Unknown Artist",
-            collection_name: token.contract?.alias || metadata.collectionName || "Tezos NFT",
-            editions,
-            objkt_url: `https://objkt.com/asset/${contractAddress}/${tokenId}`,
-            rarity: calculateSupplyRarity(editions),
-            quantity_owned: Number(item.balance || 1),
-          };
-        });
+        .map((item) => normalizeObjktToken(tzktToRawToken(item), { quantityOwned: Number(item.balance || 1) }));
     }
   } catch (tzktErr) {
     console.error("TzKT fallback also failed:", tzktErr);
@@ -477,26 +493,7 @@ export async function fetchTokenByKey(contractAddress: string, tokenId: string):
       token(
         where: { fa_contract: { _eq: $contract }, token_id: { _eq: $tokenId } },
         limit: 1
-      ) {
-        name
-        token_id
-        fa_contract
-        display_uri
-        artifact_uri
-        thumbnail_uri
-        supply
-        mime
-        description
-        creators {
-          holder {
-            alias
-            address
-          }
-        }
-        fa {
-          name
-        }
-      }
+      ) { ${TOKEN_FIELDS} }
     }
   `;
 
@@ -538,27 +535,6 @@ export async function fetchCardsByKeys(
   const resolved = new Map<string, NFTCard>();
   if (keys.length === 0) return resolved;
 
-  const tokenFields = `
-    name
-    token_id
-    fa_contract
-    display_uri
-    artifact_uri
-    thumbnail_uri
-    supply
-    mime
-    description
-    creators {
-      holder {
-        alias
-        address
-      }
-    }
-    fa {
-      name
-    }
-  `;
-
   // Filtering contract and token id with independent `_in` lists can match pairs
   // nobody asked for, so the requested keys are re-checked below. The
   // alternative -- an `_or` of exact pairs -- would have to be interpolated into
@@ -576,12 +552,12 @@ export async function fetchCardsByKeys(
       ) {
         id
         price
-        token { ${tokenFields} }
+        token { ${TOKEN_FIELDS} }
       }
       token(
         where: { fa_contract: { _in: $contracts }, token_id: { _in: $tokenIds } },
         limit: $limit
-      ) { ${tokenFields} }
+      ) { ${TOKEN_FIELDS} }
     }
   `;
 
@@ -701,31 +677,7 @@ export async function fetchRandomPack(
   const listingFields = `
     id
     price
-    token {
-      pk
-      flag
-      name
-      token_id
-      fa_contract
-      display_uri
-      artifact_uri
-      thumbnail_uri
-      supply
-      mime
-      description
-      creators {
-        verified
-        holder {
-          alias
-          address
-          flag
-        }
-      }
-      fa {
-        name
-        live
-      }
-    }
+    token { ${PULL_TOKEN_FIELDS} }
   `;
   const activeWhere = `
     status: { _eq: "active" },
@@ -777,7 +729,7 @@ export async function fetchRandomPack(
     // Deep offsets overrun the active set on a quiet market; fall back to the
     // newest listings rather than serving a short pack.
     if (listings.length < count) {
-      const fallback = await objktClient.request<ObjktListingResponse>(fallbackQuery, {
+      const fallback = await objktClient.request<PullListingResponse>(fallbackQuery, {
         limit: Math.max(count * 4, 24),
       });
       listings = [...listings, ...(fallback?.listing || [])];
