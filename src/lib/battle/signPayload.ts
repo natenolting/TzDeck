@@ -3,11 +3,12 @@ import type { StringLiteral } from "@taquito/michel-codec";
 import { canonicalEncode } from "./canonicalEncode";
 
 /**
- * Browser-safe mirror of auth.ts's byte-construction logic, deliberately
- * kept dependency-free of `node:crypto` (WebCrypto instead) so it can run in
- * WalletContext (a client component). The client never recomputes or
- * verifies the envelope's own `mac` -- it only resubmits what the server
- * issued verbatim -- so no HMAC/secret material is needed here at all.
+ * The one definition of what a wallet signs for a battle action, shared by the
+ * browser that asks for the signature and the server that verifies it. Both
+ * sides run it, so they cannot drift apart. It uses WebCrypto rather than
+ * `node:crypto` so it runs in WalletContext (a client component); Node has the
+ * same API. No secret is needed here: the client only resubmits the envelope
+ * the server issued, and never recomputes its `mac`.
  */
 
 export interface NonceEnvelope {
@@ -16,12 +17,32 @@ export interface NonceEnvelope {
   mac: string;
 }
 
-async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", data);
+/** The server's labels baked into every signed message, so a signature can't be replayed against another deploy. */
+export interface ProtocolInfo {
+  appId: string;
+  protocolVersion: number;
+}
+
+export type ActionParams = ReadonlyArray<string | number | boolean>;
+
+/** Hash over the canonically encoded, positionally fixed action parameters. */
+export async function computeParamHash(params: ActionParams): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalEncode(params)));
   return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
+}
+
+/** The exact bytes a wallet signs for this envelope, action, and parameters. */
+export async function bytesToSign(
+  envelope: NonceEnvelope,
+  { appId, protocolVersion }: ProtocolInfo,
+  action: string,
+  params: ActionParams,
+): Promise<string> {
+  const message = canonicalEncode([protocolVersion, appId, envelope.mac, action, await computeParamHash(params)]);
+  const literal: StringLiteral = { string: message };
+  return packDataBytes(literal).bytes;
 }
 
 const IMPLICIT_PUBLIC_KEY_PREFIX = /^(edpk|sppk|p2pk)/;
@@ -29,17 +50,4 @@ const IMPLICIT_PUBLIC_KEY_PREFIX = /^(edpk|sppk|p2pk)/;
 /** Shared with the server (auth.ts re-exports this) so both sides agree on scope. */
 export function isImplicitAccountPublicKey(publicKey: string): boolean {
   return IMPLICIT_PUBLIC_KEY_PREFIX.test(publicKey);
-}
-
-export async function bytesToSignInBrowser(
-  envelope: NonceEnvelope,
-  protocolVersion: number,
-  appId: string,
-  action: string,
-  params: ReadonlyArray<string | number | boolean>,
-): Promise<string> {
-  const paramHash = await sha256Hex(canonicalEncode(params));
-  const message = canonicalEncode([protocolVersion, appId, envelope.mac, action, paramHash]);
-  const literal: StringLiteral = { string: message };
-  return packDataBytes(literal).bytes;
 }

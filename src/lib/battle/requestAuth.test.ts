@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { InMemorySigner } from "@taquito/signer";
 
-import { bytesToSign, computeParamHash, issueNonce } from "./auth";
+import { issueNonce, getPublicProtocolInfo } from "./auth";
+import { bytesToSign, computeParamHash } from "./signPayload";
 import { authenticateAndClaim } from "./requestAuth";
 import { failAttempt, getSql } from "./store";
 
@@ -22,7 +23,7 @@ test("authenticateAndClaim: a released (expired) lease is reclaimed on the next 
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["some-param"];
-  const bytes = bytesToSign(envelope, "opt-in", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "opt-in", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -40,7 +41,7 @@ test("authenticateAndClaim: a released (expired) lease is reclaimed on the next 
       assert.equal(second.generation, "1", "reclaiming should advance the generation");
     }
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -49,7 +50,7 @@ test("authenticateAndClaim: an expired envelope still retrieves an already-compl
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["expired-replay-param"];
-  const bytes = bytesToSign(envelope, "opt-in", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "opt-in", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -72,7 +73,7 @@ test("authenticateAndClaim: an expired envelope still retrieves an already-compl
       assert.deepEqual(replay.row.response, { optedIn: true });
     }
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -81,7 +82,7 @@ test("authenticateAndClaim: a still-pending attempt with an expired lease is rec
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["expired-pending-param"];
-  const bytes = bytesToSign(envelope, "opt-in", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "opt-in", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -104,7 +105,7 @@ test("authenticateAndClaim: a still-pending attempt with an expired lease is rec
       assert.equal(resumed.generation, "1", "reclaiming should advance the generation");
     }
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -113,7 +114,7 @@ test("authenticateAndClaim: a retryable failure is reclaimed after its envelope'
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["expired-retryable-param"];
-  const bytes = bytesToSign(envelope, "random", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "random", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -130,7 +131,7 @@ test("authenticateAndClaim: a retryable failure is reclaimed after its envelope'
       assert.equal(resumed.generation, "1");
     }
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -139,7 +140,7 @@ test("authenticateAndClaim: an expired envelope is rejected once the attempt's o
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["expired-past-retry-deadline-param"];
-  const bytes = bytesToSign(envelope, "opt-in", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "opt-in", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -162,7 +163,7 @@ test("authenticateAndClaim: an expired envelope is rejected once the attempt's o
     assert.equal(rejected.outcome, "rejected", "there is nothing left to continue once the retry horizon itself has closed");
     if (rejected.outcome === "rejected") assert.equal(rejected.reason, "nonce_expired");
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -171,7 +172,7 @@ test("authenticateAndClaim: an expired envelope for a nonce with no existing att
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["expired-absent-nonce-param"];
-  const bytes = bytesToSign(envelope, "opt-in", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "opt-in", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -183,10 +184,10 @@ test("authenticateAndClaim: an expired envelope for a nonce with no existing att
     assert.equal(result.outcome, "rejected");
     if (result.outcome === "rejected") assert.equal(result.reason, "nonce_expired");
 
-    const rows = await sql`SELECT nonce FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    const rows = await sql`SELECT nonce FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
     assert.equal(rows.length, 0, "an expired envelope must never create a new attempt row");
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -195,7 +196,7 @@ test("authenticateAndClaim: a retryable failure (transient upstream error) is re
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["retryable-failure-param"];
-  const bytes = bytesToSign(envelope, "random", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "random", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -213,7 +214,7 @@ test("authenticateAndClaim: a retryable failure (transient upstream error) is re
       assert.equal(second.generation, "1", "reclaiming should advance the generation");
     }
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -222,7 +223,7 @@ test("authenticateAndClaim: a non-retryable failure is reported as terminal, rep
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["non-retryable-failure-param"];
-  const bytes = bytesToSign(envelope, "random", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "random", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -238,7 +239,7 @@ test("authenticateAndClaim: a non-retryable failure is reported as terminal, rep
       assert.deepEqual(second.row.response, { error: "self_challenge" });
     }
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });
 
@@ -247,7 +248,7 @@ test("authenticateAndClaim: a genuinely live lease is reported as in-progress, n
   const sql = getSql();
   const envelope = issueNonce();
   const params = ["some-other-param"];
-  const bytes = bytesToSign(envelope, "opt-in", params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), "opt-in", params);
   const { prefixSig } = await signer.sign(bytes);
   const body = { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 
@@ -258,6 +259,6 @@ test("authenticateAndClaim: a genuinely live lease is reported as in-progress, n
     const second = await authenticateAndClaim(body, "opt-in", params);
     assert.equal(second.outcome, "in_progress");
   } finally {
-    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${computeParamHash(params)}`;
+    await sql`DELETE FROM battle_attempts WHERE wallet = ${address} AND param_hash = ${await computeParamHash(params)}`;
   }
 });

@@ -2,15 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { InMemorySigner } from "@taquito/signer";
 
-import {
-  bytesToSign,
-  canonicalEncode,
-  isImplicitAccountPublicKey,
-  issueNonce,
-  verifyEnvelope,
-  verifySignedAction,
-  type NonceEnvelope,
-} from "./auth";
+import { canonicalEncode, isImplicitAccountPublicKey, issueNonce, verifyEnvelope, verifySignedAction, getPublicProtocolInfo } from "./auth";
+import { bytesToSign, type NonceEnvelope } from "./signPayload";
 import { claimOrLookupAttempt, completeAttempt, getSql, type AttemptIdentity } from "./store";
 
 process.env.BATTLE_AUTH_SECRET ||= "test-secret-do-not-use-in-production";
@@ -31,7 +24,7 @@ async function signAction(
   action: string,
   params: ReadonlyArray<string | number | boolean>,
 ) {
-  const bytes = bytesToSign(envelope, action, params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), action, params);
   const result = await signer.sign(bytes);
   return result.prefixSig;
 }
@@ -48,7 +41,7 @@ test("verifySignedAction: happy path -- valid signature, fresh nonce, matching b
   const params = ["KT1Contract:1"];
   const signature = await signAction(signer, envelope, "random", params);
 
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope,
     publicKey,
     signature,
@@ -65,7 +58,7 @@ test("verifySignedAction: a signature valid for one action fails when replayed a
   const envelope = issueNonce();
   const signature = await signAction(signer, envelope, "opt-in", []);
 
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope,
     publicKey,
     signature,
@@ -82,7 +75,7 @@ test("verifySignedAction: a signature valid for one set of params fails when rep
   const envelope = issueNonce();
   const signature = await signAction(signer, envelope, "challenge", ["KT1Contract:1", "tz1Victim"]);
 
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope,
     publicKey,
     signature,
@@ -116,7 +109,7 @@ test("verifySignedAction: an expired-but-authentic envelope still verifies signa
   const signature = await signAction(signer, envelope, "random", params);
   const farFuture = envelope.timestamp + 10 * 60 * 1000; // past the 5-minute freshness window
 
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope,
     publicKey,
     signature,
@@ -135,10 +128,10 @@ test("verifySignedAction: an expired-but-authentic envelope still verifies signa
   }
 });
 
-test("verifySignedAction: a tampered MAC is rejected outright, even if it would otherwise also look expired", () => {
+test("verifySignedAction: a tampered MAC is rejected outright, even if it would otherwise also look expired", async () => {
   const envelope = issueNonce();
   const tampered: NonceEnvelope = { ...envelope, mac: "0".repeat(envelope.mac.length) };
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope: tampered,
     publicKey: "edpkIrrelevant",
     signature: "edsigIrrelevant",
@@ -155,7 +148,7 @@ test("verifySignedAction: signature valid but doesn't match the derived address 
   const envelope = issueNonce();
   const signature = await signAction(signer, envelope, "random", []);
 
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope,
     publicKey,
     signature,
@@ -171,7 +164,7 @@ test("verifySignedAction: malformed signature is rejected gracefully, not thrown
   const { publicKey, address } = await testSigner();
   const envelope = issueNonce();
 
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope,
     publicKey,
     signature: "not-a-real-signature",
@@ -185,7 +178,7 @@ test("verifySignedAction: malformed signature is rejected gracefully, not thrown
 
 test("verifySignedAction: no usable public key (abstracted account) gets a distinct rejection reason", async () => {
   const envelope = issueNonce();
-  const result = verifySignedAction({
+  const result = await verifySignedAction({
     envelope,
     publicKey: "sig-not-an-implicit-account-key",
     signature: "edsig-irrelevant",
@@ -210,7 +203,7 @@ test("integration: a retried request short-circuits via battle_attempts without 
   const params = ["KT1Contract:1"];
   const signature = await signAction(signer, envelope, "random", params);
 
-  const verifyResult = verifySignedAction({
+  const verifyResult = await verifySignedAction({
     envelope,
     publicKey,
     signature,

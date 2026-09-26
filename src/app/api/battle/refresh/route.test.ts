@@ -4,7 +4,8 @@ import { NextRequest } from "next/server";
 import { InMemorySigner } from "@taquito/signer";
 
 import { objktClient } from "@/lib/objkt";
-import { bytesToSign, computeParamHash, issueNonce, type NonceEnvelope } from "@/lib/battle/auth";
+import { issueNonce, getPublicProtocolInfo } from "@/lib/battle/auth";
+import { bytesToSign, computeParamHash, type NonceEnvelope } from "@/lib/battle/signPayload";
 import { getSql } from "@/lib/battle/store";
 import { POST } from "./route";
 
@@ -38,7 +39,7 @@ async function buildSignedBody(
   params: ReadonlyArray<string | number | boolean>,
 ): Promise<{ envelope: NonceEnvelope; publicKey: string; signature: string; claimedAddress: string }> {
   const envelope = issueNonce();
-  const bytes = bytesToSign(envelope, action, params);
+  const bytes = await bytesToSign(envelope, getPublicProtocolInfo(), action, params);
   const { prefixSig } = await signer.sign(bytes);
   return { envelope, publicKey, signature: prefixSig, claimedAddress: address };
 }
@@ -202,7 +203,7 @@ test("POST /api/battle/refresh: a genuinely live attempt is reported as in-progr
     // still-live lease -- authenticateAndClaim must not reclaim it.
     await sql`
       INSERT INTO battle_attempts (nonce, wallet, action, param_hash, issued_at, retry_until, status, generation, lease_expires_at)
-      VALUES (${body.envelope.mac}, ${address}, 'refresh', ${computeParamHash([])}, now(), now() + interval '15 minutes', 'pending', 0, now() + interval '1 minute')
+      VALUES (${body.envelope.mac}, ${address}, 'refresh', ${await computeParamHash([])}, now(), now() + interval '15 minutes', 'pending', 0, now() + interval '1 minute')
     `;
 
     const response = await POST(postRequest(body));
@@ -223,7 +224,7 @@ test("POST /api/battle/refresh: a completed attempt replays its exact stored res
     const body = await buildSignedBody(signer, publicKey, address, "refresh", []);
     await sql`
       INSERT INTO battle_attempts (nonce, wallet, action, param_hash, issued_at, retry_until, status, generation, response, status_code, completed_at)
-      VALUES (${body.envelope.mac}, ${address}, 'refresh', ${computeParamHash([])}, now(), now() + interval '15 minutes', 'completed', 0, ${JSON.stringify({ refreshed: true })}::jsonb, 200, now())
+      VALUES (${body.envelope.mac}, ${address}, 'refresh', ${await computeParamHash([])}, now(), now() + interval '15 minutes', 'completed', 0, ${JSON.stringify({ refreshed: true })}::jsonb, 200, now())
     `;
 
     let objktCalled = false;

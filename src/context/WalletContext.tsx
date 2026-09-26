@@ -6,8 +6,7 @@ import { NetworkType, SigningType } from "@ecadlabs/beacon-types";
 import { TezosToolkit } from "@taquito/taquito";
 import { runWalletInitialization } from "./walletInitialization";
 import { trackFunnelEvent } from "@/lib/analytics";
-import { bytesToSignInBrowser, isImplicitAccountPublicKey } from "@/lib/battle/signPayload";
-import type { NonceEnvelope } from "@/lib/battle/signPayload";
+import { bytesToSign, isImplicitAccountPublicKey, type NonceEnvelope, type ProtocolInfo } from "@/lib/battle/signPayload";
 
 export interface SignedChallenge {
   envelope: NonceEnvelope;
@@ -132,7 +131,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const sessionResponse = await fetch("/api/battle/session", { cache: "no-store" });
     if (!sessionResponse.ok) throw new Error("Failed to fetch battle session nonce");
-    const session: NonceEnvelope & { appId: string; protocolVersion: number } =
+    const session: NonceEnvelope & ProtocolInfo =
       await sessionResponse.json();
     const envelope: NonceEnvelope = {
       timestamp: session.timestamp,
@@ -140,10 +139,9 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
       mac: session.mac,
     };
 
-    const payload = await bytesToSignInBrowser(
+    const payload = await bytesToSign(
       envelope,
-      session.protocolVersion,
-      session.appId,
+      { appId: session.appId, protocolVersion: session.protocolVersion },
       action,
       params,
     );

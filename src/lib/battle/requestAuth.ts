@@ -1,4 +1,5 @@
-import { computeParamHash, verifySignedAction, type NonceEnvelope, type VerifyResult } from "./auth";
+import { verifySignedAction, type VerifyResult } from "./auth";
+import { computeParamHash, type NonceEnvelope } from "./signPayload";
 import { claimOrLookupAttempt, lookupAttemptByNonce, reclaimAttempt, type AttemptRow } from "./store";
 
 export interface SignedRequestBody {
@@ -70,7 +71,7 @@ export async function authenticateAndClaim(
   options: AuthenticateAndClaimOptions = {},
 ): Promise<AuthenticateAndClaimResult> {
   const { now, checkBudget } = options;
-  const verifyResult = verifySignedAction({
+  const verifyResult = await verifySignedAction({
     envelope: body.envelope,
     publicKey: body.publicKey,
     signature: body.signature,
@@ -89,7 +90,7 @@ export async function authenticateAndClaim(
       // would resume it (terminal replay, reclaim, or in-progress), just
       // never inserted fresh: an absent or foreign nonce can't be claimed by
       // an expired envelope.
-      const identity = { wallet: verifyResult.wallet, action, paramHash: computeParamHash(actionParams) };
+      const identity = { wallet: verifyResult.wallet, action, paramHash: await computeParamHash(actionParams) };
       const existing = await lookupAttemptByNonce(verifyResult.nonce);
       const matchesIdentity =
         existing &&
@@ -121,7 +122,7 @@ export async function authenticateAndClaim(
     return { outcome: "rejected", status: 401, reason: verifyResult.reason };
   }
 
-  const identity = { wallet: verifyResult.wallet, action, paramHash: computeParamHash(actionParams) };
+  const identity = { wallet: verifyResult.wallet, action, paramHash: await computeParamHash(actionParams) };
 
   // A brand-new nonce is about to insert a permanent `battle_attempts` row;
   // gate that on budget *before* writing it, not after -- otherwise an
