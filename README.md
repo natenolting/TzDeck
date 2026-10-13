@@ -203,6 +203,8 @@ npm run build             # Production build
 
 The `promo-video` Claude Code skill in `.claude/skills/promo-video/` makes a 20-second vertical promo from live captures of tzdeck.xyz: the pack, the demo battle, and TzDeck cards of one artist's own works, animated in code with a synthesized score. The cards come only from the artist asking for the promo, or one who agreed, so nobody's art is used without permission. Ask Claude Code for a TzDeck promo video, or run `/promo-video`. Its studio installs its own dependencies (Playwright, ffmpeg-static, the brand fonts) in a work directory outside the repo, so the app's `package.json` is untouched.
 
+It runs on the shared engine of the `demo-reel` skill in `.claude/skills/demo-reel/`, which makes the same kind of reel for any web product: captures listed in a `shots.json`, a starter film that lays out for 9:16, 1:1 or 16:9, and the same renderer, score synthesizer and review loop. To use it in other projects, copy that folder into `~/.claude/skills/`, then ask Claude Code for a demo reel or run `/demo-reel`.
+
 ## Built with
 
 - [Next.js](https://nextjs.org/) and React
