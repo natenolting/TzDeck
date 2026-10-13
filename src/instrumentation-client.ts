@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { EXTENSION_DENY_URLS, EXTENSION_IGNORE_ERRORS } from "@/lib/sentryFilters";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN
@@ -6,6 +7,9 @@ Sentry.init({
   // Browser bundles only see NEXT_PUBLIC_* vars; Vercel exposes this one automatically.
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
+  // Browser extensions throw on our pages too; only TzDeck's own errors are ours to see.
+  denyUrls: EXTENSION_DENY_URLS,
+  ignoreErrors: EXTENSION_IGNORE_ERRORS,
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
