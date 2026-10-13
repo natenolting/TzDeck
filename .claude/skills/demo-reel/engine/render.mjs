@@ -1,21 +1,25 @@
 // node render.mjs --stills 0.3,1,2.2       one PNG per time into out/stills, plus out/contact.png
 // node render.mjs --fps 60 --sub 2          full render to out/silent.mp4
-import { chromium } from 'playwright';
+import './timeline.js';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import ffmpeg from 'ffmpeg-static';
+import { launch, openFilm } from './browser.mjs';
 
 const flag = (k) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : undefined; };
-const FPS = Number(flag('fps') ?? 60), SUB = Number(flag('sub') ?? 2), DUR = Number(flag('dur') ?? 20);
+const FPS = Number(flag('fps') ?? 60), SUB = Number(flag('sub') ?? 2), DUR = Number(flag('dur') ?? REEL.duration);
 const FROM = Number(flag('from') ?? 0);
 const stills = flag('stills');
 
 mkdirSync('out', { recursive: true });
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
-await page.goto('file://' + process.cwd().replace(/\\/g, '/') + '/index.html');
-await page.evaluate(() => { document.body.classList.add('render'); return window.ready; });
+const browser = await launch();
+const page = await openFilm(browser);
 const canvas = page.locator('#c');
+const missing = await page.evaluate(() => window.missing);
+if (missing.length > 0) {
+  console.warn(`placeholders stand in for ${missing.length} missing assets: ${missing.join(' ')}`);
+  if (!stills) { await browser.close(); throw new Error('capture the missing assets before a full render'); }
+}
 
 if (stills) {
   rmSync('out/stills', { recursive: true, force: true });
