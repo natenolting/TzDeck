@@ -109,27 +109,6 @@ export function getCollectionUrl(contractAddress: string): string {
 }
 
 /**
- * OBJKT's own pre-resized still of a token, addressed by key alone.
- *
- * This is the server-side counterpart to the client's IPFS failover chain, and
- * it is a better answer wherever a single blocking fetch has to succeed:
- * measured over 300 active listings it answered 300/300 with a p50 of 105KB in
- * 491ms, where an IPFS gateway ladder is several seconds of retries. It also
- * returns a still poster for video tokens, so no caller has to special-case
- * mime. `thumb400` and `thumb288` are the only derivatives that exist;
- * `display` and `artifact` both 404.
- *
- * Animated GIF and WebP are the exception: every derivative returns the full
- * animation, around 1.7MB, so a caller with a byte budget has to reject them.
- */
-export function getObjktThumbnailUrl(
-  card: Pick<NFTCard, "contract_address" | "token_id">,
-  variant: "thumb288" | "thumb400" = "thumb400",
-): string {
-  return `https://assets.objkt.media/file/assets-003/${card.contract_address}/${card.token_id}/${variant}`;
-}
-
-/**
  * A token's edition count, or undefined when upstream can't give one. OBJKT
  * reports a null supply for tokens it hasn't indexed and 0 for fully burned
  * ones, and TzKT sends counts as strings. None of those gaps is a count: the

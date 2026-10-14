@@ -1,16 +1,21 @@
+import { convertIpfsUrl, IPFS_GATEWAYS } from "../src/lib/ipfs";
 import { objktClient } from "../src/lib/objkt";
 
-// Link-preview images are rendered by satori, which fetches the artwork and
-// rasterises it under a 500KB bundle ceiling. OBJKT serves pre-resized
-// derivatives from its own CDN, but animated tokens come back at full size in
-// every derivative, so the ceiling is a real constraint rather than a
-// formality. This measures how much of the live catalogue clears it.
+// Link-preview images are rendered by satori, which fetches the token's own
+// IPFS thumbnail and rasterises it under a byte and time budget. Thumbnails
+// are whatever the minting platform stored, and animated ones arrive at full
+// size, so the budget is a real constraint rather than a formality. This
+// measures how much of the live catalogue clears it.
+//
+// Timings are from wherever this runs, not from Vercel. Sizes are the same.
 
 const SAMPLE_SIZE = Number(process.env.SAMPLE_SIZE ?? 300);
-const CDN = "https://assets.objkt.media/file/assets-003";
-const DERIVATIVE = process.env.DERIVATIVE ?? "thumb400";
-const BUDGET_BYTES = Number(process.env.BUDGET_BYTES ?? 320_000);
-const CONCURRENCY = 12;
+const BUDGET_BYTES = Number(process.env.BUDGET_BYTES ?? 400 * 1024);
+const BUDGET_MS = Number(process.env.BUDGET_MS ?? 2000);
+const PROBE_TIMEOUT_MS = 10_000;
+// Filebase answers 429 to everything after about 100 rapid requests from one
+// IP, which would count as unreachable artwork that isn't.
+const REQUEST_GAP_MS = 700;
 
 const listingFilter = `
   status: { _eq: "active" },
@@ -35,15 +40,20 @@ const sampleQuery = `
       limit: $limit,
       order_by: { id: asc }
     ) {
-      token { fa_contract token_id mime }
+      token { mime thumbnail_uri display_uri artifact_uri }
     }
   }
 `;
 
-interface RangeResponse { oldest: Array<{ id: number }>; newest: Array<{ id: number }> }
-interface SampleResponse {
-  listing: Array<{ token: { fa_contract: string; token_id: string; mime: string | null } }>;
+interface SampledToken {
+  mime: string | null;
+  thumbnail_uri: string | null;
+  display_uri: string | null;
+  artifact_uri: string | null;
 }
+
+interface RangeResponse { oldest: Array<{ id: number }>; newest: Array<{ id: number }> }
+interface SampleResponse { listing: Array<{ token: SampledToken }> }
 
 interface Probe {
   mime: string;
@@ -53,10 +63,13 @@ interface Probe {
   ms: number;
 }
 
-async function probe(contract: string, tokenId: string, mime: string): Promise<Probe> {
+async function probe(token: SampledToken): Promise<Probe> {
+  const mime = token.mime ?? "unknown";
+  // The same fallback the card normaliser applies before the route sees it.
+  const source = convertIpfsUrl(token.thumbnail_uri || token.display_uri || token.artifact_uri || undefined);
   const started = Date.now();
   try {
-    const response = await fetch(`${CDN}/${contract}/${tokenId}/${DERIVATIVE}`);
+    const response = await fetch(source, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
     const buffer = await response.arrayBuffer();
     return {
       mime,
@@ -68,18 +81,6 @@ async function probe(contract: string, tokenId: string, mime: string): Promise<P
   } catch {
     return { mime, status: 0, bytes: 0, contentType: "", ms: Date.now() - started };
   }
-}
-
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let cursor = 0;
-  await Promise.all(Array.from({ length: limit }, async () => {
-    while (cursor < items.length) {
-      const index = cursor++;
-      results[index] = await fn(items[index]);
-    }
-  }));
-  return results;
 }
 
 function percentile(sorted: number[], rank: number): number {
@@ -109,27 +110,35 @@ async function main() {
     .map((row) => row.token)
     .slice(0, SAMPLE_SIZE);
 
-  console.log(`Probing ${tokens.length} tokens at ${CDN}/<contract>/<id>/${DERIVATIVE}`);
-  const probes = await mapLimit(tokens, CONCURRENCY, (token) => (
-    probe(token.fa_contract, token.token_id, token.mime ?? "unknown")
-  ));
+  console.log(`Probing ${tokens.length} token thumbnails via ${IPFS_GATEWAYS[0]}`);
+  const probes: Probe[] = [];
+  for (const token of tokens) {
+    probes.push(await probe(token));
+    await new Promise((resolve) => setTimeout(resolve, REQUEST_GAP_MS));
+  }
 
   const ok = probes.filter((p) => p.status === 200);
-  const missing = probes.filter((p) => p.status === 404);
-  const failed = probes.filter((p) => p.status !== 200 && p.status !== 404);
+  const timedOut = probes.filter((p) => p.status === 0);
+  const failed = probes.filter((p) => p.status !== 200 && p.status !== 0);
   const overBudget = ok.filter((p) => p.bytes > BUDGET_BYTES);
-  const animated = ok.filter((p) => p.contentType.includes("webp"));
+  const animated = ok.filter((p) => /webp|gif/.test(p.contentType));
+  const drawn = ok.filter((p) => (
+    /png|jpeg/.test(p.contentType) && p.bytes <= BUDGET_BYTES && p.ms <= BUDGET_MS
+  ));
 
   const sizes = ok.map((p) => p.bytes).sort((a, b) => a - b);
   const times = ok.map((p) => p.ms).sort((a, b) => a - b);
   const kb = (bytes: number) => `${Math.round(bytes / 1024)}KB`;
   const pct = (n: number) => `${((n / probes.length) * 100).toFixed(1)}%`;
 
-  console.log(`\nreachable      ${ok.length}/${probes.length} (${pct(ok.length)})`);
-  console.log(`no derivative  ${missing.length} (${pct(missing.length)})`);
-  console.log(`errored        ${failed.length} (${pct(failed.length)})`);
+  console.log(`\nwould draw     ${drawn.length}/${probes.length} (${pct(drawn.length)})`);
+  console.log(`reachable      ${ok.length} (${pct(ok.length)})`);
+  console.log(`timed out      ${timedOut.length} (${pct(timedOut.length)})`);
+  const failedBy = Object.entries(Object.groupBy(failed, (p) => String(p.status)))
+    .map(([status, rows]) => `${status}×${rows?.length}`).join(" ");
+  console.log(`errored        ${failed.length} (${pct(failed.length)}) ${failedBy}`);
   console.log(`over ${kb(BUDGET_BYTES)}      ${overBudget.length} (${pct(overBudget.length)})`);
-  console.log(`webp (animated) ${animated.length} (${pct(animated.length)})`);
+  console.log(`webp/gif       ${animated.length} (${pct(animated.length)})`);
   console.log(`\nsize   p50 ${kb(percentile(sizes, 0.5))}  p90 ${kb(percentile(sizes, 0.9))}  p99 ${kb(percentile(sizes, 0.99))}  max ${kb(sizes[sizes.length - 1] ?? 0)}`);
   console.log(`time   p50 ${percentile(times, 0.5)}ms  p90 ${percentile(times, 0.9)}ms  p99 ${percentile(times, 0.99)}ms`);
 

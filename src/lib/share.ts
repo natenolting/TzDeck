@@ -61,14 +61,14 @@ export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 
 /**
  * Bump when the card *composition* in
- * `src/app/c/[contract]/[tokenId]/og/route.tsx` changes.
+ * `src/app/c/[contract]/[tokenId]/og/route.tsx` changes, or what it draws.
  *
  * The handler serves a rendered card as immutable for a year, which is right
  * for a token's artwork, since it never changes. A redesign does change, and
  * would otherwise never reach a card Discord or X has already cached. The
  * version is only ever part of the URL; the handler ignores it.
  */
-const OG_VERSION = 1;
+const OG_VERSION = 2;
 
 /**
  * A card's preview image, described the way a crawler needs to hear it.
