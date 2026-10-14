@@ -8,6 +8,7 @@ import { trackFunnelEvent } from "@/lib/analytics";
 import { soundManager } from "@/lib/sound";
 import { motion, AnimatePresence } from "framer-motion";
 import { SparklesIcon, SwordsIcon, TezIcon } from "./icons";
+import Spinner from "./Spinner";
 import Image from "next/image";
 
 interface PackOpeningProps {
@@ -272,6 +273,9 @@ export default function PackOpening({
               <h3 className="mt-4 text-2xl font-bold text-text-primary tracking-wide animate-pulse">
                 Ripping Open Pack...
               </h3>
+              <div className="mt-6">
+                <Spinner label="Opening booster pack" size="lg" />
+              </div>
             </motion.div>
           </motion.div>
         )}

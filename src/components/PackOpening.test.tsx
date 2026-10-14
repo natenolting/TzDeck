@@ -131,6 +131,29 @@ test("opening a pack ignores rapid duplicate clicks", async () => {
   assert.equal(requestCount, 1);
 });
 
+test("a pack still being fetched shows a spinner until its cards arrive", async () => {
+  const { fireEvent, render, screen, PackOpening } = await loadTestHarness();
+  let resolvePack: (response: Response) => void = () => undefined;
+  globalThis.fetch = (() =>
+    new Promise<Response>((resolve) => {
+      resolvePack = resolve;
+    })) as typeof fetch;
+  mutePackSounds();
+  render(<PackOpening />);
+
+  fireEvent.click(screen.getByText("Rip it open"));
+
+  assert.ok(
+    await screen.findByRole("status", { name: "Opening booster pack" }, { timeout: 2_500 }),
+  );
+  assert.ok(screen.getByText("Ripping Open Pack..."));
+
+  resolvePack({ ok: true, json: async () => ({ cards }) } as Response);
+  await screen.findByText("Reveal each card to see your pull", undefined, { timeout: 2_500 });
+
+  assert.equal(screen.queryByRole("status", { name: "Opening booster pack" }), null);
+});
+
 test("unmounting clears a pending pack completion timer", async () => {
   let completionCount = 0;
   soundManager.playPackComplete = () => {
