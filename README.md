@@ -192,7 +192,7 @@ npm run denylist          # Manage the booster-pack denylist (--list, --add, --r
 npm run funnel            # Report the launch bar and funnel (DATABASE_URL, else .env.local)
 npm run changelog         # Post a merged PR's Discord update (--pr <n> or --sha <sha>, --dry-run)
 npm run check:link-preview -- <url>  # Check what a link-preview crawler receives for a URL
-npm run sample:og-artwork # Measure OBJKT CDN artwork sizes against the link-preview budget
+npm run sample:og-artwork # Measure IPFS thumbnail sizes against the link-preview budget
 npm run simulate          # Run N ad-hoc battle simulations (see Battle system above)
 npm run validate:tiebreak # The R14 tiebreak's own fixed acceptance run
 npx tsc --noEmit          # Type-check without emitting files
