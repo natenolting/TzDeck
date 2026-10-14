@@ -11,6 +11,7 @@ import NFTDetailsModal, { type BattleCardStats } from "./NFTDetailsModal";
 import { RARITY_CONFIG } from "./rarityStyles";
 import ContentWarningCover from "./ContentWarningCover";
 import { ExternalLinkIcon, HeartIcon, ImageOffIcon, SwordsIcon, TezIcon } from "./icons";
+import Spinner from "./Spinner";
 
 interface NFTCardProps {
   card: NFTCardType;
@@ -217,10 +218,7 @@ export default function NFTCard({
             <>
               {!imageLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80">
-                  <div
-                    aria-hidden="true"
-                    className="h-10 w-10 animate-spin rounded-full border-4 border-accent border-t-transparent"
-                  />
+                  <Spinner />
                 </div>
               )}
               {/* NFT hosts are unbounded; useFailoverImage drives gateway failover

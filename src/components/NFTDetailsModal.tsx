@@ -14,6 +14,7 @@ import { useContentReveal } from "@/hooks/useContentReveal";
 import { baseStatsFromSeed, deriveBaseSeed, xpThresholdForLevel } from "@/lib/battle/rules";
 import { ChevronLeftIcon, ChevronRightIcon, HeartIcon, ImageOffIcon, SwordsIcon, TezIcon } from "./icons";
 import ShareCardButton from "./ShareCardButton";
+import Spinner from "./Spinner";
 import ContentWarningCover from "./ContentWarningCover";
 import { RARITY_CONFIG } from "./rarityStyles";
 
@@ -131,11 +132,7 @@ function ModalImage({ card }: { card: NFTCard }) {
     <>
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <div
-            aria-label="Loading token artwork"
-            role="status"
-            className="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent"
-          />
+          <Spinner label="Loading token artwork" size="lg" />
         </div>
       )}
       {/* NFT hosts are unbounded; useFailoverImage drives gateway failover

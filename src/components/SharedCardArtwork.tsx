@@ -8,6 +8,7 @@ import { getCardImageSources } from "@/lib/ipfs";
 import { isImageArtifact, type NFTCard } from "@/lib/card";
 import ContentWarningCover from "./ContentWarningCover";
 import { ImageOffIcon } from "./icons";
+import Spinner from "./Spinner";
 
 export default function SharedCardArtwork({ card }: { card: NFTCard }) {
   const sources = useMemo(
@@ -39,11 +40,7 @@ export default function SharedCardArtwork({ card }: { card: NFTCard }) {
     <>
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-surface-1/80">
-          <div
-            aria-label="Loading token artwork"
-            role="status"
-            className="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent"
-          />
+          <Spinner label="Loading token artwork" size="lg" />
         </div>
       )}
       {/* OBJKT's assets host rejects browser embeds that carry tzdeck.xyz as

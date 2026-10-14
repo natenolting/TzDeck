@@ -10,6 +10,7 @@ import { isCardRarity, RARITY_LABELS, RARITY_TIERS, type CardRarity } from "@/li
 import NFTCard from "./NFTCard";
 import BattlePanel from "./BattlePanel";
 import { CardsIcon, RefreshIcon, SearchIcon } from "./icons";
+import Spinner from "./Spinner";
 
 interface DeckGridProps {
   onWishlistToggle?: (card: NFTCardType) => void;
@@ -162,8 +163,8 @@ export default function DeckGrid({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-accent border-t-transparent mb-4" />
+      <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+        <Spinner />
         <p className="text-sm font-medium text-text-secondary">Loading your Tezos collection & deck...</p>
       </div>
     );
