@@ -4,7 +4,8 @@ import path from "node:path";
 
 import { RARITY_CONFIG, RARITY_HEX } from "@/components/rarityStyles";
 import { coversText, readCodepointCoverage } from "@/lib/fontCoverage";
-import { getObjktThumbnailUrl, type NFTCard } from "@/lib/card";
+import type { NFTCard } from "@/lib/card";
+import { convertIpfsUrl } from "@/lib/ipfs";
 import { OG_IMAGE_SIZE, parseCardRef } from "@/lib/share";
 import { loadSharedCard } from "@/lib/shareServer";
 
@@ -20,13 +21,13 @@ const [OXANIUM_REGULAR, OXANIUM_BOLD] = await Promise.all([
 const COVERAGE = readCodepointCoverage(OXANIUM_REGULAR);
 
 /**
- * 15.7% of listings blow this budget, and they are almost entirely animated
- * tokens that satori could not rasterise anyway. The fonts take 49KB, so this
- * leaves comfortable headroom under the render's own ceiling.
+ * 14.3% of thumbnails blow this budget (`npm run sample:og-artwork`), mostly
+ * GIFs and full-size JPEGs stored as the thumbnail. The fonts take 49KB, so
+ * this leaves comfortable headroom under the render's own ceiling.
  */
 const ARTWORK_BYTE_CEILING = 400 * 1024;
 
-/** Every major crawler gives up somewhere past this; the p90 fetch is 825ms. */
+/** Every major crawler gives up somewhere past this; the p90 fetch is 339ms. */
 const ARTWORK_TIMEOUT_MS = 2000;
 
 /**
@@ -65,22 +66,24 @@ function sniffRasterisable(bytes: Buffer): "image/jpeg" | "image/png" | null {
 }
 
 /**
- * OBJKT's CDN still, under a hard byte and time budget.
+ * The token's own IPFS thumbnail, under a hard byte and time budget.
  *
- * Animated GIF and WebP arrive as animated WebP at full size in every
- * derivative, `thumb288` included, so there is no smaller variant to fall back
- * to and no point spending the bytes on something satori renders as a single
- * frame at best. Rejecting the content type outright costs a handful of small
- * animations their artwork and saves every large one.
+ * Not OBJKT's resized CDN copy, because its Cloudflare answers every request
+ * from Vercel with a 403 block page whatever the headers. GIF and WebP thumbnails
+ * are rejected by content type, since satori renders an animation as a single
+ * frame at best and the large ones would blow the budget anyway.
  */
 async function loadArtwork(card: NFTCard): Promise<Artwork> {
   if (card.content_warnings?.length) return { drawn: false, reason: "content_warning" };
+
+  const source = convertIpfsUrl(card.thumbnail_uri);
+  if (!source) return { drawn: false, reason: "unreachable" };
 
   const abort = new AbortController();
   const deadline = setTimeout(() => abort.abort(), ARTWORK_TIMEOUT_MS);
 
   try {
-    const response = await fetch(getObjktThumbnailUrl(card), { signal: abort.signal });
+    const response = await fetch(source, { signal: abort.signal });
     if (!response.ok) return { drawn: false, reason: "unreachable" };
 
     const type = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
@@ -342,7 +345,7 @@ function ArtworkCard({ card, artworkSrc, hex }: {
 
 /**
  * The card for a token whose artwork cannot travel: animated, oversized, or
- * simply not there in time. This is one share in six, not an edge case, so it
+ * simply not there in time. This is one share in five, not an edge case, so it
  * is a composition of its own rather than the other card with a hole in it.
  */
 function NoArtworkCard({ card, hex }: { card: NFTCard; hex: string }) {
