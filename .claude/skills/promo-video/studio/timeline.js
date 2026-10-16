@@ -1,6 +1,8 @@
-// The film's cue sheet, in beats on the 120 BPM grid. film.js and music.mjs both read it, so
-// retiming a moment moves its picture and its sound together. Loaded as a plain script by
-// index.html and as a side-effect import by music.mjs.
+// The film's format and cue sheet. REEL sets the canvas, length, output file and poster frame for
+// the demo-reel engine. CUES is in beats on the 120 BPM grid; film.js and music.mjs both read it,
+// so retiming a moment moves its picture and its sound together. Loaded as a plain script by
+// index.html and imported for its side effect by the Node scripts.
+globalThis.REEL = { name: 'tzdeck-promo', width: 1080, height: 1920, duration: 20, poster: 8.2 };
 globalThis.CUES = {
   bpm: 120,
   pull: 0,              // "PULL." lands

@@ -3,7 +3,7 @@
 // Card art comes only from the artist who asked for the promo: their created tokens are
 // imported into this browser's Wishlist, which renders them with the same card component
 // packs use and grades them live against OBJKT. Nothing touches anyone's real wishlist.
-import { chromium } from 'playwright';
+import { launch } from './browser.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { shotAlone } from './shot-alone.mjs';
@@ -58,7 +58,7 @@ const picks = (await createdTokens())
   .map((t) => ({ contract: t.fa_contract, tokenId: t.token_id, listed: t.listings_active.length > 0 }));
 console.log(`${picks.length} works picked (${picks.filter((p) => p.listed).length} listed)`);
 
-const browser = await chromium.launch();
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
 await page.goto(SITE, { waitUntil: 'networkidle' });
 await shotAlone(page.locator('button[aria-label="Open booster pack"]'), 'assets/pack.png');

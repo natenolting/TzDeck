@@ -2,11 +2,11 @@
 // The film draws its own hit numbers, so the app's floating damage numbers and red hit
 // flashes are hidden for the shot. A screenshot takes longer than one number's half-second
 // fade, so waiting for a gap alone can still catch one; the shot's own stylesheet hides them.
-import { chromium } from 'playwright';
+import { launch } from './browser.mjs';
 
 const DECORATION = '[data-testid$="-damage"], [data-testid$="-avatar"] .bg-danger';
 
-const browser = await chromium.launch();
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
 await page.goto('https://tzdeck.xyz', { waitUntil: 'networkidle' });
 await page.getByRole('tab', { name: /Deck/ }).click().catch(() => page.getByText('My Deck').first().click());

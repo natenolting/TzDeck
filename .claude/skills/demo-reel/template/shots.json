@@ -1,0 +1,11 @@
+{
+  "site": "https://example.com",
+  "viewport": { "width": 390, "height": 844, "scale": 3, "colorScheme": "dark" },
+  "shots": [
+    { "name": "logo", "download": "/logo.svg" },
+    { "name": "hero", "path": "/" },
+    { "name": "feature-1", "path": "/", "steps": [{ "click": "text=Get started" }, { "wait": 800 }] },
+    { "name": "feature-2", "path": "/", "element": "main", "hide": ".cookie-banner" },
+    { "name": "feature-3", "path": "/", "element": "[data-testid=card]", "alone": true }
+  ]
+}
